@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Brief;
 
-use App\Http\Controllers\Controller;
 use App\Enums\BriefStatus;
 use App\Enums\ContractType;
 use App\Enums\GenderPref;
+use App\Http\Controllers\Controller;
 use App\Models\Brief;
 use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
@@ -120,9 +120,18 @@ class BriefController extends Controller
             );
 
             return Inertia::render('Briefs/Create', [
-                'contractTypes' => ContractType::cases(),
-                'genderPrefs' => GenderPref::cases(),
-                'statuses' => BriefStatus::cases(),
+                'contractTypes' => array_map(
+                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
+                    ContractType::cases()
+                ),
+                'genderPrefs' => array_map(
+                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
+                    GenderPref::cases()
+                ),
+                'statuses' => array_map(
+                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
+                    BriefStatus::cases()
+                ),
             ]);
         } catch (\Throwable $e) {
             $logger->log(
