@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\BriefController;
+use App\Http\Controllers\Brief\BriefController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 

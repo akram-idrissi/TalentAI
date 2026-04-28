@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Brief;
 
+use App\Http\Controllers\Controller;
 use App\Enums\BriefStatus;
 use App\Enums\ContractType;
 use App\Enums\GenderPref;
@@ -68,6 +69,7 @@ class BriefController extends Controller
                     'title' => $brief->title,
                     'sector' => $brief->sector,
                     'contract_type' => $brief->contract_type,
+                    'salary_range' => $brief->salary_range,
                     'location' => $brief->location,
                     'status' => $brief->status,
                     'created_by' => $brief->creator?->name,
@@ -130,7 +132,7 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
-            return Inertia::render('Briefs/Fallback', [
+            return Inertia::render('Briefs/Create', [
                 'error' => 'Impossible d\'afficher le formulaire de création.',
             ]);
         }
@@ -320,6 +322,7 @@ class BriefController extends Controller
 
             return Inertia::render('Briefs/Fallback', [
                 'error' => 'Impossible de mettre à jour ce brief.',
+                'brief' => $brief,
             ]);
         }
     }
