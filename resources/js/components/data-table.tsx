@@ -36,7 +36,7 @@ export default function DataTable<T>({
                 className={`
                     px-5 py-3 text-xs font-semibold uppercase tracking-wider
                     text-gray-500 dark:text-gray-400
-                    text-center   // 👈 default center
+                    text-center   
                     ${col.headerClassName || ""}
                 `}
                 >
@@ -68,7 +68,7 @@ export default function DataTable<T>({
                     <td
                     key={colIndex}
                     className={`
-                        px-5 py-4 text-center  //
+                        px-5 py-4 text-center  
                         ${col.cellClassName || ""}
                     `}
                     >
