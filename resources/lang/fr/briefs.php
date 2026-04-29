@@ -129,5 +129,17 @@ return [
             'delete_confirm' => 'Êtes-vous sûr ?',
         ],
     ],
+    'fallback' => [
+        'breadcrumb' => 'Sourcing › Erreur',
+        'title' => 'Une erreur est survenue',
+        'subtitle' => 'Une erreur inattendue s\'est produite',
+        'heading' => 'Impossible de charger cette page',
+        'description' => 'Une erreur s\'est produite de notre côté. Vous pouvez réessayer ou retourner à la liste.',
+
+        'actions' => [
+            'back' => 'Retour à la liste',
+            'retry' => 'Réessayer',
+        ],
+    ],
 
 ];

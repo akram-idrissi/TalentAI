@@ -128,5 +128,17 @@ return [
             'delete_confirm' => 'Are you sure?',
         ],
     ],
+    'fallback' => [
+        'breadcrumb' => 'Sourcing › Error',
+        'title' => 'Something went wrong',
+        'subtitle' => 'An unexpected error occurred',
+        'heading' => 'Unable to load this page',
+        'description' => 'An error occurred on our end. You can try again or go back to the list.',
+
+        'actions' => [
+            'back' => 'Back to list',
+            'retry' => 'Try again',
+        ],
+    ],
 
 ];

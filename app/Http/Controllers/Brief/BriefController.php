@@ -60,6 +60,7 @@ class BriefController extends Controller
         $logger = app(ActivityLogger::class);
 
         try {
+
             $briefs = Brief::with('creator')
                 ->when($request->search, fn ($q, $s) => $q->where('title', 'like', "%$s%"))
                 ->when($request->status, fn ($q, $s) => $q->where('status', $s))
@@ -113,6 +114,7 @@ class BriefController extends Controller
         $logger = app(ActivityLogger::class);
 
         try {
+
             $logger->log(
                 'brief.create',
                 'Affichage du formulaire de création d\'un brief.',
@@ -142,7 +144,7 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
-            return Inertia::render('Briefs/Create', [
+            return Inertia::render('Briefs/Fallback', [
                 'error' => 'Impossible d\'afficher le formulaire de création.',
             ]);
         }
