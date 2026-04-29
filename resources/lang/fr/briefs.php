@@ -74,5 +74,60 @@ return [
         'weight_range' => 'Chaque poids doit être compris entre 0 et 100.',
         'weight_total' => 'La somme des poids doit être égale à 100 (actuellement :total).',
     ],
+    'show_brief' => [
+        'breadcrumb' => 'Sourcing › Détails brief',
+        'subtitle' => 'Détails complets du brief de recrutement',
+
+        'sections' => [
+            'position' => 'Informations du poste',
+            'candidate' => 'Critères candidat',
+            'description' => 'Description',
+            'scoring' => 'Scoring IA',
+            'meta' => 'Informations système',
+        ],
+
+        'fields' => [
+            'title' => 'Intitulé du poste',
+            'sector' => 'Secteur',
+            'contract_type' => 'Type de contrat',
+            'location' => 'Localisation',
+            'salary_range' => 'Salaire',
+            'status' => 'Statut',
+            'min_experience_years' => 'Expérience',
+            'years' => 'ans',
+            'education_level' => 'Niveau d\'études',
+            'age_range' => 'Âge',
+            'gender_pref' => 'Genre',
+            'required_skills' => 'Compétences requises',
+            'soft_skills' => 'Soft skills',
+            'created_by' => 'Créé par :',
+            'created_at' => 'Date :',
+            'languages' => 'Langues',
+        ],
+
+        'statuses' => [
+            'active' => 'Actif',
+            'draft' => 'Brouillon',
+        ],
+
+        'scoring' => [
+            'experience' => 'Expérience',
+            'education' => 'Formation',
+            'sector' => 'Secteur',
+            'soft_skills' => 'Soft skills',
+            'location' => 'Localisation',
+        ],
+
+        'actions' => [
+            'back' => 'Retour à la liste',
+
+            'edit' => 'Modifier',
+            'delete' => 'Supprimer',
+            'delete_confirm' => 'Êtes-vous sûr de vouloir supprimer ce brief ?',
+            'delete_yes' => 'Oui, supprimer',
+            'delete_no' => 'Annuler',
+            'delete_confirm' => 'Êtes-vous sûr ?',
+        ],
+    ],
 
 ];

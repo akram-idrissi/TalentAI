@@ -74,5 +74,59 @@ return [
         'weight_range' => 'Each weight must be between 0 and 100.',
         'weight_total' => 'The total of all weights must equal 100 (currently :total).',
     ],
+    'show_brief' => [
+        'breadcrumb' => 'Sourcing › Brief details',
+        'subtitle' => 'Full details of the recruitment brief',
+
+        'sections' => [
+            'position' => 'Position information',
+            'candidate' => 'Candidate criteria',
+            'description' => 'Description',
+            'scoring' => 'AI Scoring',
+            'meta' => 'System information',
+        ],
+
+        'fields' => [
+            'title' => 'Job title',
+            'sector' => 'Sector',
+            'contract_type' => 'Contract type',
+            'location' => 'Location',
+            'salary_range' => 'Salary range',
+            'status' => 'Status',
+            'min_experience_years' => 'Experience',
+            'years' => 'years',
+            'education_level' => 'Education level',
+            'age_range' => 'Age range',
+            'gender_pref' => 'Gender preference',
+            'required_skills' => 'Required skills',
+            'soft_skills' => 'Soft skills',
+            'created_by' => 'Created by:',
+            'created_at' => 'Date:',
+            'languages' => 'Languages',
+        ],
+
+        'statuses' => [
+            'active' => 'Active',
+            'draft' => 'Draft',
+        ],
+
+        'scoring' => [
+            'experience' => 'Experience',
+            'education' => 'Education',
+            'sector' => 'Sector',
+            'soft_skills' => 'Soft skills',
+            'location' => 'Location',
+        ],
+
+        'actions' => [
+            'back' => 'Back to list',
+            'edit' => 'Edit',
+            'delete' => 'Delete',
+            'delete_confirm' => 'Are you sure you want to delete this brief?',
+            'delete_yes' => 'Yes, delete',
+            'delete_no' => 'Cancel',
+            'delete_confirm' => 'Are you sure?',
+        ],
+    ],
 
 ];
