@@ -131,10 +131,7 @@ class BriefController extends Controller
                     fn ($case) => ['value' => $case->value, 'label' => $case->label()],
                     GenderPref::cases()
                 ),
-                'statuses' => array_map(
-                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
-                    BriefStatus::cases()
-                ),
+
             ]);
         } catch (\Throwable $e) {
             $logger->log(
@@ -252,9 +249,18 @@ class BriefController extends Controller
 
             return Inertia::render('Briefs/Edit', [
                 'brief' => $brief,
-                'contractTypes' => ContractType::cases(),
-                'genderPrefs' => GenderPref::cases(),
-                'statuses' => BriefStatus::cases(),
+                'contractTypes' => array_map(
+                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
+                    ContractType::cases()
+                ),
+                'genderPrefs' => array_map(
+                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
+                    GenderPref::cases()
+                ),
+                'statuses' => array_map(
+                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
+                    BriefStatus::cases()
+                ),
             ]);
         } catch (\Throwable $e) {
             $logger->log(

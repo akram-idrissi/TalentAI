@@ -140,5 +140,29 @@ return [
             'retry' => 'Try again',
         ],
     ],
+    'edit_brief' => [
+        'breadcrumb' => 'Sourcing › Edit brief',
+        'title' => 'Edit recruitment brief',
+        'subtitle' => 'Update the criteria · Changes will affect future candidate scoring',
+
+        'sections' => [
+            'position' => 'Position information',
+            'candidate' => 'Candidate criteria',
+            'description' => 'Description',
+            'scoring' => 'AI scoring weights',
+        ],
+
+        'actions' => [
+            'back' => 'Back to list',
+            'show' => 'View brief',
+            'save' => 'Save changes',
+            'saving' => 'Saving…',
+            'save_draft' => 'Save as draft',
+            'cancel' => 'Cancel',
+            'cancel_confirm' => 'Discard changes?',
+            'cancel_yes' => 'Yes, discard',
+            'cancel_no' => 'Keep editing',
+        ],
+    ],
 
 ];

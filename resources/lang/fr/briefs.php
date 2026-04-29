@@ -141,5 +141,29 @@ return [
             'retry' => 'Réessayer',
         ],
     ],
+    'edit_brief' => [
+        'breadcrumb' => 'Sourcing › Modifier brief',
+        'title' => 'Modifier le brief de recrutement',
+        'subtitle' => 'Mettez à jour les critères · Les modifications affecteront le scoring futur',
+
+        'sections' => [
+            'position' => 'Informations du poste',
+            'candidate' => 'Critères candidat',
+            'description' => 'Description',
+            'scoring' => 'Poids scoring IA',
+        ],
+
+        'actions' => [
+            'back' => 'Retour à la liste',
+            'show' => 'Voir le brief',
+            'save' => 'Enregistrer les modifications',
+            'saving' => 'Enregistrement…',
+            'save_draft' => 'Enregistrer en brouillon',
+            'cancel' => 'Annuler',
+            'cancel_confirm' => 'Abandonner les modifications ?',
+            'cancel_yes' => 'Oui, abandonner',
+            'cancel_no' => 'Continuer l\'édition',
+        ],
+    ],
 
 ];
