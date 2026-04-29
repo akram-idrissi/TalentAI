@@ -52,6 +52,7 @@ class HandleInertiaRequests extends Middleware
             'locale' => session('locale', config('app.locale')),
             'translations' => fn () => [
                 'sidebar' => __('sidebar'),
+                'briefs' => __('briefs'),
             ],
         ];
     }

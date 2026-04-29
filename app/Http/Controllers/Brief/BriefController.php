@@ -32,6 +32,7 @@ class BriefController extends Controller
             'salary_range' => 'nullable|string|max:255',
             'min_experience_years' => 'nullable|integer|min:0',
             'education_level' => 'nullable|string|max:255',
+            'languages' => 'nullable|string',
             'gender_pref' => ['nullable', Rule::enum(GenderPref::class)],
             'age_range' => 'nullable|string|max:50',
             'mission_description' => 'nullable|string',
