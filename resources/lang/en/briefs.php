@@ -125,7 +125,7 @@ return [
             'delete_confirm' => 'Are you sure you want to delete this brief?',
             'delete_yes' => 'Yes, delete',
             'delete_no' => 'Cancel',
-            'delete_confirm' => 'Are you sure?',
+            'delete_confirming' => 'Are you sure?',
         ],
     ],
     'fallback' => [
@@ -162,6 +162,51 @@ return [
             'cancel_confirm' => 'Discard changes?',
             'cancel_yes' => 'Yes, discard',
             'cancel_no' => 'Keep editing',
+        ],
+    ],
+    'index' => [
+        'breadcrumb' => 'Recruitment / Briefs',
+        'title' => 'Brief Management',
+        'subtitle' => 'Manage and track all your recruitment briefs efficiently.',
+
+        'search_placeholder' => 'Search briefs by title…',
+
+        'actions' => [
+            'create' => 'Create Brief',
+            'search' => 'Search',
+            'reset' => 'Reset',
+            'view' => 'View',
+            'edit' => 'Edit',
+            'delete' => 'Delete',
+        ],
+
+        'columns' => [
+            'title' => 'Title',
+            'sector' => 'Sector',
+            'contract' => 'Contract',
+            'status' => 'Status',
+            'gender_pref' => 'Gender Pref',
+            'education' => 'Education Level',
+            'created_at' => 'Created At',
+            'actions' => 'Actions',
+        ],
+
+        'gender' => [
+            'male' => 'Male',
+            'female' => 'Female',
+            'any' => 'Any',
+        ],
+
+        'empty' => [
+            'title' => 'No briefs found',
+            'description' => 'Get started by creating your first recruitment brief.',
+        ],
+
+        'modal' => [
+            'title' => 'Delete brief',
+            'description' => 'Are you sure you want to permanently delete this brief?',
+            'cancel' => 'Cancel',
+            'confirm' => 'Yes, delete',
         ],
     ],
 

@@ -20,7 +20,7 @@ Route::middleware(['auth'])->group(function () {
             session(['locale' => $locale]);
         }
 
-        return response()->json(['locale' => $locale]);
+        return redirect()->back();
     })->name('locale.switch');
 });
 

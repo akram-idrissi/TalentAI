@@ -126,7 +126,7 @@ return [
             'delete_confirm' => 'Êtes-vous sûr de vouloir supprimer ce brief ?',
             'delete_yes' => 'Oui, supprimer',
             'delete_no' => 'Annuler',
-            'delete_confirm' => 'Êtes-vous sûr ?',
+            'delete_confirming' => 'Êtes-vous sûr ?',
         ],
     ],
     'fallback' => [
@@ -163,6 +163,52 @@ return [
             'cancel_confirm' => 'Abandonner les modifications ?',
             'cancel_yes' => 'Oui, abandonner',
             'cancel_no' => 'Continuer l\'édition',
+        ],
+    ],
+
+    'index' => [
+        'breadcrumb' => 'Recrutement / Briefs',
+        'title' => 'Gestion des briefs',
+        'subtitle' => 'Gérez et suivez efficacement tous vos briefs de recrutement.',
+
+        'search_placeholder' => 'Rechercher un brief par titre…',
+
+        'actions' => [
+            'create' => 'Créer un brief',
+            'search' => 'Rechercher',
+            'reset' => 'Réinitialiser',
+            'view' => 'Voir',
+            'edit' => 'Modifier',
+            'delete' => 'Supprimer',
+        ],
+
+        'columns' => [
+            'title' => 'Titre',
+            'sector' => 'Secteur',
+            'contract' => 'Contrat',
+            'status' => 'Statut',
+            'gender_pref' => 'Préf. genre',
+            'education' => 'Niveau d\'études',
+            'created_at' => 'Créé le',
+            'actions' => 'Actions',
+        ],
+
+        'gender' => [
+            'male' => 'Homme',
+            'female' => 'Femme',
+            'any' => 'Indifférent',
+        ],
+
+        'empty' => [
+            'title' => 'Aucun brief trouvé',
+            'description' => 'Commencez par créer votre premier brief de recrutement.',
+        ],
+
+        'modal' => [
+            'title' => 'Supprimer le brief',
+            'description' => 'Êtes-vous sûr de vouloir supprimer définitivement ce brief ?',
+            'cancel' => 'Annuler',
+            'confirm' => 'Oui, supprimer',
         ],
     ],
 
