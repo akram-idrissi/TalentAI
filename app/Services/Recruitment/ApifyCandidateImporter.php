@@ -6,10 +6,22 @@ use App\Models\ApifyRun;
 use App\Models\Candidate;
 use Illuminate\Support\Facades\Http;
 
+/**
+ * Fetches scraped LinkedIn profiles from a completed Apify run,
+ * upserts them as Candidate records, scores each one against the brief,
+ * and attaches them to the brief via the pivot table.
+ */
 class ApifyCandidateImporter
 {
     public function __construct(private CandidateScoringService $scorer) {}
 
+    /**
+     * Import all candidates from a succeeded Apify run.
+     * Skips individual candidates that fail to upsert or score, logging a warning instead.
+     *
+     * @param  ApifyRun  $run  A run with status 'succeeded'.
+     * @return int Number of candidates successfully imported.
+     */
     public function import(ApifyRun $run): int
     {
         $items = $this->fetchDataset($run->run_id);
@@ -19,7 +31,6 @@ class ApifyCandidateImporter
         foreach ($items as $item) {
             try {
                 $candidate = $this->upsertCandidate($item);
-
                 $result = $this->scorer->score($brief, $candidate);
 
                 $brief->candidates()->syncWithoutDetaching([
@@ -32,45 +43,37 @@ class ApifyCandidateImporter
 
                 $count++;
             } catch (\Throwable $e) {
-
-                \Log::warning("Failed to import candidate: {$e->getMessage()}", ['item' => $item['linkedinUrl'] ?? 'unknown']);
+                \Log::warning("Failed to import candidate: {$e->getMessage()}", [
+                    'item' => $item['linkedinUrl'] ?? 'unknown',
+                ]);
             }
         }
 
         return $count;
     }
 
+    /**
+     * Insert or update a Candidate record from raw Apify profile data.
+     * Uses linkedin_url as the unique key.
+     *
+     * @param  array  $item  Raw profile object from the Apify dataset.
+     * @return Candidate The upserted candidate.
+     */
     private function upsertCandidate(array $item): Candidate
     {
         return Candidate::updateOrCreate(
-            // Unique key: LinkedIn URL
             ['linkedin_url' => $item['linkedinUrl'] ?? null],
             [
                 'full_name' => trim(($item['firstName'] ?? '').' '.($item['lastName'] ?? '')),
                 'headline' => $item['headline'] ?? null,
-
-                // location.linkedinText is the raw string e.g. "Los Angeles, California, United States"
                 'location' => $item['location']['linkedinText'] ?? null,
-
-                // about = LinkedIn "summary" section
                 'summary' => $item['about'] ?? null,
-
-                // skills is an array of { name, positions, endorsements }
-                // Store just the names as a flat JSON array
-                'skills' => collect($item['skills'] ?? [])
-                    ->pluck('name')
-                    ->values()
-                    ->toArray(),
-
+                'skills' => collect($item['skills'] ?? [])->pluck('name')->values()->toArray(),
                 'current_company' => $item['currentPosition'][0]['companyName'] ?? null,
                 'current_title' => $item['currentPosition'][0]['title'] ?? null,
-
                 'experience_years' => $this->calculateTotalExperience($item['experience'] ?? []),
                 'education_level' => $this->extractHighestDegree($item['education'] ?? []),
-
-                // open_to_work is a useful bonus signal
                 'open_to_work' => $item['openToWork'] ?? false,
-
                 'source' => 'apify',
                 'raw_data' => $item,
             ]
@@ -78,8 +81,11 @@ class ApifyCandidateImporter
     }
 
     /**
-     * Sum all experience durations from the `duration` string field.
-     * The Actor returns strings like "2 yrs", "1 yr 2 mos", "5 mos".
+     * Sum all experience entry durations into a total years float.
+     * Parses Apify duration strings like "2 yrs", "1 yr 2 mos", "5 mos".
+     *
+     * @param  array  $experiences  Array of experience objects from the Apify profile.
+     * @return float|null Total years rounded to 1 decimal, or null if no data.
      */
     private function calculateTotalExperience(array $experiences): ?float
     {
@@ -101,22 +107,23 @@ class ApifyCandidateImporter
     }
 
     /**
-     * Pick the highest academic degree found in education entries.
-     * Returns a normalized string matching your Brief's education_level values.
+     * Find the highest academic degree across all education entries.
+     * Matches degree strings against a ranked keyword list and returns
+     * the raw degree string of the highest-ranked match.
+     *
+     * Rank order: certificate/diploma=1, associate=2, bachelor/bsc=3, master/msc/mba=4, phd/doctor=5
+     *
+     * @param  array  $education  Array of education objects from the Apify profile.
+     * @return string|null Raw degree string of the highest degree found, or null.
      */
     private function extractHighestDegree(array $education): ?string
     {
         $degreeRank = [
-            'doctor' => 5,
-            'phd' => 5,
-            'master' => 4,
-            'msc' => 4,
-            'mba' => 4,
-            'bachelor' => 3,
-            'bsc' => 3,
+            'doctor' => 5, 'phd' => 5,
+            'master' => 4, 'msc' => 4, 'mba' => 4,
+            'bachelor' => 3, 'bsc' => 3,
             'associate' => 2,
-            'diploma' => 1,
-            'certificate' => 1,
+            'diploma' => 1, 'certificate' => 1,
         ];
 
         $highest = null;
@@ -135,6 +142,12 @@ class ApifyCandidateImporter
         return $highest;
     }
 
+    /**
+     * Fetch all items from an Apify run's dataset.
+     *
+     * @param  string  $runId  The Apify run ID.
+     * @return array Array of raw profile objects, empty on failure.
+     */
     private function fetchDataset(string $runId): array
     {
         $response = Http::withToken(config('services.apify.token'))
