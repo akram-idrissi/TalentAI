@@ -1,20 +1,17 @@
 import Select from '@/components/Select';
 import { useTheme } from '@/hooks/useTheme';
-import { usePage } from '@inertiajs/react';
-import axios from 'axios';
+import { router, usePage } from '@inertiajs/react';
 import { Moon, Search, Sun } from 'lucide-react';
 import { useState } from 'react';
-export default function SidebarTopBar({ setMobileOpen }) {
-    console.log(setMobileOpen);
 
+export default function SidebarTopBar({ setMobileOpen }) {
     const [collapsed] = useState(false);
 
     const { dark, toggleTheme } = useTheme();
     const { locale } = usePage().props;
 
     const setLang = async (lang) => {
-        await axios.post('/locale', { locale: lang });
-        window.location.reload();
+        router.post(route('locale.switch'), { locale: lang }, { preserveState: false });
     };
 
     return (
