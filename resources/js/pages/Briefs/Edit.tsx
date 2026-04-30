@@ -1,123 +1,19 @@
 import Select from '@/components/Select';
 import { useI18n } from '@/hooks/useI18n';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
+import type { BriefFormData, EditBriefProps, ScoringWeights } from '@/types/brief';
+import { calculateWeightTotal, getWeightColor } from '@/utils/briefCreationHelpers';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
-type ScoringWeights = {
-    experience: number;
-    education: number;
-    sector: number;
-    soft_skills: number;
-    location: number;
-};
+import { validateBriefForm } from '@/utils/briefCreationValidation';
 
-type Brief = {
-    id: number;
-    title: string;
-    sector: string;
-    contract_type: string;
-    location: string;
-    salary_range: string;
-    min_experience_years: string;
-    education_level: string;
-    languages: string;
-    gender_pref: string;
-    age_range: string;
-    mission_description: string;
-    required_skills: string;
-    soft_skills: string;
-    scoring_weights: ScoringWeights;
-    status: string;
-};
-
-type FormData = {
-    title: string;
-    sector: string;
-    contract_type: string;
-    location: string;
-    salary_range: string;
-    min_experience_years: string;
-    education_level: string;
-    languages: string;
-    gender_pref: string;
-    age_range: string;
-    mission_description: string;
-    required_skills: string;
-    soft_skills: string;
-    scoring_weights: ScoringWeights;
-};
-
-type Props = {
-    brief: Brief;
-    contractTypes: { value: string; label: string }[];
-    genderPrefs: { value: string; label: string }[];
-};
-
-function validateForm(data: FormData, t: (path: string) => string): Partial<Record<string, string>> {
-    const errs: Partial<Record<string, string>> = {};
-
-    if (!data.title.trim()) {
-        errs.title = t('briefs.validation.required');
-    } else if (data.title.trim().length < 3) {
-        errs.title = (t('briefs.validation.min_length') ?? '').replace(':min', '3');
-    } else if (data.title.trim().length > 100) {
-        errs.title = (t('briefs.validation.max_length') ?? '').replace(':max', '100');
-    }
-
-    if (!data.sector.trim()) errs.sector = t('briefs.validation.required');
-    if (!data.contract_type) errs.contract_type = t('briefs.validation.required');
-    if (!data.location.trim()) errs.location = t('briefs.validation.required');
-
-    if (data.salary_range && !/^\d+(\s*[-–]\s*\d+)?(\s*(€|EUR|MAD|TND|DZD|FCFA|USD))?$/.test(data.salary_range.trim())) {
-        errs.salary_range = t('briefs.validation.salary_format');
-    }
-
-    if (!data.min_experience_years.trim()) {
-        errs.min_experience_years = t('briefs.validation.required');
-    } else if (isNaN(Number(data.min_experience_years)) || Number(data.min_experience_years) < 0) {
-        errs.min_experience_years = t('briefs.validation.positive_number');
-    } else if (Number(data.min_experience_years) > 50) {
-        errs.min_experience_years = (t('briefs.validation.max_value') ?? '').replace(':max', '50');
-    }
-
-    if (!data.education_level.trim()) errs.education_level = t('briefs.validation.required');
-
-    if (!data.mission_description.trim()) {
-        errs.mission_description = t('briefs.validation.required');
-    } else if (data.mission_description.trim().length < 20) {
-        errs.mission_description = (t('briefs.validation.min_length') ?? '').replace(':min', '20');
-    } else if (data.mission_description.trim().length > 2000) {
-        errs.mission_description = (t('briefs.validation.max_length') ?? '').replace(':max', '2000');
-    }
-
-    if (!data.required_skills.trim()) {
-        errs.required_skills = t('briefs.validation.required');
-    }
-
-    if (data.age_range && !/^\d+(\s*[-–]\s*\d+)?$/.test(data.age_range.trim())) {
-        errs.age_range = t('briefs.validation.age_format');
-    }
-
-    const weights = Object.values(data.scoring_weights);
-    const total = weights.reduce((a, b) => a + b, 0);
-    const allValid = weights.every((w) => w >= 0 && w <= 100);
-
-    if (!allValid) {
-        errs['scoring_weights'] = t('briefs.validation.weight_range');
-    } else if (total !== 100) {
-        errs['scoring_weights'] = (t('briefs.validation.weight_total') ?? '').replace(':total', String(total));
-    }
-
-    return errs;
-}
-
-export default function EditBrief({ brief, contractTypes, genderPrefs }: Props) {
+export default function EditBrief({ brief, contractTypes, genderPrefs }: EditBriefProps) {
     const { t } = useI18n();
     const statusRef = useRef<'active' | 'draft'>((brief.status as 'active' | 'draft') ?? 'active');
     const [confirmingCancel, setConfirmingCancel] = useState(false);
 
-    const { data, setData, transform, put, processing, errors, setError, clearErrors } = useForm<FormData>({
+    const { data, setData, transform, put, processing, errors, setError, clearErrors } = useForm<BriefFormData>({
         title: brief.title ?? '',
         sector: brief.sector ?? '',
         contract_type: brief.contract_type ?? '',
@@ -148,10 +44,10 @@ export default function EditBrief({ brief, contractTypes, genderPrefs }: Props) 
         e.preventDefault();
         clearErrors();
 
-        const clientErrors = validateForm(data, t);
+        const clientErrors = validateBriefForm(data, t);
         if (Object.keys(clientErrors).length > 0) {
             Object.entries(clientErrors).forEach(([field, message]) => {
-                setError(field as keyof FormData, message as string);
+                setError(field as keyof BriefFormData, message as string);
             });
             return;
         }
@@ -170,8 +66,8 @@ export default function EditBrief({ brief, contractTypes, genderPrefs }: Props) 
         put(route('briefs.update', brief.id));
     }
 
-    const weightTotal = Object.values(data.scoring_weights).reduce((a, b) => a + b, 0);
-    const weightColor = weightTotal === 100 ? 'text-green-500' : weightTotal > 100 ? 'text-red-500' : 'text-yellow-500';
+    const weightTotal = calculateWeightTotal(data.scoring_weights);
+    const weightColor = getWeightColor(weightTotal);
 
     const inputClass =
         'w-full bg-gray-100 dark:bg-[#17171F] border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none focus:border-secondary focus:ring-1 focus:ring-secondary hover:border-secondary transition';

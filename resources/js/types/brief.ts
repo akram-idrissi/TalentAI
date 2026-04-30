@@ -32,3 +32,27 @@ export type CreateBriefProps = {
     contractTypes: SelectOption[];
     genderPrefs: SelectOption[];
 };
+
+type Brief = {
+    id: number;
+    title: string;
+    sector: string;
+    contract_type: string;
+    location: string;
+    salary_range: string;
+    min_experience_years: string;
+    education_level: string;
+    languages: string;
+    gender_pref: string;
+    age_range: string;
+    mission_description: string;
+    required_skills: string;
+    soft_skills: string;
+    scoring_weights: ScoringWeights;
+    status: string;
+};
+export type EditBriefProps = {
+    brief: Brief;
+    contractTypes: SelectOption[];
+    genderPrefs: SelectOption[];
+};

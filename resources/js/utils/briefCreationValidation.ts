@@ -1,4 +1,4 @@
-import type { BriefFormData } from '@/types/create_brief';
+import type { BriefFormData } from '@/types/brief';
 
 type Translator = (path: string) => string;
 
@@ -29,11 +29,13 @@ export function validateBriefForm(data: BriefFormData, t: Translator): Partial<R
         errs.salary_range = t('briefs.validation.salary_format');
     }
 
-    if (!data.min_experience_years.trim()) {
+    const exp = String(data.min_experience_years ?? '').trim();
+
+    if (!exp) {
         errs.min_experience_years = t('briefs.validation.required');
-    } else if (isNaN(Number(data.min_experience_years)) || Number(data.min_experience_years) < 0) {
+    } else if (isNaN(Number(exp)) || Number(exp) < 0) {
         errs.min_experience_years = t('briefs.validation.positive_number');
-    } else if (Number(data.min_experience_years) > 50) {
+    } else if (Number(exp) > 50) {
         errs.min_experience_years = t('briefs.validation.max_value').replace(':max', '50');
     }
 

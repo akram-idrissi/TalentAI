@@ -1,7 +1,7 @@
 import Select from '@/components/Select';
 import { useI18n } from '@/hooks/useI18n';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
-import type { BriefFormData, CreateBriefProps, ScoringWeights } from '@/types/create_brief';
+import type { BriefFormData, CreateBriefProps, ScoringWeights } from '@/types/brief';
 import { calculateWeightTotal, getWeightColor } from '@/utils/briefCreationHelpers';
 import { validateBriefForm } from '@/utils/briefCreationValidation';
 import { Head, Link, useForm } from '@inertiajs/react';

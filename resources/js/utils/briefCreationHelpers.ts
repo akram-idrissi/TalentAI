@@ -1,4 +1,4 @@
-import type { ScoringWeights } from '@/types/create_brief';
+import type { ScoringWeights } from '@/types/brief';
 
 export function calculateWeightTotal(weights: ScoringWeights): number {
     return Object.values(weights).reduce((a, b) => a + b, 0);
