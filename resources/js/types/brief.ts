@@ -33,7 +33,7 @@ export type CreateBriefProps = {
     genderPrefs: SelectOption[];
 };
 
-type Brief = {
+export type Brief = {
     id: number;
     title: string;
     sector: string;
@@ -50,9 +50,27 @@ type Brief = {
     soft_skills: string;
     scoring_weights: ScoringWeights;
     status: string;
+    created_at: string;
 };
 export type EditBriefProps = {
     brief: Brief;
     contractTypes: SelectOption[];
     genderPrefs: SelectOption[];
+};
+
+type Filters = {
+    search?: string;
+};
+
+export type IndexBriefProps = {
+    briefs: {
+        data: Brief[];
+    };
+    filters: Filters;
+};
+
+export type DeleteBriefModalProps = {
+    brief: Brief;
+    onConfirm: () => void;
+    onCancel: () => void;
 };

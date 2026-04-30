@@ -87,7 +87,7 @@ export default function ShowBrief({ brief }: Props) {
                             </Link>
                             {confirmingDelete ? (
                                 <div className="flex items-center gap-2 rounded-lg border border-red-300 px-4 py-2 text-sm dark:border-red-500/30">
-                                    <span className="text-red-500">{t('briefs.show_brief.actions.delete_confirm')}</span>
+                                    <span className="text-red-500">{t('briefs.show_brief.actions.delete_confirming')}</span>
                                     <button onClick={handleDelete} className="font-semibold text-red-600 hover:underline">
                                         {t('briefs.show_brief.actions.delete_yes')}
                                     </button>
