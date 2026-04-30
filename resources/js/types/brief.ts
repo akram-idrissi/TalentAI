@@ -51,6 +51,7 @@ export type Brief = {
     scoring_weights: ScoringWeights;
     status: string;
     created_at: string;
+    created_by: number;
 };
 export type EditBriefProps = {
     brief: Brief;
@@ -73,4 +74,7 @@ export type DeleteBriefModalProps = {
     brief: Brief;
     onConfirm: () => void;
     onCancel: () => void;
+};
+export type ShowBriefProps = {
+    brief: Brief;
 };

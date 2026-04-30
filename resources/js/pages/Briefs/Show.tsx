@@ -1,41 +1,10 @@
 import { useI18n } from '@/hooks/useI18n';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
+import type { ShowBriefProps } from '@/types/brief';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
-type ScoringWeights = {
-    experience: number;
-    education: number;
-    sector: number;
-    soft_skills: number;
-    location: number;
-};
 
-type Brief = {
-    id: number;
-    title: string;
-    sector: string;
-    contract_type: string;
-    salary_range: string;
-    location: string;
-    status: string;
-    created_at: string;
-    created_by?: string;
-    min_experience_years: string;
-    education_level: string;
-    languages: string;
-    gender_pref: string;
-    age_range: string;
-    mission_description?: string;
-    required_skills: string;
-    soft_skills: string;
-    scoring_weights?: ScoringWeights;
-};
-
-type Props = {
-    brief: Brief;
-};
-
-export default function ShowBrief({ brief }: Props) {
+export default function ShowBrief({ brief }: ShowBriefProps) {
     const { t } = useI18n();
     const [confirmingDelete, setConfirmingDelete] = useState(false);
 
