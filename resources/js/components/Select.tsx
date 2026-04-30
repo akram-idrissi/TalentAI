@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 
 type Option = {
-    value: string | number;
+    value: string;
     label: string;
 };
 
 type SelectProps = {
-    value?: string | number;
-    onChange: (value: string | number) => void;
+    value?: string;
+    onChange: (value: string) => void;
     options: Option[];
     placeholder?: string;
     className?: string;
