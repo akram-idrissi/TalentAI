@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Brief;
 
-use App\Http\Controllers\Controller;
 use App\Enums\BriefStatus;
 use App\Enums\ContractType;
 use App\Enums\GenderPref;
+use App\Http\Controllers\Controller;
 use App\Models\Brief;
 use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
@@ -32,6 +32,7 @@ class BriefController extends Controller
             'salary_range' => 'nullable|string|max:255',
             'min_experience_years' => 'nullable|integer|min:0',
             'education_level' => 'nullable|string|max:255',
+            'languages' => 'nullable|string',
             'gender_pref' => ['nullable', Rule::enum(GenderPref::class)],
             'age_range' => 'nullable|string|max:50',
             'mission_description' => 'nullable|string',
@@ -59,6 +60,7 @@ class BriefController extends Controller
         $logger = app(ActivityLogger::class);
 
         try {
+
             $briefs = Brief::with('creator')
                 ->when($request->search, fn ($q, $s) => $q->where('title', 'like', "%$s%"))
                 ->when($request->status, fn ($q, $s) => $q->where('status', $s))
@@ -112,6 +114,7 @@ class BriefController extends Controller
         $logger = app(ActivityLogger::class);
 
         try {
+
             $logger->log(
                 'brief.create',
                 'Affichage du formulaire de création d\'un brief.',
@@ -120,9 +123,15 @@ class BriefController extends Controller
             );
 
             return Inertia::render('Briefs/Create', [
-                'contractTypes' => ContractType::cases(),
-                'genderPrefs' => GenderPref::cases(),
-                'statuses' => BriefStatus::cases(),
+                'contractTypes' => array_map(
+                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
+                    ContractType::cases()
+                ),
+                'genderPrefs' => array_map(
+                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
+                    GenderPref::cases()
+                ),
+
             ]);
         } catch (\Throwable $e) {
             $logger->log(
@@ -132,7 +141,7 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
-            return Inertia::render('Briefs/Create', [
+            return Inertia::render('Briefs/Fallback', [
                 'error' => 'Impossible d\'afficher le formulaire de création.',
             ]);
         }
@@ -240,9 +249,18 @@ class BriefController extends Controller
 
             return Inertia::render('Briefs/Edit', [
                 'brief' => $brief,
-                'contractTypes' => ContractType::cases(),
-                'genderPrefs' => GenderPref::cases(),
-                'statuses' => BriefStatus::cases(),
+                'contractTypes' => array_map(
+                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
+                    ContractType::cases()
+                ),
+                'genderPrefs' => array_map(
+                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
+                    GenderPref::cases()
+                ),
+                'statuses' => array_map(
+                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
+                    BriefStatus::cases()
+                ),
             ]);
         } catch (\Throwable $e) {
             $logger->log(

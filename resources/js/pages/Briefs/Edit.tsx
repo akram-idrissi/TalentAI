@@ -1,218 +1,429 @@
-import { useForm } from "@inertiajs/react";
-import AppSidebarLayout from "@/layouts/app/app-sidebar-layout";
-import Select from "@/components/Select";
+import Select from '@/components/Select';
+import { useI18n } from '@/hooks/useI18n';
+import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
+import type { BriefFormData, EditBriefProps, ScoringWeights } from '@/types/brief';
+import { calculateWeightTotal, getWeightColor } from '@/utils/briefCreationHelpers';
+import { Head, Link, useForm } from '@inertiajs/react';
+import { useEffect, useRef, useState } from 'react';
 
-type Props = {
-  brief: any;
-};
+import { validateBriefForm } from '@/utils/briefCreationValidation';
 
-export default function EditBrief({ brief }: Props) {
+export default function EditBrief({ brief, contractTypes, genderPrefs }: EditBriefProps) {
+    const { t } = useI18n();
+    const statusRef = useRef<'active' | 'draft'>((brief.status as 'active' | 'draft') ?? 'active');
+    const [confirmingCancel, setConfirmingCancel] = useState(false);
 
-  const { data, setData, put, processing, errors } = useForm({
-    title: brief.title || "",
-    sector: brief.sector || "",
-    contract_type: brief.contract_type || "",
-    location: brief.location || "",
-    salary_range: brief.salary_range || "",
-    min_experience_years: brief.min_experience_years || "",
-    education_level: brief.education_level || "",
-    gender_pref: brief.gender_pref || "",
-    age_range: brief.age_range || "",
-    mission_description: brief.mission_description || "",
-    required_skills: brief.required_skills || "",
-    soft_skills: brief.soft_skills || "",
-    scoring_weights: brief.scoring_weights || {
-      experience: 0,
-      education: 0,
-      sector: 0,
-      soft_skills: 0,
-      location: 0,
-    },
-    status: brief.status || "draft",
-  });
+    const { data, setData, transform, put, processing, errors, setError, clearErrors } = useForm<BriefFormData>({
+        title: brief.title ?? '',
+        sector: brief.sector ?? '',
+        contract_type: brief.contract_type ?? '',
+        location: brief.location ?? '',
+        salary_range: brief.salary_range ?? '',
+        min_experience_years: brief.min_experience_years ?? '',
+        education_level: brief.education_level ?? '',
+        languages: brief.languages ?? '',
+        gender_pref: brief.gender_pref ?? '',
+        age_range: brief.age_range ?? '',
+        mission_description: brief.mission_description ?? '',
+        required_skills: brief.required_skills ?? '',
+        soft_skills: brief.soft_skills ?? '',
+        scoring_weights: brief.scoring_weights ?? {
+            experience: 0,
+            education: 0,
+            sector: 0,
+            soft_skills: 0,
+            location: 0,
+        },
+    });
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    put(route("briefs.update", brief.id));
-  }
+    useEffect(() => {
+        transform((d) => ({ ...d, status: statusRef.current }));
+    }, []);
 
-  const inputClass =
-    "w-full bg-gray-100 dark:bg-[#17171F] border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500";
+    function submit(e: React.FormEvent) {
+        e.preventDefault();
+        clearErrors();
 
-  const cardClass =
-    "bg-white dark:bg-[#111118] p-4 rounded-xl border border-gray-200 dark:border-white/10";
+        const clientErrors = validateBriefForm(data, t);
+        if (Object.keys(clientErrors).length > 0) {
+            Object.entries(clientErrors).forEach(([field, message]) => {
+                setError(field as keyof BriefFormData, message as string);
+            });
+            return;
+        }
 
-  return (
-    <AppSidebarLayout>
+        statusRef.current = 'active';
+        put(route('briefs.update', brief.id));
+    }
 
-      <div className="p-8 min-h-screen bg-gray-50 dark:bg-[#0A0A0F] text-gray-900 dark:text-white">
+    function saveDraft() {
+        clearErrors();
+        if (!data.title.trim()) {
+            setError('title', t('briefs.validation.required'));
+            return;
+        }
+        statusRef.current = 'draft';
+        put(route('briefs.update', brief.id));
+    }
 
-        {/* HEADER */}
-        <div className="mb-6">
-          <p className="text-gray-500 text-xs">Sourcing › Modifier brief</p>
-          <h1 className="text-2xl font-bold text-secondary">Modifier un brief</h1>
-        </div>
+    const weightTotal = calculateWeightTotal(data.scoring_weights);
+    const weightColor = getWeightColor(weightTotal);
 
-        <form onSubmit={submit} className="grid grid-cols-2 gap-6">
+    const inputClass =
+        'w-full bg-gray-100 dark:bg-[#17171F] border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none focus:border-secondary focus:ring-1 focus:ring-secondary hover:border-secondary transition';
+    const inputErrorClass =
+        'w-full bg-gray-100 dark:bg-[#17171F] border border-red-400 dark:border-red-500 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition';
+    const cardClass = 'bg-white dark:bg-[#111118] p-4 rounded-xl border border-gray-200 dark:border-white/10';
+    const labelClass = 'text-xs text-gray-500 dark:text-gray-400';
+    const errorClass = 'mt-1 text-xs text-red-500';
+    const fi = (hasError: boolean) => (hasError ? inputErrorClass : inputClass);
 
-          {/* LEFT */}
-          <div className="space-y-4">
+    return (
+        <>
+            <Head title={t('briefs.edit_brief.title')} />
+            <AppSidebarLayout>
+                <div className="min-h-screen bg-gray-50 p-8 text-gray-900 dark:bg-[#0A0A0F] dark:text-white">
+                    {/* HEADER */}
+                    <div className="mb-6 flex items-start justify-between">
+                        <div>
+                            <p className="text-xs text-gray-500">{t('briefs.edit_brief.breadcrumb')}</p>
+                            <h1 className="text-secondary text-2xl font-bold">{t('briefs.edit_brief.title')}</h1>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{t('briefs.edit_brief.subtitle')}</p>
+                        </div>
 
-            {/* INFO */}
-            <div className={cardClass}>
-              <h2 className="mb-3 font-semibold">Informations du poste</h2>
+                        <div className="flex items-center gap-3">
+                            {/* Show brief */}
+                            <Link
+                                href={route('briefs.show', brief.id)}
+                                className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-100 dark:border-white/10 dark:text-gray-400 dark:hover:bg-white/5"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-4 w-4"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
+                                    />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                </svg>
+                                {t('briefs.edit_brief.actions.show')}
+                            </Link>
 
-              <input
-                className={inputClass}
-                placeholder="Titre"
-                value={data.title}
-                onChange={(e) => setData("title", e.target.value)}
-              />
-              {errors.title && <p className="text-red-500 text-xs">{errors.title}</p>}
+                            {/* Back */}
+                            <Link
+                                href={route('briefs.index')}
+                                className="bg-secondary flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-4 w-4"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                                </svg>
+                                {t('briefs.edit_brief.actions.back')}
+                            </Link>
+                        </div>
+                    </div>
 
-              <div className="grid grid-cols-2 gap-3 mt-3">
+                    <form onSubmit={submit} noValidate className="grid grid-cols-2 gap-6">
+                        {/* ── LEFT COLUMN ─────────────────────────────────── */}
+                        <div className="space-y-4">
+                            {/* Position info */}
+                            <div className={cardClass}>
+                                <h2 className="mb-3 font-semibold">{t('briefs.edit_brief.sections.position')}</h2>
 
-                <input
-                  className={inputClass}
-                  placeholder="Secteur"
-                  value={data.sector}
-                  onChange={(e) => setData("sector", e.target.value)}
-                />
-                {errors.sector && <p className="text-red-500 text-xs">{errors.sector}</p>}
+                                <div>
+                                    <label className={labelClass}>
+                                        {t('briefs.create_briefs.fields.title')} <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        className={`mt-1 ${fi(!!errors.title)}`}
+                                        placeholder={t('briefs.create_briefs.fields.title_placeholder')}
+                                        value={data.title}
+                                        maxLength={100}
+                                        onChange={(e) => setData('title', e.target.value)}
+                                        aria-invalid={!!errors.title}
+                                    />
+                                    {errors.title && <p className={errorClass}>{errors.title}</p>}
+                                </div>
 
-                <Select
-                  value={data.contract_type}
-                  onChange={(value: string) => setData("contract_type", value)}
-                  placeholder="Type de contrat"
-                  options={[
-                    { value: "CDI", label: "CDI" },
-                    { value: "CDD", label: "CDD" },
-                    { value: "Freelance", label: "Freelance" },
-                    { value: "Stage", label: "Stage" },
-                  ]}
-                />
-                {errors.contract_type && <p className="text-red-500 text-xs">{errors.contract_type}</p>}
+                                <div className="mt-3 grid grid-cols-2 gap-3">
+                                    {/* Sector */}
+                                    <div>
+                                        <label className={labelClass}>
+                                            {t('briefs.create_briefs.fields.sector')} <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            className={`mt-1 ${fi(!!errors.sector)}`}
+                                            placeholder={t('briefs.create_briefs.fields.sector_placeholder')}
+                                            value={data.sector}
+                                            onChange={(e) => setData('sector', e.target.value)}
+                                        />
+                                        {errors.sector && <p className={errorClass}>{errors.sector}</p>}
+                                    </div>
 
-                <input
-                  className={inputClass}
-                  placeholder="Localisation"
-                  value={data.location}
-                  onChange={(e) => setData("location", e.target.value)}
-                />
-                {errors.location && <p className="text-red-500 text-xs">{errors.location}</p>}
+                                    {/* Contract type */}
+                                    <div>
+                                        <label className={labelClass}>
+                                            {t('briefs.create_briefs.fields.contract_type')} <span className="text-red-500">*</span>
+                                        </label>
+                                        <div className="mt-1">
+                                            <Select
+                                                value={data.contract_type}
+                                                onChange={(value: string) => setData('contract_type', value)}
+                                                placeholder={t('briefs.create_briefs.fields.contract_type_placeholder')}
+                                                options={contractTypes}
+                                            />
+                                        </div>
+                                        {errors.contract_type && <p className={errorClass}>{errors.contract_type}</p>}
+                                    </div>
 
-                <input
-                  className={inputClass}
-                  placeholder="Salaire"
-                  value={data.salary_range}
-                  onChange={(e) => setData("salary_range", e.target.value)}
-                />
-                {errors.salary_range && <p className="text-red-500 text-xs">{errors.salary_range}</p>}
-              </div>
-            </div>
+                                    {/* Location */}
+                                    <div>
+                                        <label className={labelClass}>
+                                            {t('briefs.create_briefs.fields.location')} <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            className={`mt-1 ${fi(!!errors.location)}`}
+                                            placeholder={t('briefs.create_briefs.fields.location_placeholder')}
+                                            value={data.location}
+                                            onChange={(e) => setData('location', e.target.value)}
+                                        />
+                                        {errors.location && <p className={errorClass}>{errors.location}</p>}
+                                    </div>
 
-            {/* CRITERES */}
-            <div className={cardClass}>
-              <h2 className="mb-3 font-semibold">Critères candidat</h2>
+                                    {/* Salary */}
+                                    <div>
+                                        <label className={labelClass}>{t('briefs.create_briefs.fields.salary_range')}</label>
+                                        <input
+                                            className={`mt-1 ${fi(!!errors.salary_range)}`}
+                                            placeholder={t('briefs.create_briefs.fields.salary_range_placeholder')}
+                                            value={data.salary_range}
+                                            onChange={(e) => setData('salary_range', e.target.value)}
+                                        />
+                                        {errors.salary_range && <p className={errorClass}>{errors.salary_range}</p>}
+                                    </div>
+                                </div>
+                            </div>
 
-              <input
-                className={inputClass}
-                placeholder="Expérience"
-                value={data.min_experience_years}
-                onChange={(e) => setData("min_experience_years", e.target.value)}
-              />
-              {errors.min_experience_years && <p className="text-red-500 text-xs">{errors.min_experience_years}</p>}
+                            {/* Candidate criteria */}
+                            <div className={cardClass}>
+                                <h2 className="mb-3 font-semibold">{t('briefs.edit_brief.sections.candidate')}</h2>
 
-              <input
-                className={`${inputClass} mt-3`}
-                placeholder="Niveau d'étude"
-                value={data.education_level}
-                onChange={(e) => setData("education_level", e.target.value)}
-              />
+                                {/* Experience */}
+                                <div>
+                                    <label className={labelClass}>
+                                        {t('briefs.create_briefs.fields.min_experience_years')} <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        max={50}
+                                        className={`mt-1 ${fi(!!errors.min_experience_years)}`}
+                                        placeholder={t('briefs.create_briefs.fields.min_experience_years_placeholder')}
+                                        value={data.min_experience_years}
+                                        onChange={(e) => setData('min_experience_years', e.target.value)}
+                                    />
+                                    {errors.min_experience_years && <p className={errorClass}>{errors.min_experience_years}</p>}
+                                </div>
 
-              <input
-                className={`${inputClass} mt-3`}
-                placeholder="Skills"
-                value={data.required_skills}
-                onChange={(e) => setData("required_skills", e.target.value)}
-              />
+                                {/* Education */}
+                                <div className="mt-3">
+                                    <label className={labelClass}>
+                                        {t('briefs.create_briefs.fields.education_level')} <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        className={`mt-1 ${fi(!!errors.education_level)}`}
+                                        placeholder={t('briefs.create_briefs.fields.education_level_placeholder')}
+                                        value={data.education_level}
+                                        onChange={(e) => setData('education_level', e.target.value)}
+                                    />
+                                    {errors.education_level && <p className={errorClass}>{errors.education_level}</p>}
+                                </div>
 
-              <input
-                className={`${inputClass} mt-3`}
-                placeholder="Age"
-                value={data.age_range}
-                onChange={(e) => setData("age_range", e.target.value)}
-              />
+                                {/* Languages */}
+                                <div className="mt-3">
+                                    <label className={labelClass}>{t('briefs.create_briefs.fields.languages')}</label>
+                                    <input
+                                        className={`mt-1 ${fi(!!errors.languages)}`}
+                                        placeholder={t('briefs.create_briefs.fields.languages_placeholder')}
+                                        value={data.languages}
+                                        onChange={(e) => setData('languages', e.target.value)}
+                                    />
+                                    {errors.languages && <p className={errorClass}>{errors.languages}</p>}
+                                </div>
 
-              <div className="mt-3">
-                <Select
-                  value={data.gender_pref}
-                  onChange={(v: string) => setData("gender_pref", v)}
-                  placeholder="Gender"
-                  options={[
-                    { value: "M", label: "Homme" },
-                    { value: "F", label: "Femme" },
-                  ]}
-                />
-              </div>
-            </div>
+                                {/* Age range */}
+                                <div className="mt-3">
+                                    <label className={labelClass}>{t('briefs.create_briefs.fields.age_range')}</label>
+                                    <input
+                                        className={`mt-1 ${fi(!!errors.age_range)}`}
+                                        placeholder={t('briefs.create_briefs.fields.age_range_placeholder')}
+                                        value={data.age_range}
+                                        onChange={(e) => setData('age_range', e.target.value)}
+                                    />
+                                    {errors.age_range && <p className={errorClass}>{errors.age_range}</p>}
+                                </div>
 
-          </div>
+                                {/* Gender pref */}
+                                <div className="mt-3">
+                                    <label className={labelClass}>{t('briefs.create_briefs.fields.gender_pref')}</label>
+                                    <div className="mt-1">
+                                        <Select
+                                            value={data.gender_pref}
+                                            onChange={(v: string) => setData('gender_pref', v)}
+                                            placeholder={t('briefs.create_briefs.fields.gender_pref_placeholder')}
+                                            options={genderPrefs}
+                                        />
+                                    </div>
+                                    {errors.gender_pref && <p className={errorClass}>{errors.gender_pref}</p>}
+                                </div>
+                            </div>
+                        </div>
 
-          {/* RIGHT */}
-          <div className="space-y-4">
+                        {/* ── RIGHT COLUMN ────────────────────────────────── */}
+                        <div className="space-y-4">
+                            {/* Description */}
+                            <div className={cardClass}>
+                                <h2 className="mb-3 font-semibold">{t('briefs.edit_brief.sections.description')}</h2>
 
-            {/* DESCRIPTION */}
-            <div className={cardClass}>
-              <h2 className="mb-3 font-semibold">Description</h2>
+                                {/* Mission */}
+                                <div>
+                                    <label className={labelClass}>
+                                        {t('briefs.create_briefs.fields.mission_description')} <span className="text-red-500">*</span>
+                                    </label>
+                                    <textarea
+                                        className={`mt-1 min-h-[100px] ${fi(!!errors.mission_description)}`}
+                                        placeholder={t('briefs.create_briefs.fields.mission_description_placeholder')}
+                                        value={data.mission_description}
+                                        maxLength={2000}
+                                        onChange={(e) => setData('mission_description', e.target.value)}
+                                    />
+                                    <div className="flex justify-between">
+                                        {errors.mission_description ? <p className={errorClass}>{errors.mission_description}</p> : <span />}
+                                        <span className="text-xs text-gray-400">{data.mission_description.length}/2000</span>
+                                    </div>
+                                </div>
 
-              <textarea
-                className={inputClass + " min-h-[100px]"}
-                value={data.mission_description}
-                onChange={(e) => setData("mission_description", e.target.value)}
-              />
+                                {/* Technical skills */}
+                                <div className="mt-3">
+                                    <label className={labelClass}>
+                                        {t('briefs.create_briefs.fields.required_skills')} <span className="text-red-500">*</span>
+                                    </label>
+                                    <textarea
+                                        className={`mt-1 ${fi(!!errors.required_skills)}`}
+                                        placeholder={t('briefs.create_briefs.fields.required_skills_placeholder')}
+                                        value={data.required_skills}
+                                        onChange={(e) => setData('required_skills', e.target.value)}
+                                    />
+                                    {errors.required_skills && <p className={errorClass}>{errors.required_skills}</p>}
+                                </div>
 
-              <textarea
-                className={inputClass + " mt-3"}
-                value={data.soft_skills}
-                onChange={(e) => setData("soft_skills", e.target.value)}
-              />
-            </div>
+                                {/* Soft skills */}
+                                <div className="mt-3">
+                                    <label className={labelClass}>{t('briefs.create_briefs.fields.soft_skills')}</label>
+                                    <textarea
+                                        className={`mt-1 ${fi(!!errors.soft_skills)}`}
+                                        placeholder={t('briefs.create_briefs.fields.soft_skills_placeholder')}
+                                        value={data.soft_skills}
+                                        onChange={(e) => setData('soft_skills', e.target.value)}
+                                    />
+                                    {errors.soft_skills && <p className={errorClass}>{errors.soft_skills}</p>}
+                                </div>
+                            </div>
 
-            {/* SCORING */}
-            <div className={cardClass}>
-              <h2 className="mb-3 font-semibold">Scoring</h2>
+                            {/* Scoring weights */}
+                            <div className={cardClass}>
+                                <div className="mb-3 flex items-center justify-between">
+                                    <h2 className="font-semibold">{t('briefs.edit_brief.sections.scoring')}</h2>
+                                    <span className={`text-xs font-semibold ${weightColor}`}>
+                                        {t('briefs.create_briefs.scoring.total')}: {weightTotal}/100
+                                    </span>
+                                </div>
 
-              {Object.keys(data.scoring_weights).map((key) => (
-                <input
-                  key={key}
-                  type="number"
-                  className={`${inputClass} mb-2`}
-                  value={data.scoring_weights[key]}
-                  onChange={(e) =>
-                    setData("scoring_weights", {
-                      ...data.scoring_weights,
-                      [key]: Number(e.target.value),
-                    })
-                  }
-                />
-              ))}
-            </div>
+                                {(Object.keys(data.scoring_weights) as Array<keyof ScoringWeights>).map((key) => (
+                                    <div key={key} className="mb-3">
+                                        <label className={labelClass}>{t(`briefs.create_briefs.scoring.${key}`)}</label>
+                                        <div className="mt-1 flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                max={100}
+                                                className={`${inputClass} flex-1`}
+                                                value={data.scoring_weights[key]}
+                                                onChange={(e) =>
+                                                    setData('scoring_weights', {
+                                                        ...data.scoring_weights,
+                                                        [key]: Math.min(100, Math.max(0, Number(e.target.value))),
+                                                    })
+                                                }
+                                            />
+                                            <span className="text-sm text-gray-400">%</span>
+                                        </div>
+                                    </div>
+                                ))}
 
-            {/* ACTION */}
-            <button
-              type="submit"
-              disabled={processing}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 py-2 rounded-lg text-white font-semibold"
-            >
-              {processing ? "Updating..." : "Update Brief"}
-            </button>
+                                {errors['scoring_weights'] && <p className={errorClass}>{errors['scoring_weights'] as string}</p>}
+                            </div>
 
-          </div>
+                            {/* Actions */}
+                            <div className="flex gap-3">
+                                {/* Cancel with inline confirm */}
+                                {confirmingCancel ? (
+                                    <div className="flex w-1/2 items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-white/10">
+                                        <span className="text-gray-500">{t('briefs.edit_brief.actions.cancel_confirm')}</span>
+                                        <Link href={route('briefs.show', brief.id)} className="font-semibold text-red-500 hover:underline">
+                                            {t('briefs.edit_brief.actions.cancel_yes')}
+                                        </Link>
+                                        <span className="text-gray-400">·</span>
+                                        <button type="button" onClick={() => setConfirmingCancel(false)} className="text-gray-500 hover:underline">
+                                            {t('briefs.edit_brief.actions.cancel_no')}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => setConfirmingCancel(true)}
+                                        disabled={processing}
+                                        className="w-1/2 rounded-lg border border-gray-300 py-2 text-sm transition hover:bg-gray-100 disabled:opacity-50 dark:border-white/10 dark:hover:bg-white/5"
+                                    >
+                                        {t('briefs.edit_brief.actions.cancel')}
+                                    </button>
+                                )}
 
-        </form>
-      </div>
+                                {/* Save draft */}
+                                <button
+                                    type="button"
+                                    onClick={saveDraft}
+                                    disabled={processing}
+                                    className="w-1/2 rounded-lg border border-gray-300 py-2 text-sm transition hover:bg-gray-100 disabled:opacity-50 dark:border-white/10 dark:hover:bg-white/5"
+                                >
+                                    {t('briefs.edit_brief.actions.save_draft')}
+                                </button>
 
-    </AppSidebarLayout>
-  );
+                                {/* Save */}
+                                <button
+                                    type="submit"
+                                    disabled={processing}
+                                    className="w-1/2 rounded-lg bg-[#6C63FF] py-2 font-semibold text-white transition hover:bg-[#5a52ff] disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {processing ? t('briefs.edit_brief.actions.saving') : t('briefs.edit_brief.actions.save')}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </AppSidebarLayout>
+        </>
+    );
 }
