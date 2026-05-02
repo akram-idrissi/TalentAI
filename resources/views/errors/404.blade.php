@@ -2,178 +2,145 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>404 - Not Found</title>
-
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 — Page introuvable</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
     <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
         :root {
-            --bg: #ffffff;
-            --text: #0f172a;
-            --muted: #64748b;
-            --primary: #6C63FF;
-            --secondary: #38BDF8;
-            --card: rgba(255,255,255,0.6);
-            --border: rgba(0,0,0,0.08);
+            --bg:       #f5f5fc;
+            --surface:  #ffffff;
+            --border:   rgba(0,0,0,0.07);
+            --border2:  rgba(0,0,0,0.12);
+            --accent:   #6c63ff;
+            --accent-bg: rgba(108,99,255,0.08);
+            --text:     #1a1830;
+            --text2:    #5c5880;
+            --text3:    #9993b8;
         }
 
-        .dark {
-            --bg: #0A0A0F;
-            --text: #F0EFF8;
-            --muted: #9ca3af;
-            --card: rgba(255,255,255,0.05);
-            --border: rgba(255,255,255,0.08);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'DM Sans', sans-serif;
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg:       #0a0a0f;
+                --surface:  #1e1e28;
+                --border:   rgba(255,255,255,0.07);
+                --border2:  rgba(255,255,255,0.12);
+                --accent:   #6c63ff;
+                --accent-bg: rgba(108,99,255,0.12);
+                --text:     #f0eff8;
+                --text2:    #9993b8;
+                --text3:    #5c5880;
+            }
         }
 
         body {
-            height: 100vh;
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: var(--bg);
-            overflow: hidden;
-            transition: 0.3s;
+            padding: 24px;
         }
 
-        /* BACKGROUND BLUR SHAPES */
-        .bg {
-            position: absolute;
-            inset: 0;
-            overflow: hidden;
-            z-index: -1;
-        }
-
-        .blob {
-            position: absolute;
-            width: 400px;
-            height: 400px;
-            background: var(--primary);
-            filter: blur(120px);
-            opacity: 0.25;
-        }
-
-        .blob2 {
-            top: 20%;
-            right: 10%;
-            background: var(--secondary);
-        }
-
-        .blob1 {
-            bottom: 10%;
-            left: 10%;
-        }
-
-        /* CONTAINER */
-        .container {
+        .wrap {
+            width: 100%;
+            max-width: 480px;
             text-align: center;
-            max-width: 600px;
-            padding: 40px;
         }
 
-        /* ILLUSTRATION */
-        .illustration {
-            width: 220px;
-            margin-bottom: 20px;
-            animation: float 4s ease-in-out infinite;
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--accent-bg);
+            border: 1px solid rgba(108,99,255,0.2);
+            border-radius: 99px;
+            padding: 4px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 28px;
         }
 
-        @keyframes float {
-            0%,100% { transform: translateY(0); }
-            50% { transform: translateY(-15px); }
-        }
-
-        /* 404 TEXT */
         .code {
-            font-size: 110px;
             font-family: 'Syne', sans-serif;
+            font-size: 96px;
             font-weight: 800;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            line-height: 1;
+            color: var(--accent);
+            margin-bottom: 16px;
+            letter-spacing: -2px;
         }
 
         .title {
-            font-size: 26px;
+            font-family: 'Syne', sans-serif;
+            font-size: 22px;
             font-weight: 700;
-            margin-top: 10px;
             color: var(--text);
+            margin-bottom: 10px;
         }
 
-        .subtitle {
-            margin-top: 10px;
-            color: var(--muted);
+        .desc {
             font-size: 14px;
+            color: var(--text2);
+            line-height: 1.6;
+            margin-bottom: 32px;
         }
 
-        /* GLASS CARD */
-        .card {
-            margin-top: 25px;
-            padding: 18px;
-            border-radius: 14px;
-            background: var(--card);
-            border: 1px solid var(--border);
-            backdrop-filter: blur(12px);
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin-bottom: 28px;
         }
 
-        /* BUTTON */
+        .actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
         .btn {
-            margin-top: 25px;
-            display: inline-block;
-            padding: 11px 20px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 13.5px;
             font-weight: 600;
             text-decoration: none;
-            transition: 0.3s;
+            transition: opacity 0.15s, transform 0.15s;
+        }
+        .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
         }
 
-        .btn:hover {
-            transform: translateY(-3px);
-            opacity: 0.9;
+        .btn-ghost {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            color: var(--text2);
         }
-
-
     </style>
 </head>
-
 <body>
-
-<div class="bg">
-    <div class="blob blob1"></div>
-    <div class="blob blob2"></div>
-</div>
-
-
-<div class="container">
-
-    <!-- ILLUSTRATION -->
-    <img class="illustration"
-         src="./404.png"
-         alt="404">
-
-    <div class="code">404</div>
-
-    <div class="title">Oops! Page Not Found</div>
-
-    <div class="subtitle">
-        The page you are looking for might have been removed or is temporarily unavailable.
+    <div class="wrap">
+        <div class="badge">Erreur 404</div>
+        <div class="code">404</div>
+        <div class="title">Page introuvable</div>
+        <p class="desc">La page que vous cherchez n'existe pas ou a été déplacée.</p>
+        <div class="divider"></div>
+        <div class="actions">
+            <a href="/" class="btn btn-primary">Retour à l'accueil</a>
+            <a href="javascript:history.back()" class="btn btn-ghost">Page précédente</a>
+        </div>
     </div>
-
-    <div class="card">
-         Check the URL or go back to dashboard
-    </div>
-
-    <a href="/" class="btn">Go Home</a>
-
-</div>
-
 </body>
 </html>
