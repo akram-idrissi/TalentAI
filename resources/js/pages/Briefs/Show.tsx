@@ -77,7 +77,7 @@ export default function ShowBrief({ brief }: ShowBriefProps) {
                                 </button>
                             )}
                             <Link
-                                href={route('briefs.index')}
+                                href={route('dashboard.briefs.index')}
                                 className="bg-secondary flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
                             >
                                 <svg

@@ -1,12 +1,60 @@
-import Select from '@/components/Select';
+import FormCard from '@/components/briefs/FormCard';
+import { FormField, inputCls, textareaCls } from '@/components/briefs/FormField';
+import ScoringSlider from '@/components/briefs/ScoringSlider';
 import { useI18n } from '@/hooks/useI18n';
-import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
-import type { BriefFormData, EditBriefProps, ScoringWeights } from '@/types/brief';
-import { calculateWeightTotal, getWeightColor } from '@/utils/briefCreationHelpers';
-import { Head, Link, useForm } from '@inertiajs/react';
-import { useEffect, useRef, useState } from 'react';
-
+import AppLayout from '@/layouts/app-layout';
+import type { BriefFormData, EditBriefProps, SelectOption } from '@/types/brief';
 import { validateBriefForm } from '@/utils/briefCreationValidation';
+import { Head, Link, useForm } from '@inertiajs/react';
+import { ChevronLeft, Eye } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import ReactSelect from 'react-select';
+
+const SECTORS: SelectOption[] = [
+    { value: 'commerce', label: 'Commerce & Vente' },
+    { value: 'tech', label: 'Tech & Digital' },
+    { value: 'finance', label: 'Finance & Audit' },
+    { value: 'rh', label: 'RH & Formation' },
+    { value: 'marketing', label: 'Marketing' },
+    { value: 'operations', label: 'Opérations & Logistique' },
+    { value: 'juridique', label: 'Juridique' },
+    { value: 'sante', label: 'Santé' },
+];
+
+const EDUCATION_LEVELS: SelectOption[] = [
+    { value: 'bac', label: 'Bac' },
+    { value: 'bac2', label: 'Bac+2' },
+    { value: 'bac3', label: 'Bac+3 (Licence)' },
+    { value: 'bac5', label: 'Bac+5 (Master)' },
+    { value: 'bac5_grande_ecole', label: 'Bac+5 Grande École' },
+    { value: 'doctorat', label: 'Doctorat' },
+];
+
+const EXPERIENCE_OPTIONS: SelectOption[] = [
+    { value: '0', label: 'Débutant (0 an)' },
+    { value: '2', label: '2 ans' },
+    { value: '3', label: '3 ans' },
+    { value: '5', label: '5 ans' },
+    { value: '8', label: '8 ans' },
+    { value: '10', label: '10 ans' },
+    { value: '15', label: '15 ans+' },
+];
+
+const AGE_RANGE_OPTIONS: SelectOption[] = [
+    { value: '20-30', label: '20 – 30 ans' },
+    { value: '25-35', label: '25 – 35 ans' },
+    { value: '28-40', label: '28 – 40 ans' },
+    { value: '32-48', label: '32 – 48 ans' },
+    { value: '35-55', label: '35 – 55 ans' },
+];
+
+const LANGUAGE_OPTIONS: SelectOption[] = [
+    { value: 'Arabe', label: 'Arabe' },
+    { value: 'Français', label: 'Français' },
+    { value: 'Anglais', label: 'Anglais' },
+    { value: 'Espagnol', label: 'Espagnol' },
+    { value: 'Amazigh', label: 'Amazigh' },
+];
 
 export default function EditBrief({ brief, contractTypes, genderPrefs }: EditBriefProps) {
     const { t } = useI18n();
@@ -27,31 +75,21 @@ export default function EditBrief({ brief, contractTypes, genderPrefs }: EditBri
         mission_description: brief.mission_description ?? '',
         required_skills: brief.required_skills ?? '',
         soft_skills: brief.soft_skills ?? '',
-        scoring_weights: brief.scoring_weights ?? {
-            experience: 0,
-            education: 0,
-            sector: 0,
-            soft_skills: 0,
-            location: 0,
-        },
+        scoring_weights: brief.scoring_weights ?? { experience: 90, education: 70, sector: 80, soft_skills: 75, location: 50 },
     });
 
     useEffect(() => {
         transform((d) => ({ ...d, status: statusRef.current }));
-    }, []);
+    }, [transform]);
 
     function submit(e: React.FormEvent) {
         e.preventDefault();
         clearErrors();
-
-        const clientErrors = validateBriefForm(data, t);
-        if (Object.keys(clientErrors).length > 0) {
-            Object.entries(clientErrors).forEach(([field, message]) => {
-                setError(field as keyof BriefFormData, message as string);
-            });
+        const errs = validateBriefForm(data, t);
+        if (Object.keys(errs).length > 0) {
+            Object.entries(errs).forEach(([f, m]) => setError(f as keyof BriefFormData, m as string));
             return;
         }
-
         statusRef.current = 'active';
         put(route('briefs.update', brief.id));
     }
@@ -66,364 +104,260 @@ export default function EditBrief({ brief, contractTypes, genderPrefs }: EditBri
         put(route('briefs.update', brief.id));
     }
 
-    const weightTotal = calculateWeightTotal(data.scoring_weights);
-    const weightColor = getWeightColor(weightTotal);
-
-    const inputClass =
-        'w-full bg-gray-100 dark:bg-[#17171F] border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none focus:border-secondary focus:ring-1 focus:ring-secondary hover:border-secondary transition';
-    const inputErrorClass =
-        'w-full bg-gray-100 dark:bg-[#17171F] border border-red-400 dark:border-red-500 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition';
-    const cardClass = 'bg-white dark:bg-[#111118] p-4 rounded-xl border border-gray-200 dark:border-white/10';
-    const labelClass = 'text-xs text-gray-500 dark:text-gray-400';
-    const errorClass = 'mt-1 text-xs text-red-500';
-    const fi = (hasError: boolean) => (hasError ? inputErrorClass : inputClass);
+    const toOption = (val: string, opts: SelectOption[]) => opts.find((o) => o.value === val) ?? null;
+    const toMultiOptions = (val: string, opts: SelectOption[]) =>
+        val ? val.split(',').map((v) => opts.find((o) => o.value === v.trim()) ?? { value: v.trim(), label: v.trim() }) : [];
 
     return (
-        <>
+        <AppLayout>
             <Head title={t('briefs.edit_brief.title')} />
-            <AppSidebarLayout>
-                <div className="min-h-screen bg-gray-50 p-8 text-gray-900 dark:bg-[#0A0A0F] dark:text-white">
-                    {/* HEADER */}
-                    <div className="mb-6 flex items-start justify-between">
+
+            <div className="bg-ds-bg min-h-full px-6 py-8">
+                {/* Header */}
+                <div className="mb-6 flex items-start gap-3">
+                    <Link
+                        href={route('dashboard.briefs.index')}
+                        className="border-ds-border text-ds-text3 hover:border-ds-accent/40 hover:bg-ds-accent/[0.06] hover:text-ds-accent mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition"
+                        title={t('briefs.edit_brief.actions.back')}
+                    >
+                        <ChevronLeft size={16} />
+                    </Link>
+                    <div className="flex flex-1 items-start justify-between">
                         <div>
-                            <p className="text-xs text-gray-500">{t('briefs.edit_brief.breadcrumb')}</p>
-                            <h1 className="text-secondary text-2xl font-bold">{t('briefs.edit_brief.title')}</h1>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">{t('briefs.edit_brief.subtitle')}</p>
+                            <p className="text-ds-text3 mb-1 text-[12px]">
+                                <Link href={route('dashboard.briefs.index')} className="hover:text-ds-text2 transition">
+                                    Sourcing
+                                </Link>{' '}
+                                <span className="text-ds-text2">› {t('briefs.edit_brief.title')}</span>
+                            </p>
+                            <h1 className="font-heading text-ds-text text-[26px] font-bold">{t('briefs.edit_brief.title')}</h1>
+                            <p className="text-ds-text2 mt-1 text-[14px]">{t('briefs.edit_brief.subtitle')}</p>
                         </div>
-
-                        <div className="flex items-center gap-3">
-                            {/* Show brief */}
-                            <Link
-                                href={route('briefs.show', brief.id)}
-                                className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-100 dark:border-white/10 dark:text-gray-400 dark:hover:bg-white/5"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-4 w-4"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth={2}
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
-                                    />
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                                </svg>
-                                {t('briefs.edit_brief.actions.show')}
-                            </Link>
-
-                            {/* Back */}
-                            <Link
-                                href={route('briefs.index')}
-                                className="bg-secondary flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-4 w-4"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth={2}
-                                >
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                                </svg>
-                                {t('briefs.edit_brief.actions.back')}
-                            </Link>
-                        </div>
+                        <Link
+                            href={route('briefs.show', brief.id)}
+                            className="border-ds-border text-ds-text2 hover:bg-ds-surface hover:text-ds-text flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[13px] transition"
+                        >
+                            <Eye size={14} />
+                            {t('briefs.edit_brief.actions.show')}
+                        </Link>
                     </div>
+                </div>
 
-                    <form onSubmit={submit} noValidate className="grid grid-cols-2 gap-6">
-                        {/* ── LEFT COLUMN ─────────────────────────────────── */}
-                        <div className="space-y-4">
-                            {/* Position info */}
-                            <div className={cardClass}>
-                                <h2 className="mb-3 font-semibold">{t('briefs.edit_brief.sections.position')}</h2>
-
-                                <div>
-                                    <label className={labelClass}>
-                                        {t('briefs.create_briefs.fields.title')} <span className="text-red-500">*</span>
-                                    </label>
+                <form onSubmit={submit} noValidate className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                    {/* ── LEFT ── */}
+                    <div className="space-y-5">
+                        <FormCard title={t('briefs.edit_brief.sections.position')}>
+                            <div className="space-y-4">
+                                <FormField label={t('briefs.create_briefs.fields.title')} required error={errors.title}>
                                     <input
-                                        className={`mt-1 ${fi(!!errors.title)}`}
+                                        className={inputCls(errors.title)}
                                         placeholder={t('briefs.create_briefs.fields.title_placeholder')}
                                         value={data.title}
                                         maxLength={100}
                                         onChange={(e) => setData('title', e.target.value)}
-                                        aria-invalid={!!errors.title}
                                     />
-                                    {errors.title && <p className={errorClass}>{errors.title}</p>}
-                                </div>
+                                </FormField>
 
-                                <div className="mt-3 grid grid-cols-2 gap-3">
-                                    {/* Sector */}
-                                    <div>
-                                        <label className={labelClass}>
-                                            {t('briefs.create_briefs.fields.sector')} <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                            className={`mt-1 ${fi(!!errors.sector)}`}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <FormField label={t('briefs.create_briefs.fields.sector')} required error={errors.sector}>
+                                        <ReactSelect
+                                            classNamePrefix="rs"
+                                            options={SECTORS}
+                                            value={toOption(data.sector, SECTORS)}
+                                            onChange={(opt) => setData('sector', opt?.value ?? '')}
                                             placeholder={t('briefs.create_briefs.fields.sector_placeholder')}
-                                            value={data.sector}
-                                            onChange={(e) => setData('sector', e.target.value)}
                                         />
-                                        {errors.sector && <p className={errorClass}>{errors.sector}</p>}
-                                    </div>
+                                    </FormField>
 
-                                    {/* Contract type */}
-                                    <div>
-                                        <label className={labelClass}>
-                                            {t('briefs.create_briefs.fields.contract_type')} <span className="text-red-500">*</span>
-                                        </label>
-                                        <div className="mt-1">
-                                            <Select
-                                                value={data.contract_type}
-                                                onChange={(value: string) => setData('contract_type', value)}
-                                                placeholder={t('briefs.create_briefs.fields.contract_type_placeholder')}
-                                                options={contractTypes}
-                                            />
-                                        </div>
-                                        {errors.contract_type && <p className={errorClass}>{errors.contract_type}</p>}
-                                    </div>
+                                    <FormField label={t('briefs.create_briefs.fields.contract_type')} required error={errors.contract_type}>
+                                        <ReactSelect
+                                            classNamePrefix="rs"
+                                            options={contractTypes}
+                                            value={toOption(data.contract_type, contractTypes)}
+                                            onChange={(opt) => setData('contract_type', opt?.value ?? '')}
+                                            placeholder={t('briefs.create_briefs.fields.contract_type_placeholder')}
+                                        />
+                                    </FormField>
 
-                                    {/* Location */}
-                                    <div>
-                                        <label className={labelClass}>
-                                            {t('briefs.create_briefs.fields.location')} <span className="text-red-500">*</span>
-                                        </label>
+                                    <FormField label={t('briefs.create_briefs.fields.location')} required error={errors.location}>
                                         <input
-                                            className={`mt-1 ${fi(!!errors.location)}`}
+                                            className={inputCls(errors.location)}
                                             placeholder={t('briefs.create_briefs.fields.location_placeholder')}
                                             value={data.location}
                                             onChange={(e) => setData('location', e.target.value)}
                                         />
-                                        {errors.location && <p className={errorClass}>{errors.location}</p>}
-                                    </div>
+                                    </FormField>
 
-                                    {/* Salary */}
-                                    <div>
-                                        <label className={labelClass}>{t('briefs.create_briefs.fields.salary_range')}</label>
+                                    <FormField label={t('briefs.create_briefs.fields.salary_range')} error={errors.salary_range}>
                                         <input
-                                            className={`mt-1 ${fi(!!errors.salary_range)}`}
+                                            className={inputCls(errors.salary_range)}
                                             placeholder={t('briefs.create_briefs.fields.salary_range_placeholder')}
                                             value={data.salary_range}
                                             onChange={(e) => setData('salary_range', e.target.value)}
                                         />
-                                        {errors.salary_range && <p className={errorClass}>{errors.salary_range}</p>}
-                                    </div>
+                                    </FormField>
                                 </div>
                             </div>
+                        </FormCard>
 
-                            {/* Candidate criteria */}
-                            <div className={cardClass}>
-                                <h2 className="mb-3 font-semibold">{t('briefs.edit_brief.sections.candidate')}</h2>
-
-                                {/* Experience */}
-                                <div>
-                                    <label className={labelClass}>
-                                        {t('briefs.create_briefs.fields.min_experience_years')} <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min={0}
-                                        max={50}
-                                        className={`mt-1 ${fi(!!errors.min_experience_years)}`}
-                                        placeholder={t('briefs.create_briefs.fields.min_experience_years_placeholder')}
-                                        value={data.min_experience_years}
-                                        onChange={(e) => setData('min_experience_years', e.target.value)}
-                                    />
-                                    {errors.min_experience_years && <p className={errorClass}>{errors.min_experience_years}</p>}
-                                </div>
-
-                                {/* Education */}
-                                <div className="mt-3">
-                                    <label className={labelClass}>
-                                        {t('briefs.create_briefs.fields.education_level')} <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        className={`mt-1 ${fi(!!errors.education_level)}`}
-                                        placeholder={t('briefs.create_briefs.fields.education_level_placeholder')}
-                                        value={data.education_level}
-                                        onChange={(e) => setData('education_level', e.target.value)}
-                                    />
-                                    {errors.education_level && <p className={errorClass}>{errors.education_level}</p>}
-                                </div>
-
-                                {/* Languages */}
-                                <div className="mt-3">
-                                    <label className={labelClass}>{t('briefs.create_briefs.fields.languages')}</label>
-                                    <input
-                                        className={`mt-1 ${fi(!!errors.languages)}`}
-                                        placeholder={t('briefs.create_briefs.fields.languages_placeholder')}
-                                        value={data.languages}
-                                        onChange={(e) => setData('languages', e.target.value)}
-                                    />
-                                    {errors.languages && <p className={errorClass}>{errors.languages}</p>}
-                                </div>
-
-                                {/* Age range */}
-                                <div className="mt-3">
-                                    <label className={labelClass}>{t('briefs.create_briefs.fields.age_range')}</label>
-                                    <input
-                                        className={`mt-1 ${fi(!!errors.age_range)}`}
-                                        placeholder={t('briefs.create_briefs.fields.age_range_placeholder')}
-                                        value={data.age_range}
-                                        onChange={(e) => setData('age_range', e.target.value)}
-                                    />
-                                    {errors.age_range && <p className={errorClass}>{errors.age_range}</p>}
-                                </div>
-
-                                {/* Gender pref */}
-                                <div className="mt-3">
-                                    <label className={labelClass}>{t('briefs.create_briefs.fields.gender_pref')}</label>
-                                    <div className="mt-1">
-                                        <Select
-                                            value={data.gender_pref}
-                                            onChange={(v: string) => setData('gender_pref', v)}
-                                            placeholder={t('briefs.create_briefs.fields.gender_pref_placeholder')}
-                                            options={genderPrefs}
+                        <FormCard title={t('briefs.edit_brief.sections.candidate')}>
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <FormField
+                                        label={t('briefs.create_briefs.fields.min_experience_years')}
+                                        required
+                                        error={errors.min_experience_years}
+                                    >
+                                        <ReactSelect
+                                            classNamePrefix="rs"
+                                            options={EXPERIENCE_OPTIONS}
+                                            value={toOption(data.min_experience_years, EXPERIENCE_OPTIONS)}
+                                            onChange={(opt) => setData('min_experience_years', opt?.value ?? '')}
+                                            placeholder={t('briefs.create_briefs.fields.min_experience_years_placeholder')}
                                         />
-                                    </div>
-                                    {errors.gender_pref && <p className={errorClass}>{errors.gender_pref}</p>}
+                                    </FormField>
+
+                                    <FormField label={t('briefs.create_briefs.fields.education_level')} required error={errors.education_level}>
+                                        <ReactSelect
+                                            classNamePrefix="rs"
+                                            options={EDUCATION_LEVELS}
+                                            value={toOption(data.education_level, EDUCATION_LEVELS)}
+                                            onChange={(opt) => setData('education_level', opt?.value ?? '')}
+                                            placeholder={t('briefs.create_briefs.fields.education_level_placeholder')}
+                                        />
+                                    </FormField>
+
+                                    <FormField label={t('briefs.create_briefs.fields.gender_pref')} error={errors.gender_pref}>
+                                        <ReactSelect
+                                            classNamePrefix="rs"
+                                            options={genderPrefs}
+                                            value={toOption(data.gender_pref, genderPrefs)}
+                                            onChange={(opt) => setData('gender_pref', opt?.value ?? '')}
+                                            placeholder={t('briefs.create_briefs.fields.gender_pref_placeholder')}
+                                            isClearable
+                                        />
+                                    </FormField>
+
+                                    <FormField label={t('briefs.create_briefs.fields.age_range')} error={errors.age_range}>
+                                        <ReactSelect
+                                            classNamePrefix="rs"
+                                            options={AGE_RANGE_OPTIONS}
+                                            value={toOption(data.age_range, AGE_RANGE_OPTIONS)}
+                                            onChange={(opt) => setData('age_range', opt?.value ?? '')}
+                                            placeholder={t('briefs.create_briefs.fields.age_range_placeholder')}
+                                            isClearable
+                                        />
+                                    </FormField>
                                 </div>
+
+                                <FormField label={t('briefs.create_briefs.fields.languages')} error={errors.languages}>
+                                    <ReactSelect
+                                        classNamePrefix="rs"
+                                        isMulti
+                                        options={LANGUAGE_OPTIONS}
+                                        value={toMultiOptions(data.languages, LANGUAGE_OPTIONS)}
+                                        onChange={(opts) => setData('languages', opts.map((o) => o.value).join(', '))}
+                                        placeholder={t('briefs.create_briefs.fields.languages_placeholder')}
+                                    />
+                                </FormField>
                             </div>
-                        </div>
+                        </FormCard>
+                    </div>
 
-                        {/* ── RIGHT COLUMN ────────────────────────────────── */}
-                        <div className="space-y-4">
-                            {/* Description */}
-                            <div className={cardClass}>
-                                <h2 className="mb-3 font-semibold">{t('briefs.edit_brief.sections.description')}</h2>
-
-                                {/* Mission */}
-                                <div>
-                                    <label className={labelClass}>
-                                        {t('briefs.create_briefs.fields.mission_description')} <span className="text-red-500">*</span>
-                                    </label>
+                    {/* ── RIGHT ── */}
+                    <div className="space-y-5">
+                        <FormCard title={t('briefs.edit_brief.sections.description')}>
+                            <div className="space-y-4">
+                                <FormField
+                                    label={t('briefs.create_briefs.fields.mission_description')}
+                                    required
+                                    error={errors.mission_description}
+                                    hint={`${data.mission_description.length}/2000`}
+                                >
                                     <textarea
-                                        className={`mt-1 min-h-[100px] ${fi(!!errors.mission_description)}`}
+                                        className={textareaCls(errors.mission_description)}
                                         placeholder={t('briefs.create_briefs.fields.mission_description_placeholder')}
                                         value={data.mission_description}
                                         maxLength={2000}
+                                        rows={4}
                                         onChange={(e) => setData('mission_description', e.target.value)}
                                     />
-                                    <div className="flex justify-between">
-                                        {errors.mission_description ? <p className={errorClass}>{errors.mission_description}</p> : <span />}
-                                        <span className="text-xs text-gray-400">{data.mission_description.length}/2000</span>
-                                    </div>
-                                </div>
+                                </FormField>
 
-                                {/* Technical skills */}
-                                <div className="mt-3">
-                                    <label className={labelClass}>
-                                        {t('briefs.create_briefs.fields.required_skills')} <span className="text-red-500">*</span>
-                                    </label>
+                                <FormField label={t('briefs.create_briefs.fields.required_skills')} required error={errors.required_skills}>
                                     <textarea
-                                        className={`mt-1 ${fi(!!errors.required_skills)}`}
+                                        className={textareaCls(errors.required_skills)}
                                         placeholder={t('briefs.create_briefs.fields.required_skills_placeholder')}
                                         value={data.required_skills}
+                                        rows={3}
                                         onChange={(e) => setData('required_skills', e.target.value)}
                                     />
-                                    {errors.required_skills && <p className={errorClass}>{errors.required_skills}</p>}
-                                </div>
+                                </FormField>
 
-                                {/* Soft skills */}
-                                <div className="mt-3">
-                                    <label className={labelClass}>{t('briefs.create_briefs.fields.soft_skills')}</label>
+                                <FormField label={t('briefs.create_briefs.fields.soft_skills')} error={errors.soft_skills}>
                                     <textarea
-                                        className={`mt-1 ${fi(!!errors.soft_skills)}`}
+                                        className={textareaCls(errors.soft_skills)}
                                         placeholder={t('briefs.create_briefs.fields.soft_skills_placeholder')}
                                         value={data.soft_skills}
+                                        rows={3}
                                         onChange={(e) => setData('soft_skills', e.target.value)}
                                     />
-                                    {errors.soft_skills && <p className={errorClass}>{errors.soft_skills}</p>}
-                                </div>
+                                </FormField>
                             </div>
+                        </FormCard>
 
-                            {/* Scoring weights */}
-                            <div className={cardClass}>
-                                <div className="mb-3 flex items-center justify-between">
-                                    <h2 className="font-semibold">{t('briefs.edit_brief.sections.scoring')}</h2>
-                                    <span className={`text-xs font-semibold ${weightColor}`}>
-                                        {t('briefs.create_briefs.scoring.total')}: {weightTotal}/100
-                                    </span>
-                                </div>
+                        <FormCard title="">
+                            <ScoringSlider
+                                weights={data.scoring_weights}
+                                onChange={(w) => setData('scoring_weights', w)}
+                                error={errors['scoring_weights'] as string | undefined}
+                            />
+                        </FormCard>
 
-                                {(Object.keys(data.scoring_weights) as Array<keyof ScoringWeights>).map((key) => (
-                                    <div key={key} className="mb-3">
-                                        <label className={labelClass}>{t(`briefs.create_briefs.scoring.${key}`)}</label>
-                                        <div className="mt-1 flex items-center gap-2">
-                                            <input
-                                                type="number"
-                                                min={0}
-                                                max={100}
-                                                className={`${inputClass} flex-1`}
-                                                value={data.scoring_weights[key]}
-                                                onChange={(e) =>
-                                                    setData('scoring_weights', {
-                                                        ...data.scoring_weights,
-                                                        [key]: Math.min(100, Math.max(0, Number(e.target.value))),
-                                                    })
-                                                }
-                                            />
-                                            <span className="text-sm text-gray-400">%</span>
-                                        </div>
-                                    </div>
-                                ))}
-
-                                {errors['scoring_weights'] && <p className={errorClass}>{errors['scoring_weights'] as string}</p>}
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex gap-3">
-                                {/* Cancel with inline confirm */}
-                                {confirmingCancel ? (
-                                    <div className="flex w-1/2 items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-white/10">
-                                        <span className="text-gray-500">{t('briefs.edit_brief.actions.cancel_confirm')}</span>
-                                        <Link href={route('briefs.show', brief.id)} className="font-semibold text-red-500 hover:underline">
-                                            {t('briefs.edit_brief.actions.cancel_yes')}
-                                        </Link>
-                                        <span className="text-gray-400">·</span>
-                                        <button type="button" onClick={() => setConfirmingCancel(false)} className="text-gray-500 hover:underline">
-                                            {t('briefs.edit_brief.actions.cancel_no')}
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        onClick={() => setConfirmingCancel(true)}
-                                        disabled={processing}
-                                        className="w-1/2 rounded-lg border border-gray-300 py-2 text-sm transition hover:bg-gray-100 disabled:opacity-50 dark:border-white/10 dark:hover:bg-white/5"
-                                    >
-                                        {t('briefs.edit_brief.actions.cancel')}
+                        {/* Actions */}
+                        <div className="flex gap-3">
+                            {confirmingCancel ? (
+                                <div className="border-ds-border flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-[12px]">
+                                    <span className="text-ds-text3">{t('briefs.edit_brief.actions.cancel_confirm')}</span>
+                                    <Link href={route('briefs.show', brief.id)} className="text-ds-red font-semibold hover:underline">
+                                        {t('briefs.edit_brief.actions.cancel_yes')}
+                                    </Link>
+                                    <span className="text-ds-text3">·</span>
+                                    <button type="button" onClick={() => setConfirmingCancel(false)} className="text-ds-text2 hover:underline">
+                                        {t('briefs.edit_brief.actions.cancel_no')}
                                     </button>
-                                )}
-
-                                {/* Save draft */}
+                                </div>
+                            ) : (
                                 <button
                                     type="button"
-                                    onClick={saveDraft}
+                                    onClick={() => setConfirmingCancel(true)}
                                     disabled={processing}
-                                    className="w-1/2 rounded-lg border border-gray-300 py-2 text-sm transition hover:bg-gray-100 disabled:opacity-50 dark:border-white/10 dark:hover:bg-white/5"
+                                    className="border-ds-border text-ds-text2 hover:bg-ds-surface hover:text-ds-text flex-1 rounded-lg border py-2.5 text-[13px] transition disabled:opacity-50"
                                 >
-                                    {t('briefs.edit_brief.actions.save_draft')}
+                                    {t('briefs.edit_brief.actions.cancel')}
                                 </button>
+                            )}
 
-                                {/* Save */}
-                                <button
-                                    type="submit"
-                                    disabled={processing}
-                                    className="w-1/2 rounded-lg bg-[#6C63FF] py-2 font-semibold text-white transition hover:bg-[#5a52ff] disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                    {processing ? t('briefs.edit_brief.actions.saving') : t('briefs.edit_brief.actions.save')}
-                                </button>
-                            </div>
+                            <button
+                                type="button"
+                                onClick={saveDraft}
+                                disabled={processing}
+                                className="border-ds-border text-ds-text2 hover:bg-ds-surface hover:text-ds-text flex-1 rounded-lg border py-2.5 text-[13px] font-medium transition disabled:opacity-50"
+                            >
+                                {t('briefs.edit_brief.actions.save_draft')}
+                            </button>
+
+                            <button
+                                type="submit"
+                                disabled={processing}
+                                className="bg-ds-accent flex-1 rounded-lg py-2.5 text-[13px] font-semibold text-white transition hover:bg-[#7C74FF] disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {processing ? t('briefs.edit_brief.actions.saving') : `${t('briefs.edit_brief.actions.save')} →`}
+                            </button>
                         </div>
-                    </form>
-                </div>
-            </AppSidebarLayout>
-        </>
+                    </div>
+                </form>
+            </div>
+        </AppLayout>
     );
 }

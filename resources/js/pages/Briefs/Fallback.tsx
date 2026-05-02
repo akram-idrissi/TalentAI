@@ -22,7 +22,7 @@ export default function Fallback({ error }: Props) {
                             <p className="text-sm text-gray-500 dark:text-gray-400">{t('briefs.fallback.subtitle')}</p>
                         </div>
                         <Link
-                            href={route('briefs.index')}
+                            href={route('dashboard.briefs.index')}
                             className="bg-secondary flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
                         >
                             <svg
@@ -90,7 +90,7 @@ export default function Fallback({ error }: Props) {
                             </button>
 
                             <Link
-                                href={route('briefs.index')}
+                                href={route('dashboard.briefs.index')}
                                 className="bg-secondary flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-medium text-white transition hover:opacity-90"
                             >
                                 {t('briefs.fallback.actions.back')}
