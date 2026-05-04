@@ -57,7 +57,7 @@ export default function Sidebar() {
   return (
     <aside
       className={`h-screen flex flex-col border-r transition-all duration-300
-      ${collapsed ? "w-[90px]" : "w-[300px]"}
+      ${collapsed ? "w-[70px]" : "w-[240px]"}
       bg-white text-gray-900 border-gray-200
       dark:bg-[#111118] dark:text-white dark:border-white/10`}
     >
