@@ -20,6 +20,7 @@ class Brief extends Model
         'salary_range',
         'min_experience_years',
         'education_level',
+        'languages',
         'gender_pref',
         'age_range',
         'mission_description',

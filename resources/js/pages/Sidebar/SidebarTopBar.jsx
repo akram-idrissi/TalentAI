@@ -1,58 +1,62 @@
-import { useState } from "react";
-import { Search, ShieldCheck, Moon, Sun } from "lucide-react";
-import { useTheme } from "@/hooks/useTheme";
-import  Select  from "@/components/Select";
+import Select from '@/components/Select';
+import { useTheme } from '@/hooks/useTheme';
+import { router, usePage } from '@inertiajs/react';
+import { Menu, Moon, Search, Sun } from 'lucide-react';
 
-export default function SidebarTopBar() {
-  const [lang, setLang] = useState("fr");
-  const [collapsed] = useState(false);
+export default function SidebarTopBar({ setMobileOpen }) {
+    const { dark, toggleTheme } = useTheme();
+    const { locale } = usePage().props;
 
-  const { dark, toggleTheme } = useTheme();
+    const setLang = (lang) => {
+        router.post(route('locale.switch'), { locale: lang }, { preserveState: false });
+    };
 
-  return (
-    <div className="px-10 py-3 border-b border-gray-200 dark:border-white/10">
+    return (
+        <div className="border-sidebar-border bg-sidebar border-b px-4 py-3 sm:px-6">
+            <div className="flex items-center gap-3">
+                {/* Mobile menu toggle */}
+                <button
+                    onClick={() => setMobileOpen(true)}
+                    className="border-ds-border text-ds-text2 hover:bg-ds-surface hover:text-ds-text cursor-pointer rounded-lg border p-2 transition md:hidden"
+                    aria-label="Open sidebar"
+                >
+                    <Menu size={16} />
+                </button>
 
-      <div className="flex items-center justify-between gap-3">
+                {/* Search */}
+                <div className="border-ds-border bg-ds-bg3 focus-within:border-ds-accent flex max-w-[560px] flex-1 items-center gap-2 rounded-lg border px-3 py-2 transition-colors">
+                    <Search size={14} className="text-ds-text3 shrink-0" />
+                    <input
+                        type="text"
+                        placeholder="Rechercher..."
+                        className="text-ds-text placeholder:text-ds-text3 w-full bg-transparent text-[13px] outline-none"
+                    />
+                </div>
 
-        {/* LEFT - SEARCH */}
-        {!collapsed && (
-          <div className="flex items-center gap-2 flex-1 max-w-[620px] bg-gray-100 dark:bg-[#1E1E28] px-3 py-2 rounded-lg">
-            <Search size={16} className="text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="bg-transparent outline-none text-sm w-full text-gray-700 dark:text-white"
-            />
-          </div>
-        )}
+                {/* Right actions */}
+                <div className="ml-auto flex items-center gap-2">
+                    {/* Theme toggle */}
+                    <button
+                        onClick={toggleTheme}
+                        className="border-ds-border text-ds-text2 hover:bg-ds-surface hover:text-ds-text cursor-pointer rounded-lg border p-2 transition"
+                        aria-label="Toggle theme"
+                    >
+                        {dark ? <Sun size={15} /> : <Moon size={15} />}
+                    </button>
 
-        {/* CENTER */}
-        <div className="flex items-center gap-4">
-
-          {!collapsed && (
-              <Select
-                value={lang}
-                onChange={setLang}
-                placeholder="Select language"
-                options={[
-                  { value: "fr", label: "Fr" },
-                  { value: "en", label: "En" },
-
-                ]}
-              />
-          )}
-
+                    {/* Locale selector */}
+                    <Select
+                        value={locale}
+                        onChange={setLang}
+                        placeholder="FR"
+                        options={[
+                            { value: 'fr', label: 'FR' },
+                            { value: 'ar', label: 'AR' },
+                            { value: 'en', label: 'EN' },
+                        ]}
+                    />
+                </div>
+            </div>
         </div>
-
-        {/* RIGHT - DARK MODE */}
-
-        <button
-          onClick={toggleTheme}
-          className="p-2 rounded-lg bg-gray-100 dark:bg-[#1E1E28] hover:scale-105 transition"
-        >
-          {dark ? <Sun size={16} /> : <Moon size={16} />}
-        </button>
-      </div>
-    </div>
-  );
+    );
 }

@@ -1,115 +1,65 @@
-import { useState, useRef, useEffect } from "react";
+import { Check, ChevronDown } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
-type Option = {
-  value: string | number;
-  label: string;
-};
+type Option = { value: string; label: string };
 
 type SelectProps = {
-  value?: string | number;
-  onChange: (value: string | number) => void;
-  options: Option[];
-  placeholder?: string;
-  className?: string;
+    value?: string;
+    onChange: (value: string) => void;
+    options: Option[];
+    placeholder?: string;
+    className?: string;
 };
 
-export default function Select({
-  value,
-  onChange,
-  options = [],
-  placeholder = "Select...",
-  className = "",
-}: SelectProps) {
-  const [open, setOpen] = useState<boolean>(false);
-  const ref = useRef<HTMLDivElement | null>(null);
+export default function Select({ value, onChange, options = [], placeholder = 'Select...', className = '' }: SelectProps) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
 
-  const selected = options.find((o) => o.value === value);
+    const selected = options.find((o) => o.value === value);
 
-  // close click outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    return (
+        <div ref={ref} className={`relative ${className}`}>
+            <button
+                type="button"
+                onClick={() => setOpen((p) => !p)}
+                className="border-ds-border bg-ds-bg3 text-ds-text hover:border-ds-border2 hover:bg-ds-surface flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[13px] font-medium transition-all duration-150"
+            >
+                <span>{selected?.label ?? placeholder}</span>
+                <ChevronDown size={12} className={`text-ds-text3 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
+            </button>
 
-  return (
-    <div ref={ref} className={`relative w-full ${className}`}>
-      
-      {/* Button */}
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        className="
-          w-full flex items-center justify-between
-          bg-gray-100 dark:bg-[#17171F]
-          px-3 py-2 text-sm
-          border border-gray-300 dark:border-gray-700
-          rounded-lg
-          text-gray-700 dark:text-white
-          hover:border-indigo-500
-          focus:outline-none focus:ring-2 focus:ring-indigo-500
-          transition
-        "
-      >
-        <span className={`${selected ? "" : "text-gray-400"}`}>
-          {selected ? selected.label : placeholder}
-        </span>
-
-        <span
-          className={`text-gray-400 transition-transform ${
-            open ? "rotate-180" : ""
-          }`}
-        >
-          ▾
-        </span>
-      </button>
-
-      {/* Dropdown */}
-      {open && (
-        <div
-          className="
-            absolute z-50 mt-2 w-full
-            bg-white dark:bg-gray-900
-            border border-gray-200 dark:border-gray-700
-            rounded-lg shadow-lg
-            overflow-hidden
-          "
-        >
-          {options.length === 0 ? (
-            <div className="px-3 py-2 text-sm text-gray-400">
-              No options
-            </div>
-          ) : (
-            options.map((option) => (
-              <div
-                key={option.value}
-                onClick={() => {
-                  onChange(option.value);
-                  setOpen(false);
-                }}
-                className="
-                  px-3 py-2 text-sm cursor-pointer
-                  text-gray-700 dark:text-white
-                  hover:bg-indigo-500/10 dark:hover:bg-gray-800
-                  transition flex items-center justify-between
-                "
-              >
-                <span>{option.label}</span>
-
-                {value === option.value && (
-                  <span className="text-indigo-500">✓</span>
-                )}
-              </div>
-            ))
-          )}
+            {open && (
+                <div className="border-ds-border2 bg-ds-surface absolute right-0 z-50 mt-1.5 min-w-[90px] overflow-hidden rounded-xl border shadow-xl">
+                    {options.map((opt) => {
+                        const isSelected = opt.value === value;
+                        return (
+                            <div
+                                key={opt.value}
+                                onClick={() => {
+                                    onChange(opt.value);
+                                    setOpen(false);
+                                }}
+                                className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-[13px] transition-colors duration-100 ${
+                                    isSelected
+                                        ? 'bg-ds-accent/8 text-ds-accent font-semibold'
+                                        : 'text-ds-text2 hover:bg-ds-accent/[0.06] hover:text-ds-text'
+                                }`}
+                            >
+                                <span className="flex-1">{opt.label}</span>
+                                {isSelected && <Check size={13} className="text-ds-accent shrink-0" />}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
-      )}
-    </div>
-  );
+    );
 }

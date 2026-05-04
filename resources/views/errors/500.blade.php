@@ -2,168 +2,147 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>500 - Server Error</title>
-
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>500 — Erreur serveur</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
     <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
         :root {
-            --bg: #ffffff;
-            --text: #0f172a;
-            --muted: #64748b;
-            --primary: #F87171;
-            --secondary: #FB7185;
-            --card: rgba(255,255,255,0.6);
-            --border: rgba(0,0,0,0.08);
+            --bg:       #f5f5fc;
+            --surface:  #ffffff;
+            --border:   rgba(0,0,0,0.07);
+            --border2:  rgba(0,0,0,0.12);
+            --red:      #ef4444;
+            --red-bg:   rgba(239,68,68,0.08);
+            --accent:   #6c63ff;
+            --text:     #1a1830;
+            --text2:    #5c5880;
+            --text3:    #9993b8;
         }
 
-        .dark {
-            --bg: #0A0A0F;
-            --text: #F0EFF8;
-            --muted: #9ca3af;
-            --card: rgba(255,255,255,0.05);
-            --border: rgba(255,255,255,0.08);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'DM Sans', sans-serif;
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg:       #0a0a0f;
+                --surface:  #1e1e28;
+                --border:   rgba(255,255,255,0.07);
+                --border2:  rgba(255,255,255,0.12);
+                --red:      #f87171;
+                --red-bg:   rgba(248,113,113,0.1);
+                --accent:   #6c63ff;
+                --text:     #f0eff8;
+                --text2:    #9993b8;
+                --text3:    #5c5880;
+            }
         }
 
         body {
-            height: 100vh;
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: var(--bg);
-            overflow: hidden;
-            transition: 0.3s;
+            padding: 24px;
         }
 
-        /* BACKGROUND */
-        .bg {
-            position: absolute;
-            inset: 0;
-            z-index: -1;
-        }
-
-        .blob {
-            position: absolute;
-            width: 450px;
-            height: 450px;
-            background: var(--primary);
-            filter: blur(140px);
-            opacity: 0.25;
-        }
-
-        .blob1 { top: 10%; left: 10%; }
-        .blob2 { bottom: 10%; right: 10%; background: var(--secondary); }
-
-        /* CONTAINER */
-        .container {
+        .wrap {
+            width: 100%;
+            max-width: 480px;
             text-align: center;
-            max-width: 650px;
-            padding: 40px;
         }
 
-        /* ILLUSTRATION */
-        .illustration {
-            width: 240px;
-            margin-bottom: 20px;
-            animation: float 4s ease-in-out infinite;
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--red-bg);
+            border: 1px solid rgba(239,68,68,0.2);
+            border-radius: 99px;
+            padding: 4px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--red);
+            margin-bottom: 28px;
         }
 
-        @keyframes float {
-            0%,100% { transform: translateY(0); }
-            50% { transform: translateY(-12px); }
-        }
-
-        /* ERROR CODE */
         .code {
-            font-size: 110px;
             font-family: 'Syne', sans-serif;
+            font-size: 96px;
             font-weight: 800;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            line-height: 1;
+            color: var(--red);
+            margin-bottom: 16px;
+            letter-spacing: -2px;
         }
 
         .title {
-            font-size: 26px;
+            font-family: 'Syne', sans-serif;
+            font-size: 22px;
             font-weight: 700;
-            margin-top: 10px;
             color: var(--text);
+            margin-bottom: 10px;
         }
 
-        .subtitle {
-            margin-top: 10px;
-            color: var(--muted);
+        .desc {
             font-size: 14px;
+            color: var(--text2);
+            line-height: 1.6;
+            margin-bottom: 32px;
         }
 
-        /* GLASS CARD */
-        .card {
-            margin-top: 25px;
-            padding: 18px;
-            border-radius: 14px;
-            background: var(--card);
-            border: 1px solid var(--border);
-            backdrop-filter: blur(12px);
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin-bottom: 28px;
         }
 
-        /* BUTTON */
+        .actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
         .btn {
-            margin-top: 25px;
-            display: inline-block;
-            padding: 11px 20px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 13.5px;
             font-weight: 600;
             text-decoration: none;
-            transition: 0.3s;
+            transition: opacity 0.15s, transform 0.15s;
+        }
+        .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
         }
 
-        .btn:hover {
-            transform: translateY(-3px);
-            opacity: 0.9;
+        .btn-ghost {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            color: var(--text2);
         }
-
-
     </style>
 </head>
-
 <body>
-
-<div class="bg">
-    <div class="blob blob1"></div>
-    <div class="blob blob2"></div>
-</div>
-
-<div class="container">
-
-    <!-- ILLUSTRATION -->
-    <img class="illustration"
-         src="./500.png"
-         alt="500">
-
-    <div class="code">500</div>
-
-    <div class="title">Internal Server Error</div>
-
-    <div class="subtitle">
-        Something went wrong on our server. Please try again later.
+    <div class="wrap">
+        <div class="badge">Erreur 500</div>
+        <div class="code">500</div>
+        <div class="title">Erreur interne du serveur</div>
+        <p class="desc">Une erreur inattendue s'est produite. Notre équipe a été notifiée. Veuillez réessayer dans quelques instants.</p>
+        <div class="divider"></div>
+        <div class="actions">
+            <a href="/" class="btn btn-primary">Retour à l'accueil</a>
+            <a href="javascript:location.reload()" class="btn btn-ghost">Réessayer</a>
+        </div>
     </div>
-
-    <div class="card">
-         Our team is working to fix the issue as soon as possible.
-    </div>
-
-    <a href="/" class="btn">Go Back Home</a>
-
-</div>
-
 </body>
 </html>

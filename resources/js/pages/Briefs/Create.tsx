@@ -1,267 +1,336 @@
-import { useForm } from "@inertiajs/react";
-import AppSidebarLayout from "@/layouts/app/app-sidebar-layout";
-import  Select  from "@/components/Select";
+import FormCard from '@/components/briefs/FormCard';
+import { FormField, inputCls, textareaCls } from '@/components/briefs/FormField';
+import ScoringSlider from '@/components/briefs/ScoringSlider';
+import { useI18n } from '@/hooks/useI18n';
+import AppLayout from '@/layouts/app-layout';
+import type { BriefFormData, CreateBriefProps, SelectOption } from '@/types/brief';
+import { validateBriefForm } from '@/utils/briefCreationValidation';
+import { Head, Link, useForm } from '@inertiajs/react';
+import { ChevronLeft } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import ReactSelect from 'react-select';
 
-export default function CreateBrief() {
-  const { data, setData, post, processing, errors } = useForm({
-    title: "",
-    sector: "",
-    contract_type: "",
-    location: "",
-    salary_range: "",
-    min_experience_years: "",
-    education_level: "",
-    gender_pref: "",
-    age_range: "",
-    mission_description: "",
-    required_skills: "",
-    soft_skills: "",
-    scoring_weights: {
-      experience: 0,
-      education: 0,
-      sector: 0,
-      soft_skills: 0,
-      location: 0,
-    },
-    status: "draft",
-  });
-  console.log(data);
+const SECTORS: SelectOption[] = [
+    { value: 'commerce', label: 'Commerce & Vente' },
+    { value: 'tech', label: 'Tech & Digital' },
+    { value: 'finance', label: 'Finance & Audit' },
+    { value: 'rh', label: 'RH & Formation' },
+    { value: 'marketing', label: 'Marketing' },
+    { value: 'operations', label: 'Opérations & Logistique' },
+    { value: 'juridique', label: 'Juridique' },
+    { value: 'sante', label: 'Santé' },
+];
+
+const EDUCATION_LEVELS: SelectOption[] = [
+    { value: 'bac', label: 'Bac' },
+    { value: 'bac2', label: 'Bac+2' },
+    { value: 'bac3', label: 'Bac+3 (Licence)' },
+    { value: 'bac5', label: 'Bac+5 (Master)' },
+    { value: 'bac5_grande_ecole', label: 'Bac+5 Grande École' },
+    { value: 'doctorat', label: 'Doctorat' },
+];
+
+const EXPERIENCE_OPTIONS: SelectOption[] = [
+    { value: '0', label: 'Débutant (0 an)' },
+    { value: '2', label: '2 ans' },
+    { value: '3', label: '3 ans' },
+    { value: '5', label: '5 ans' },
+    { value: '8', label: '8 ans' },
+    { value: '10', label: '10 ans' },
+    { value: '15', label: '15 ans+' },
+];
+
+const AGE_RANGE_OPTIONS: SelectOption[] = [
+    { value: '20-30', label: '20 – 30 ans' },
+    { value: '25-35', label: '25 – 35 ans' },
+    { value: '28-40', label: '28 – 40 ans' },
+    { value: '32-48', label: '32 – 48 ans' },
+    { value: '35-55', label: '35 – 55 ans' },
+];
+
+const LANGUAGE_OPTIONS: SelectOption[] = [
+    { value: 'Arabe', label: 'Arabe' },
+    { value: 'Français', label: 'Français' },
+    { value: 'Anglais', label: 'Anglais' },
+    { value: 'Espagnol', label: 'Espagnol' },
+    { value: 'Amazigh', label: 'Amazigh' },
+];
+
+export default function CreateBrief({ contractTypes, genderPrefs }: CreateBriefProps) {
+    const { t } = useI18n();
+    const statusRef = useRef<'active' | 'draft'>('active');
+
+    const { data, setData, transform, post, processing, errors, setError, clearErrors } = useForm<BriefFormData>({
+        title: '',
+        sector: '',
+        contract_type: '',
+        location: '',
+        salary_range: '',
+        min_experience_years: '',
+        education_level: '',
+        languages: '',
+        gender_pref: '',
+        age_range: '',
+        mission_description: '',
+        required_skills: '',
+        soft_skills: '',
+        scoring_weights: { experience: 30, education: 20, sector: 20, soft_skills: 20, location: 10 },
+    });
+
+    useEffect(() => {
+        transform((d) => ({ ...d, status: statusRef.current }));
+    }, []);
 
     function submit(e: React.FormEvent) {
-      e.preventDefault();
-
-      post(route("briefs.store"));
+        e.preventDefault();
+        clearErrors();
+        const errs = validateBriefForm(data, t);
+        if (Object.keys(errs).length > 0) {
+            Object.entries(errs).forEach(([f, m]) => setError(f as keyof BriefFormData, m as string));
+            return;
+        }
+        statusRef.current = 'active';
+        post(route('dashboard.briefs.store'));
     }
 
-const inputClass =
-  "w-full bg-gray-100 dark:bg-[#17171F] border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white outline-none focus:border-secondary focus:ring-1 focus:ring-secondary hover:border-secondary transition";
+    function saveDraft() {
+        clearErrors();
+        const errs = validateBriefForm(data, t);
+        if (Object.keys(errs).length > 0) {
+            Object.entries(errs).forEach(([f, m]) => setError(f as keyof BriefFormData, m as string));
+            return;
+        }
+        statusRef.current = 'draft';
+        post(route('dashboard.briefs.store'));
+    }
 
-  const cardClass =
-    "bg-white dark:bg-[#111118] p-4 rounded-xl border border-gray-200 dark:border-white/10";
+    // Helpers to convert string↔SelectOption for react-select
+    const toOption = (val: string, opts: SelectOption[]) => opts.find((o) => o.value === val) ?? null;
+    const toMultiOptions = (val: string, opts: SelectOption[]) =>
+        val ? val.split(',').map((v) => opts.find((o) => o.value === v.trim()) ?? { value: v.trim(), label: v.trim() }) : [];
 
-  const labelClass = "text-xs text-gray-500 dark:text-gray-400";
+    return (
+        <AppLayout>
+            <Head title={t('briefs.create_briefs.create.title')} />
 
-  return (
-    <AppSidebarLayout>
-
-      <div className="p-8 min-h-screen bg-gray-50 dark:bg-[#0A0A0F] text-gray-900 dark:text-white">
-
-        {/* HEADER */}
-        <div className="mb-6">
-          <p className="text-gray-500 text-xs">Sourcing › Nouveau brief</p>
-          <h1 className="text-2xl text-secondary font-bold">Créer un brief de recrutement</h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm">
-            Renseignez les critères · L'IA les utilisera pour analyser les candidats
-          </p>
-        </div>
-
-        <form onSubmit={submit} className="grid grid-cols-2 gap-6">
-
-          {/* LEFT */}
-          <div className="space-y-4">
-
-            <div className={cardClass}>
-              <h2 className="mb-3 font-semibold">Informations du poste</h2>
-
-              <input
-                className={inputClass}
-                placeholder="Intitulé du poste"
-                value={data.title}
-                onChange={(e) => setData("title", e.target.value)}
-              />
-              {errors.title && (
-                <p className="text-red-500 text-xs">{errors.title}</p>
-              )}
-
-              <div className="grid grid-cols-2 gap-3 mt-3">
-                <input
-                  className={inputClass}
-                  placeholder="Secteur"
-                  value={data.sector}
-                  onChange={(e) => setData("sector", e.target.value)}
-                />
-                              {errors.sector && (
-                  <p className="text-red-500 text-xs">{errors.sector}</p>
-                )}
-                <Select
-                  value={data.contract_type}
-                  onChange={(value: string) => setData("contract_type", value)}
-                  placeholder="Type de contrat"
-                  options={[
-                    { value: "CDI", label: "CDI" },
-                    { value: "CDD", label: "CDD" },
-                    { value: "Freelance", label: "Freelance" },
-                    { value: "Stage", label: "Stage" },
-                  ]}
-                />
-                              {errors.contract_type && (
-                  <p className="text-red-500 text-xs">{errors.contract_type}</p>
-                )}
-
-                <input
-                  className={inputClass}
-                  placeholder="Localisation"
-                  value={data.location}
-                  onChange={(e) => setData("location", e.target.value)}
-                />
-                              {errors.location && (
-                  <p className="text-red-500 text-xs">{errors.location}</p>
-                )}
-
-                <input
-                  className={inputClass}
-                  placeholder="Salaire"
-                  value={data.salary_range}
-                  onChange={(e) => setData("salary_range", e.target.value)}
-                />
-                              {errors.salary_range && (
-                  <p className="text-red-500 text-xs">{errors.salary_range}</p>
-                )}
-              </div>
-            </div>
-
-            <div className={cardClass}>
-              <h2 className="mb-3 font-semibold">Critères candidat</h2>
-
-              <input
-                className={inputClass}
-                placeholder="Expérience (années)"
-                value={data.min_experience_years}
-                onChange={(e) =>
-                  setData("min_experience_years", e.target.value)
-                }
-              />
-              {errors.min_experience_years && (
-                <p className="text-red-500 text-xs">{errors.min_experience_years}</p>
-              )}
-
-              <input
-                className={`${inputClass} mt-3`}
-                placeholder="Niveau d'études"
-                value={data.education_level}
-                onChange={(e) => setData("education_level", e.target.value)}
-              />
-              {errors.education_level && (
-                <p className="text-red-500 text-xs">{errors.education_level}</p>
-              )}
-
-              <input
-                className={`${inputClass} mt-3`}
-                placeholder="Langues"
-                value={data.required_skills}
-                onChange={(e) => setData("required_skills", e.target.value)}
-              />
-              {errors.required_skills && (
-                <p className="text-red-500 text-xs">{errors.required_skills}</p>
-              )}
-
-                <input
-                  className={`${inputClass} mt-3`}
-                  placeholder="Age préféré"
-                  value={data.age_range}
-                  onChange={(e) => setData("age_range", e.target.value)}
-                />
-              {errors.age_range && (
-                <p className="text-red-500 text-xs">{errors.age_range}</p>
-              )}
-
-              <div className="mt-3">
-                  <Select
-                    value={data.gender_pref}
-                    onChange={(value: string) => setData("gender_pref", value)}
-                    placeholder="Préférence de genre"
-                    options={[
-                      { value: "M", label: "Homme" },
-                      { value: "F", label: "Femme" },
-                    ]}
-                  />
-              {errors.gender_pref && (
-                <p className="text-red-500 text-xs">{errors.gender_pref}</p>
-              )}
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT */}
-          <div className="space-y-4">
-
-            <div className={cardClass}>
-              <h2 className="mb-3 font-semibold">Description</h2>
-
-              <textarea
-                className={inputClass + " min-h-[100px]"}
-                placeholder="Mission principale"
-                value={data.mission_description}
-                onChange={(e) =>
-                  setData("mission_description", e.target.value)
-                }
-              />
-              {errors.mission_description && (
-                <p className="text-red-500 text-xs">{errors.mission_description}</p>
-              )}
-
-              <textarea
-                className={inputClass + " mt-3"}
-                placeholder="Soft skills"
-                value={data.soft_skills}
-                onChange={(e) => setData("soft_skills", e.target.value)}
-              />
-              {errors.soft_skills && (
-                <p className="text-red-500 text-xs">{errors.soft_skills}</p>
-              )}
-            </div>
-
-            {/* SCORING */}
-            <div className={cardClass}>
-              <h2 className="mb-3 font-semibold">Poids scoring IA</h2>
-
-              {Object.keys(data.scoring_weights).map((key) => (
-                <div key={key} className="mb-3">
-                  <label className={labelClass}>{key}</label>
-                  <input
-                    type="number"
-                    className={inputClass}
-                    value={
-                      data.scoring_weights[
-                        key as keyof typeof data.scoring_weights
-                      ]
-                    }
-                    onChange={(e) =>
-                      setData("scoring_weights", {
-                        ...data.scoring_weights,
-                        [key]: Number(e.target.value),
-                      })
-                    }
-                  />
-                  {errors.scoring_weights?.[key] && (
-                    <p className="text-red-500 text-xs">{errors.scoring_weights[key]}</p>
-                  )}
+            <div className="bg-ds-bg min-h-full px-6 py-8">
+                {/* Header */}
+                <div className="mb-6 flex items-start gap-3">
+                    <Link
+                        href={route('dashboard.briefs.index')}
+                        className="border-ds-border text-ds-text3 hover:border-ds-accent/40 hover:bg-ds-accent/[0.06] hover:text-ds-accent mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition"
+                        title={t('briefs.create_briefs.actions.back')}
+                    >
+                        <ChevronLeft size={16} />
+                    </Link>
+                    <div>
+                        <p className="text-ds-text3 mb-1 text-[12px]">
+                            <Link href={route('dashboard.briefs.index')} className="hover:text-ds-text2 transition">
+                                Sourcing
+                            </Link>{' '}
+                            <span className="text-ds-text2">› {t('briefs.create_briefs.create.title')}</span>
+                        </p>
+                        <h1 className="font-heading text-ds-text text-[26px] font-bold">{t('briefs.create_briefs.create.title')}</h1>
+                        <p className="text-ds-text2 mt-1 text-[14px]">{t('briefs.create_briefs.create.subtitle')}</p>
+                    </div>
                 </div>
-              ))}
+
+                <form onSubmit={submit} noValidate className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                    {/* ── LEFT ── */}
+                    <div className="space-y-5">
+                        {/* Position info */}
+                        <FormCard title={t('briefs.create_briefs.create.sections.position')}>
+                            <div className="space-y-4">
+                                <FormField label={t('briefs.create_briefs.fields.title')} required error={errors.title}>
+                                    <input
+                                        className={inputCls(errors.title)}
+                                        placeholder={t('briefs.create_briefs.fields.title_placeholder')}
+                                        value={data.title}
+                                        maxLength={100}
+                                        onChange={(e) => setData('title', e.target.value)}
+                                    />
+                                </FormField>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <FormField label={t('briefs.create_briefs.fields.sector')} required error={errors.sector}>
+                                        <ReactSelect
+                                            classNamePrefix="rs"
+                                            options={SECTORS}
+                                            value={toOption(data.sector, SECTORS)}
+                                            onChange={(opt) => setData('sector', opt?.value ?? '')}
+                                            placeholder={t('briefs.create_briefs.fields.sector_placeholder')}
+                                        />
+                                    </FormField>
+
+                                    <FormField label={t('briefs.create_briefs.fields.contract_type')} required error={errors.contract_type}>
+                                        <ReactSelect
+                                            classNamePrefix="rs"
+                                            options={contractTypes}
+                                            value={toOption(data.contract_type, contractTypes)}
+                                            onChange={(opt) => setData('contract_type', opt?.value ?? '')}
+                                            placeholder={t('briefs.create_briefs.fields.contract_type_placeholder')}
+                                        />
+                                    </FormField>
+
+                                    <FormField label={t('briefs.create_briefs.fields.location')} required error={errors.location}>
+                                        <input
+                                            className={inputCls(errors.location)}
+                                            placeholder={t('briefs.create_briefs.fields.location_placeholder')}
+                                            value={data.location}
+                                            onChange={(e) => setData('location', e.target.value)}
+                                        />
+                                    </FormField>
+
+                                    <FormField label={t('briefs.create_briefs.fields.salary_range')} error={errors.salary_range}>
+                                        <input
+                                            className={inputCls(errors.salary_range)}
+                                            placeholder={t('briefs.create_briefs.fields.salary_range_placeholder')}
+                                            value={data.salary_range}
+                                            onChange={(e) => setData('salary_range', e.target.value)}
+                                        />
+                                    </FormField>
+                                </div>
+                            </div>
+                        </FormCard>
+
+                        {/* Candidate criteria */}
+                        <FormCard title={t('briefs.create_briefs.create.sections.candidate')}>
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <FormField
+                                        label={t('briefs.create_briefs.fields.min_experience_years')}
+                                        required
+                                        error={errors.min_experience_years}
+                                    >
+                                        <ReactSelect
+                                            classNamePrefix="rs"
+                                            options={EXPERIENCE_OPTIONS}
+                                            value={toOption(data.min_experience_years, EXPERIENCE_OPTIONS)}
+                                            onChange={(opt) => setData('min_experience_years', opt?.value ?? '')}
+                                            placeholder={t('briefs.create_briefs.fields.min_experience_years_placeholder')}
+                                        />
+                                    </FormField>
+
+                                    <FormField label={t('briefs.create_briefs.fields.education_level')} required error={errors.education_level}>
+                                        <ReactSelect
+                                            classNamePrefix="rs"
+                                            options={EDUCATION_LEVELS}
+                                            value={toOption(data.education_level, EDUCATION_LEVELS)}
+                                            onChange={(opt) => setData('education_level', opt?.value ?? '')}
+                                            placeholder={t('briefs.create_briefs.fields.education_level_placeholder')}
+                                        />
+                                    </FormField>
+
+                                    <FormField label={t('briefs.create_briefs.fields.gender_pref')} error={errors.gender_pref}>
+                                        <ReactSelect
+                                            classNamePrefix="rs"
+                                            options={genderPrefs}
+                                            value={toOption(data.gender_pref, genderPrefs)}
+                                            onChange={(opt) => setData('gender_pref', opt?.value ?? '')}
+                                            placeholder={t('briefs.create_briefs.fields.gender_pref_placeholder')}
+                                            isClearable
+                                        />
+                                    </FormField>
+
+                                    <FormField label={t('briefs.create_briefs.fields.age_range')} error={errors.age_range}>
+                                        <ReactSelect
+                                            classNamePrefix="rs"
+                                            options={AGE_RANGE_OPTIONS}
+                                            value={toOption(data.age_range, AGE_RANGE_OPTIONS)}
+                                            onChange={(opt) => setData('age_range', opt?.value ?? '')}
+                                            placeholder={t('briefs.create_briefs.fields.age_range_placeholder')}
+                                            isClearable
+                                        />
+                                    </FormField>
+                                </div>
+
+                                <FormField label={t('briefs.create_briefs.fields.languages')} error={errors.languages}>
+                                    <ReactSelect
+                                        classNamePrefix="rs"
+                                        isMulti
+                                        options={LANGUAGE_OPTIONS}
+                                        value={toMultiOptions(data.languages, LANGUAGE_OPTIONS)}
+                                        onChange={(opts) => setData('languages', opts.map((o) => o.value).join(', '))}
+                                        placeholder={t('briefs.create_briefs.fields.languages_placeholder')}
+                                    />
+                                </FormField>
+                            </div>
+                        </FormCard>
+                    </div>
+
+                    {/* ── RIGHT ── */}
+                    <div className="space-y-5">
+                        {/* Description */}
+                        <FormCard title={t('briefs.create_briefs.create.sections.description')}>
+                            <div className="space-y-4">
+                                <FormField
+                                    label={t('briefs.create_briefs.fields.mission_description')}
+                                    required
+                                    error={errors.mission_description}
+                                    hint={`${data.mission_description.length}/2000`}
+                                >
+                                    <textarea
+                                        className={textareaCls(errors.mission_description)}
+                                        placeholder={t('briefs.create_briefs.fields.mission_description_placeholder')}
+                                        value={data.mission_description}
+                                        maxLength={2000}
+                                        rows={4}
+                                        onChange={(e) => setData('mission_description', e.target.value)}
+                                    />
+                                </FormField>
+
+                                <FormField label={t('briefs.create_briefs.fields.required_skills')} required error={errors.required_skills}>
+                                    <textarea
+                                        className={textareaCls(errors.required_skills)}
+                                        placeholder={t('briefs.create_briefs.fields.required_skills_placeholder')}
+                                        value={data.required_skills}
+                                        rows={3}
+                                        onChange={(e) => setData('required_skills', e.target.value)}
+                                    />
+                                </FormField>
+
+                                <FormField label={t('briefs.create_briefs.fields.soft_skills')} error={errors.soft_skills}>
+                                    <textarea
+                                        className={textareaCls(errors.soft_skills)}
+                                        placeholder={t('briefs.create_briefs.fields.soft_skills_placeholder')}
+                                        value={data.soft_skills}
+                                        rows={3}
+                                        onChange={(e) => setData('soft_skills', e.target.value)}
+                                    />
+                                </FormField>
+                            </div>
+                        </FormCard>
+
+                        {/* Scoring weights */}
+                        <FormCard title="">
+                            <ScoringSlider
+                                weights={data.scoring_weights}
+                                onChange={(w) => setData('scoring_weights', w)}
+                                error={errors['scoring_weights'] as string | undefined}
+                            />
+                        </FormCard>
+
+                        {/* Actions */}
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={saveDraft}
+                                disabled={processing}
+                                className="border-ds-border text-ds-text2 hover:bg-ds-surface hover:text-ds-text flex-1 rounded-lg border py-2.5 text-[13px] font-medium transition disabled:opacity-50"
+                            >
+                                {t('briefs.create_briefs.actions.save_draft')}
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={processing}
+                                className="bg-ds-accent flex-1 rounded-lg py-2.5 text-[13px] font-semibold text-white transition hover:bg-[#7C74FF] disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {processing ? t('briefs.create_briefs.actions.creating') : `${t('briefs.create_briefs.actions.create')} →`}
+                            </button>
+                        </div>
+                    </div>
+                </form>
             </div>
-
-            {/* ACTIONS */}
-            <div className="flex gap-3">
-              <button
-                type="button"
-                className="w-1/2 border border-gray-300 dark:border-white/10 py-2 rounded-lg"
-              >
-                Brouillon
-              </button>
-
-              <button
-                type="submit"
-                disabled={processing}
-                className="w-1/2 bg-[#6C63FF] hover:bg-[#5a52ff] py-2 rounded-lg font-semibold text-white"
-              >
-                Créer brief
-              </button>
-            </div>
-
-          </div>
-        </form>
-      </div>
-
-    </AppSidebarLayout>
-  );
+        </AppLayout>
+    );
 }

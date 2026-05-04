@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Brief;
 
-use App\Http\Controllers\Controller;
 use App\Enums\BriefStatus;
 use App\Enums\ContractType;
 use App\Enums\GenderPref;
+use App\Http\Controllers\Controller;
 use App\Models\Brief;
 use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
@@ -26,16 +26,17 @@ class BriefController extends Controller
     {
         return [
             'title' => 'required|string|max:255',
-            'sector' => 'nullable|string|max:255',
-            'contract_type' => ['nullable', Rule::enum(ContractType::class)],
-            'location' => 'nullable|string|max:255',
+            'sector' => 'required|string|max:255',
+            'contract_type' => ['required', Rule::enum(ContractType::class)],
+            'location' => 'required|string|max:255',
             'salary_range' => 'nullable|string|max:255',
-            'min_experience_years' => 'nullable|integer|min:0',
-            'education_level' => 'nullable|string|max:255',
+            'min_experience_years' => 'required|integer|min:0',
+            'education_level' => 'required|string|max:255',
+            'languages' => 'nullable|string',
             'gender_pref' => ['nullable', Rule::enum(GenderPref::class)],
             'age_range' => 'nullable|string|max:50',
-            'mission_description' => 'nullable|string',
-            'required_skills' => 'nullable|string',
+            'mission_description' => 'required|string',
+            'required_skills' => 'required|string',
             'soft_skills' => 'nullable|string',
             'scoring_weights' => 'nullable|array',
             'scoring_weights.experience' => 'required_with:scoring_weights|integer|min:0|max:100',
@@ -59,6 +60,7 @@ class BriefController extends Controller
         $logger = app(ActivityLogger::class);
 
         try {
+
             $briefs = Brief::with('creator')
                 ->when($request->search, fn ($q, $s) => $q->where('title', 'like', "%$s%"))
                 ->when($request->status, fn ($q, $s) => $q->where('status', $s))
@@ -112,6 +114,7 @@ class BriefController extends Controller
         $logger = app(ActivityLogger::class);
 
         try {
+
             $logger->log(
                 'brief.create',
                 'Affichage du formulaire de création d\'un brief.',
@@ -120,9 +123,15 @@ class BriefController extends Controller
             );
 
             return Inertia::render('Briefs/Create', [
-                'contractTypes' => ContractType::cases(),
-                'genderPrefs' => GenderPref::cases(),
-                'statuses' => BriefStatus::cases(),
+                'contractTypes' => array_map(
+                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
+                    ContractType::cases()
+                ),
+                'genderPrefs' => array_map(
+                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
+                    GenderPref::cases()
+                ),
+
             ]);
         } catch (\Throwable $e) {
             $logger->log(
@@ -132,7 +141,7 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
-            return Inertia::render('Briefs/Create', [
+            return Inertia::render('Briefs/Fallback', [
                 'error' => 'Impossible d\'afficher le formulaire de création.',
             ]);
         }
@@ -158,24 +167,22 @@ class BriefController extends Controller
             $brief->created_by = auth()->id();
             $brief->save();
 
-            $logger->log(
-                'brief.store',
-                "Création du brief « {$brief->title} » (ID : {$brief->id}).",
-                ['brief_id' => $brief->id, 'title' => $brief->title],
-                [Brief::class]
-            );
+            try {
+                $logger->log(
+                    'brief.store',
+                    "Création du brief « {$brief->title} » (ID : {$brief->id}).",
+                    ['brief_id' => $brief->id, 'title' => $brief->title],
+                    [Brief::class]
+                );
+            } catch (\Throwable) {
+            }
 
-            return redirect()->route('briefs.index')
+            return redirect()->route('dashboard.briefs.index')
                 ->with('success', 'Brief créé avec succès.');
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Throwable $e) {
-            $logger->log(
-                'brief.store.error',
-                'Erreur lors de la création du brief : '.$e->getMessage(),
-                ['exception' => $e->getMessage()],
-                [Brief::class]
-            );
+            \Log::error('brief.store error: '.$e->getMessage(), ['exception' => $e]);
 
             return Inertia::render('Briefs/Fallback', [
                 'error' => 'Impossible de créer le brief.',
@@ -240,9 +247,18 @@ class BriefController extends Controller
 
             return Inertia::render('Briefs/Edit', [
                 'brief' => $brief,
-                'contractTypes' => ContractType::cases(),
-                'genderPrefs' => GenderPref::cases(),
-                'statuses' => BriefStatus::cases(),
+                'contractTypes' => array_map(
+                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
+                    ContractType::cases()
+                ),
+                'genderPrefs' => array_map(
+                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
+                    GenderPref::cases()
+                ),
+                'statuses' => array_map(
+                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
+                    BriefStatus::cases()
+                ),
             ]);
         } catch (\Throwable $e) {
             $logger->log(
@@ -286,40 +302,29 @@ class BriefController extends Controller
             $statutAvant = $brief->status;
             $brief->update($validated);
 
-            $champsModifiés = implode(', ', array_keys($modifications));
-            $descriptionBase = "Mise à jour du brief « {$brief->title} » (ID : {$brief->id}).";
-            $descriptionDetail = count($modifications)
-                ? " Champs modifiés : {$champsModifiés}."
-                : ' Aucune modification détectée.';
+            try {
+                $champsModifiés = implode(', ', array_keys($modifications));
+                $descriptionBase = "Mise à jour du brief « {$brief->title} » (ID : {$brief->id}).";
+                $descriptionDetail = count($modifications)
+                    ? " Champs modifiés : {$champsModifiés}."
+                    : ' Aucune modification détectée.';
+                $transitionStatut = $statutAvant !== $brief->status
+                    ? " Changement de statut : « {$statutAvant} » → « {$brief->status} »."
+                    : '';
+                $logger->log(
+                    'brief.update',
+                    $descriptionBase.$descriptionDetail.$transitionStatut,
+                    ['brief_id' => $brief->id, 'modifications' => $modifications],
+                    [Brief::class]
+                );
+            } catch (\Throwable) {
+            }
 
-            $transitionStatut = $statutAvant !== $brief->status
-                ? " Changement de statut : « {$statutAvant} » → « {$brief->status} »."
-                : '';
-
-            $logger->log(
-                'brief.update',
-                $descriptionBase.$descriptionDetail.$transitionStatut,
-                [
-                    'brief_id' => $brief->id,
-                    'modifications' => $modifications,
-                    'statut_avant' => $statutAvant,
-                    'statut_après' => $brief->status,
-                ],
-                [Brief::class]
-            );
-
-            return redirect()->route('briefs.index')
+            return redirect()->route('dashboard.briefs.index')
                 ->with('success', 'Brief mis à jour avec succès.');
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Throwable $e) {
-            $logger->log(
-                'brief.update.error',
-                "Erreur lors de la mise à jour du brief (ID : {$brief->id}) : ".$e->getMessage(),
-                ['brief_id' => $brief->id, 'exception' => $e->getMessage()],
-                [Brief::class]
-            );
-
             return Inertia::render('Briefs/Fallback', [
                 'error' => 'Impossible de mettre à jour ce brief.',
                 'brief' => $brief,
@@ -351,7 +356,7 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
-            return redirect()->route('briefs.index')
+            return redirect()->route('dashboard.briefs.index')
                 ->with('success', 'Brief supprimé avec succès.');
         } catch (\Throwable $e) {
             $logger->log(
