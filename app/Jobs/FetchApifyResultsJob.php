@@ -47,7 +47,7 @@ class FetchApifyResultsJob implements ShouldQueue
             ->get("https://api.apify.com/v2/actor-runs/{$this->run->run_id}");
 
         if ($response->status() === 429) {
-            $this->release(3600);
+            $this->release(3600 + random_int(0, 300));
 
             return;
         }
@@ -56,7 +56,7 @@ class FetchApifyResultsJob implements ShouldQueue
         $status = $data['status'] ?? 'FAILED';
 
         if (($data['statusMessage'] ?? '') === 'rate limited') {
-            $this->release(3600);
+            $this->release(3600 + random_int(0, 300));
 
             return;
         }
@@ -86,20 +86,5 @@ class FetchApifyResultsJob implements ShouldQueue
     {
         $this->run->update(['status' => 'failed']);
         $this->fail("Apify run {$this->run->run_id} ended with: {$status}");
-    }
-
-    /**
-     * Fetch the raw Apify run status string.
-     * Not used in the main flow but kept as a utility for debugging/testing.
-     *
-     * @param  string  $runId  The Apify run ID.
-     * @return string One of: READY, RUNNING, SUCCEEDED, FAILED, ABORTING, ABORTED, TIMED-OUT.
-     */
-    private function checkApifyStatus(string $runId): string
-    {
-        $response = Http::withToken(config('services.apify.token'))
-            ->get("https://api.apify.com/v2/actor-runs/{$runId}");
-
-        return $response->json('data.status', 'FAILED');
     }
 }

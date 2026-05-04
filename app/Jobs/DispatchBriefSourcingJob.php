@@ -34,6 +34,9 @@ class DispatchBriefSourcingJob implements ShouldQueue
      */
     public function handle(BriefToQueryConverter $converter, ApifyJobDispatcher $dispatcher): void
     {
+        if ($this->brief->apifyRuns()->whereIn('status', ['pending', 'succeeded'])->exists()) {
+            return;
+        }
         $query = $converter->convert($this->brief);
         $run = $dispatcher->dispatch($this->brief, $query);
         FetchApifyResultsJob::dispatch($run)->delay(now()->addMinutes(1));

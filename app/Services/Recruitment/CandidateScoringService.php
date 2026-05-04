@@ -4,54 +4,134 @@ namespace App\Services\Recruitment;
 
 use App\Models\Brief;
 use App\Models\Candidate;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 /**
- * Scores a candidate against a job brief across five weighted dimensions.
- * Each dimension returns a raw 0–100 float, which is then multiplied by
- * its weight fraction before being summed into the final score.
+ * Scores candidates against a job brief across six weighted dimensions.
+ *
+ * Architecture: deterministic dimensions (experience, education, location) are
+ * computed in PHP. Semantic dimensions (required_skills, soft_skills, sector)
+ * are scored by Claude Haiku in a SINGLE batched API call covering ALL candidates
+ * at once — keeping cost to ~$0.02 per sourcing run regardless of candidate count.
+ *
+ * Usage (single candidate):
+ *   $result = $service->score($brief, $candidate);
+ *   // ['score' => 74.5, 'breakdown' => [...]]
+ *
+ * Usage (bulk — preferred, triggers one AI call for the whole batch):
+ *   $results = $service->scoreBatch($brief, $candidates);
+ *   // ['linkedin_url' => ['score' => ..., 'breakdown' => ...], ...]
  */
 class CandidateScoringService
 {
     /**
-     * Score a candidate against a brief.
-     * Uses brief's scoring_weights if set, otherwise falls back to equal 20/20 weights.
+     * Dimensions scored deterministically in PHP (no AI cost).
+     */
+    private const DETERMINISTIC_DIMENSIONS = ['experience', 'education', 'location'];
+
+    /**
+     * Dimensions scored semantically via a single batched Claude call.
+     */
+    private const AI_DIMENSIONS = ['required_skills', 'soft_skills', 'sector'];
+
+    // -------------------------------------------------------------------------
+    // Public API
+    // -------------------------------------------------------------------------
+
+    /**
+     * Score a single candidate. Triggers one AI call for the three semantic
+     * dimensions. If you have multiple candidates, use scoreBatch() instead
+     * to share that cost across the whole set.
      *
-     * @param  Brief  $brief  The job brief defining requirements and weights.
-     * @param  Candidate  $candidate  The candidate to evaluate.
      * @return array{score: float, breakdown: array<string, float>}
-     *                                                              e.g. ['score' => 74.5, 'breakdown' => ['experience' => 20.0, 'education' => 18.0, ...]]
      */
     public function score(Brief $brief, Candidate $candidate): array
     {
-        $weights = $brief->scoring_weights ?? $this->defaultWeights();
+        $results = $this->scoreBatch($brief, collect([$candidate]));
+        $key = $candidate->linkedin_url ?? 0;
+
+        return $results[$key] ?? $this->fallbackScore($brief);
+    }
+
+    /**
+     * Score a collection of candidates against a brief in one AI call.
+     * This is the preferred entry point from ApifyCandidateImporter.
+     *
+     * @param  Collection<int, Candidate>  $candidates
+     * @return array<string, array{score: float, breakdown: array<string, float>}>
+     *                                                                             Keyed by linkedin_url (falls back to collection index).
+     */
+    public function scoreBatch(Brief $brief, Collection $candidates): array
+    {
+        if ($candidates->isEmpty()) {
+            return [];
+        }
+
+        $weights = $this->resolveWeights($brief);
         $total = array_sum($weights) ?: 100;
 
-        $breakdown = [
-            'experience' => $this->scoreExperience($brief, $candidate) * ($weights['experience'] / $total),
-            'education' => $this->scoreEducation($brief, $candidate) * ($weights['education'] / $total),
-            'sector' => $this->scoreSector($brief, $candidate) * ($weights['sector'] / $total),
-            'soft_skills' => $this->scoreSoftSkills($brief, $candidate) * ($weights['soft_skills'] / $total),
-            'location' => $this->scoreLocation($brief, $candidate) * ($weights['location'] / $total),
-            // 'required_skills' => $this->scoreSkills($brief, $candidate) * ($weights['required_skills'] / $total),
-        ];
+        // 1. Compute deterministic scores for every candidate (pure PHP, free).
+        $deterministicScores = $candidates->mapWithKeys(
+            fn (Candidate $c, int $i) => [
+                ($c->linkedin_url ?? $i) => $this->computeDeterministicDimensions($brief, $c),
+            ]
+        )->all();
 
+        // 2. Get AI scores for all candidates in one call.
+        $aiScores = $this->fetchAiScoresBatch($brief, $candidates);
+
+        // 3. Merge and apply weights.
+        $results = [];
+
+        foreach ($candidates as $i => $candidate) {
+            $key = $candidate->linkedin_url ?? $i;
+            $dims = array_merge(
+                $deterministicScores[$key] ?? [],
+                $aiScores[$key] ?? $this->neutralAiDimensions(),
+            );
+
+            $breakdown = [];
+            foreach ($dims as $dimension => $raw) {
+                $weight = $weights[$dimension] ?? 0;
+                $breakdown[$dimension] = $raw * ($weight / $total);
+            }
+
+            $results[$key] = [
+                'score' => round(array_sum($breakdown), 2),
+                'breakdown' => $breakdown,
+            ];
+        }
+
+        return $results;
+    }
+
+    // -------------------------------------------------------------------------
+    // Deterministic scoring (PHP only)
+    // -------------------------------------------------------------------------
+
+    /**
+     * @return array<string, float> Raw 0–100 scores for deterministic dimensions.
+     */
+    private function computeDeterministicDimensions(Brief $brief, Candidate $candidate): array
+    {
         return [
-            'score' => round(array_sum($breakdown), 2),
-            'breakdown' => $breakdown,
+            'experience' => $this->scoreExperience($brief, $candidate),
+            'education' => $this->scoreEducation($brief, $candidate),
+            'location' => $this->scoreLocation($brief, $candidate),
         ];
     }
 
     /**
-     * Score how well the candidate's experience meets the minimum requirement.
-     * Returns 50.0 if either value is missing (neutral / no penalty).
+     * Ratio-based experience score.
      *
-     * Scoring tiers (ratio = candidate_years / required_years):
-     *   >= 1.00 → 100  (meets or exceeds)
-     *   >= 0.75 → 75   (close)
-     *   >= 0.50 → 50   (halfway)
-     *   <  0.50 → 20   (significantly under)
-     *
-     * @return float 0–100
+     * Tiers (candidate_years / required_years):
+     *   >= 1.00 → 100   meets or exceeds
+     *   >= 0.75 →  75   close
+     *   >= 0.50 →  50   halfway
+     *   <  0.50 →  20   significantly under
+     *   missing →  50   neutral (no data = no penalty)
      */
     private function scoreExperience(Brief $brief, Candidate $candidate): float
     {
@@ -61,52 +141,62 @@ class CandidateScoringService
 
         $ratio = $candidate->experience_years / $brief->min_experience_years;
 
-        if ($ratio >= 1.0) {
-            return 100.0;
-        }
-        if ($ratio >= 0.75) {
-            return 75.0;
-        }
-        if ($ratio >= 0.5) {
-            return 50.0;
-        }
-
-        return 20.0;
+        return match (true) {
+            $ratio >= 1.0 => 100.0,
+            $ratio >= 0.75 => 75.0,
+            $ratio >= 0.5 => 50.0,
+            default => 20.0,
+        };
     }
 
     /**
-     * Score sector relevance using PHP's similar_text() percentage.
-     * Returns 50.0 if either sector is missing.
-     * Note: similar_text can return low scores for abbreviations vs full names (e.g. "IT" vs "Information Technology").
+     * Rank-based education score.
      *
-     * @return float 0–100
-     */
-    private function scoreSector(Brief $brief, Candidate $candidate): float
-    {
-        if (! $brief->sector || ! $candidate->sector) {
-            return 50.0;
-        }
-
-        $briefWords = collect(explode(' ', strtolower($brief->sector)))->filter();
-        $candidateText = strtolower($candidate->sector.' '.($candidate->headline ?? ''));
-        $hits = $briefWords->filter(fn ($w) => str_contains($candidateText, $w))->count();
-
-        return $briefWords->count() > 0
-            ? min(100, ($hits / $briefWords->count()) * 130) // boost partial matches
-            : 50.0;
-    }
-
-    /**
-     * Score location match by checking how many comma-separated parts of the brief's
-     * location appear in the candidate's location string.
-     * Returns 50.0 if either location is missing.
+     * Normalized level map (matches extractHighestDegree output from importer):
+     *   bac=1, bac+2=2, bac+3/licence=3, bac+4=4, bac+5/master/mba=5, phd/doctorat=6
      *
      * Scoring:
-     *   2+ parts match → 100  (e.g. "Rabat" and "Morocco" both found)
-     *   1 part matches → 60   (e.g. same country but different city)
-     *   0 parts match  → 20
+     *   candidate >= required     → 100
+     *   candidate == required - 1 →  65   one level below
+     *   candidate <  required - 1 →  20
+     *   unrecognized or missing   →  50   neutral
+     */
+    private function scoreEducation(Brief $brief, Candidate $candidate): float
+    {
+        if (! $brief->education_level || ! $candidate->education_level) {
+            return 50.0;
+        }
+
+        $levels = [
+            'bac' => 1, 'bac+2' => 2, 'bac+3' => 3,
+            'bac+4' => 4, 'bac+5' => 5, 'licence' => 3,
+            'master' => 5, 'mba' => 5, 'phd' => 6,
+            'doctorat' => 6, 'bachelor' => 3, 'bsc' => 3,
+            'msc' => 5, 'doctor' => 6,
+        ];
+
+        $required = $levels[strtolower($brief->education_level)] ?? null;
+        $actual = $levels[strtolower($candidate->education_level)] ?? null;
+
+        if (! $required || ! $actual) {
+            return 50.0;
+        }
+
+        return match (true) {
+            $actual >= $required => 100.0,
+            $actual === $required - 1 => 65.0,
+            default => 20.0,
+        };
+    }
+
+    /**
+     * Location match by part-count.
      *
-     * @return float 0–100
+     * Scoring:
+     *   2+ parts match → 100   exact city + country
+     *   1 part matches →  60   same country, different city
+     *   0 parts match  →  20
+     *   missing        →  50   neutral
      */
     private function scoreLocation(Brief $brief, Candidate $candidate): float
     {
@@ -117,6 +207,7 @@ class CandidateScoringService
         $briefParts = collect(explode(',', $brief->location))
             ->map(fn ($p) => strtolower(trim($p)))
             ->filter();
+
         $candidateLoc = strtolower($candidate->location);
         $hits = $briefParts->filter(fn ($p) => str_contains($candidateLoc, $p))->count();
 
@@ -127,92 +218,216 @@ class CandidateScoringService
         };
     }
 
+    // -------------------------------------------------------------------------
+    // Batched AI scoring
+    // -------------------------------------------------------------------------
+
     /**
-     * Score education level by mapping both brief and candidate values to a numeric rank,
-     * then comparing them. Returns 50.0 if either value is missing or unrecognized.
+     * Send all candidates to Claude Haiku in one request and parse back
+     * per-candidate scores for required_skills, soft_skills, and sector.
      *
-     * Rank map: Bac=1, Bac+2=2, Bac+3/licence=3, Bac+4=4, Bac+5/master/mba=5, phd/doctorat=6
+     * Prompt design priorities:
+     *   - One JSON object with all candidates keyed by index avoids repeated context.
+     *   - Haiku (not Sonnet) keeps cost at ~$0.01–0.02 per 50-candidate run.
+     *   - max_tokens is capped at 600: 50 candidates × ~10 tokens each + overhead.
+     *   - On any parse failure, neutral 50.0 scores are used (no exception thrown).
      *
-     * Scoring:
-     *   candidate >= required     → 100
-     *   candidate == required - 1 → 65  (one level below)
-     *   candidate <  required - 1 → 20
-     *
-     * @return float 0–100
+     * @param  Collection<int, Candidate>  $candidates
+     * @return array<string, array{required_skills: float, soft_skills: float, sector: float}>
+     *                                                                                         Keyed by linkedin_url (falls back to collection index).
      */
-    private function scoreEducation(Brief $brief, Candidate $candidate): float
+    private function fetchAiScoresBatch(Brief $brief, Collection $candidates): array
     {
-        if (! $brief->education_level || ! $candidate->education_level) {
-            return 50.0;
-        }
+        $briefContext = $this->buildBriefContext($brief);
+        $candidateList = $this->buildCandidateList($candidates);
 
-        $levels = [
-            'bac' => 1, 'bac+2' => 2, 'bac+3' => 3, 'bac+4' => 4, 'bac+5' => 5,
-            'licence' => 3, 'master' => 5, 'mba' => 5, 'phd' => 6, 'doctorat' => 6,
-        ];
+        $prompt = <<<PROMPT
+            You are a recruitment scoring engine. Score each candidate 0–100 on three dimensions.
 
-        $required = $levels[strtolower($brief->education_level)] ?? null;
-        $actual = $levels[strtolower($candidate->education_level)] ?? null;
+            ## Job brief
+            {$briefContext}
 
-        if (! $required || ! $actual) {
-            return 50.0;
-        }
-        if ($actual >= $required) {
-            return 100.0;
-        }
-        if ($actual === $required - 1) {
-            return 65.0;
-        }
+            ## Candidates
+            {$candidateList}
 
-        return 20.0;
+            ## Instructions
+            Return ONLY a valid JSON object — no prose, no markdown fences.
+            Each key is the candidate index (integer). Each value has three integer fields.
+
+            Scoring guidance:
+            - required_skills: how many required skills does the candidate demonstrably have? 100 = all, 0 = none.
+            - soft_skills: how well does headline + summary reflect the required soft skills? Consider synonyms and implied traits.
+            - sector: how relevant is the candidate's background to the job sector? Resolve abbreviations (IT = Information Technology).
+
+            Example output shape (indices are illustrative):
+            {"0":{"required_skills":85,"soft_skills":70,"sector":90},"1":{"required_skills":40,"soft_skills":60,"sector":75}}
+            PROMPT;
+
+        try {
+            $response = Http::withHeaders([
+                'x-api-key' => config('services.anthropic.key'),
+                'anthropic-version' => '2023-06-01',
+                'content-type' => 'application/json',
+            ])->timeout(30)->post('https://api.anthropic.com/v1/messages', [
+                'model' => 'claude-haiku-4-5-20251001',
+                'max_tokens' => 600,
+                'messages' => [['role' => 'user', 'content' => trim($prompt)]],
+            ]);
+
+            $text = $response->json('content.0.text', '{}');
+            $text = preg_replace('/^```(?:json)?\s*|\s*```$/s', '', trim($text));
+            $parsed = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
+
+            return $this->mapAiResponseToKeys($candidates, $parsed);
+
+        } catch (\Throwable $e) {
+            Log::warning('AI batch scoring failed, using neutral fallbacks.', [
+                'brief_id' => $brief->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            // Graceful degradation: every candidate gets neutral AI scores.
+            return $candidates->mapWithKeys(
+                fn (Candidate $c, int $i) => [
+                    ($c->linkedin_url ?? $i) => $this->neutralAiDimensions(),
+                ]
+            )->all();
+        }
     }
 
     /**
-     * Score soft skills by checking how many of the brief's required soft skills
-     * appear as substrings in the candidate's summary text.
-     * Returns 50.0 if no soft skills are required.
-     *
-     * Note: relies on substring matching — "problem solving" won't match "problem-solver".
-     *
-     * @return float 0–100
+     * Build a compact brief summary for the AI prompt.
+     * Only fields relevant to AI dimensions are included to save tokens.
      */
-    private function scoreSoftSkills(Brief $brief, Candidate $candidate): float
+    private function buildBriefContext(Brief $brief): string
     {
-        if (! $brief->soft_skills) {
-            return 50.0;
+        $parts = ["Title: {$brief->title}"];
+
+        if ($brief->sector) {
+            $parts[] = "Sector: {$brief->sector}";
+        }
+        if ($brief->required_skills) {
+            $parts[] = "Required skills: {$brief->required_skills}";
+        }
+        if ($brief->soft_skills) {
+            $parts[] = "Soft skills: {$brief->soft_skills}";
         }
 
-        $required = collect(explode(',', $brief->soft_skills))->map(fn ($s) => strtolower(trim($s)));
-        $candidateText = strtolower($candidate->summary ?? '');
-        $hits = $required->filter(fn ($s) => str_contains($candidateText, $s))->count();
-
-        return $required->count() > 0 ? ($hits / $required->count()) * 100 : 50.0;
-    }
-
-    private function scoreSkills(Brief $brief, Candidate $candidate): float
-    {
-        $required = $this->parseMultiValue($brief->required_skills);
-        if ($required->isEmpty()) {
-            return 50.0;
-        }
-
-        $candidateSkills = collect($candidate->skills)
-            ->map(fn ($s) => strtolower(trim($s)));
-
-        $hits = $required->filter(fn ($req) => $candidateSkills->contains(fn ($s) => str_contains($s, strtolower($req)))
-        )->count();
-
-        return ($hits / $required->count()) * 100;
+        return implode("\n", $parts);
     }
 
     /**
-     * Default scoring weights when the brief doesn't define its own.
-     * All five dimensions are weighted equally at 20 points each (total = 100).
+     * Build a compact numbered candidate list for the AI prompt.
+     * Only fields relevant to AI dimensions are included (skills, headline, summary).
+     * Summaries are capped at 300 chars to control token count.
+     */
+    private function buildCandidateList(Collection $candidates): string
+    {
+        return $candidates->values()->map(function (Candidate $c, int $i) {
+            $skills = is_array($c->skills) ? implode(', ', $c->skills) : ($c->skills ?? '');
+            $summary = mb_substr($c->summary ?? '', 0, 300);
+            $parts = ["[{$i}] {$c->full_name}"];
+
+            if ($c->headline) {
+                $parts[] = "  Headline: {$c->headline}";
+            }
+            if ($skills) {
+                $parts[] = "  Skills: {$skills}";
+            }
+            if ($summary) {
+                $parts[] = "  Summary: {$summary}";
+            }
+
+            return implode("\n", $parts);
+        })->implode("\n\n");
+    }
+
+    /**
+     * Map the AI response (keyed by sequential index) back to linkedin_url keys
+     * so the result aligns with the deterministic scores map.
+     *
+     * @param  array<int, array{required_skills: int, soft_skills: int, sector: int}>  $parsed
+     * @return array<string, array{required_skills: float, soft_skills: float, sector: float}>
+     */
+    private function mapAiResponseToKeys(Collection $candidates, array $parsed): array
+    {
+        $result = [];
+
+        foreach ($candidates->values() as $i => $candidate) {
+            $key = $candidate->linkedin_url ?? $i;
+            $raw = $parsed[(string) $i] ?? $parsed[$i] ?? null;
+
+            $result[$key] = $raw ? [
+                'required_skills' => (float) min(100, max(0, $raw['required_skills'] ?? 50)),
+                'soft_skills' => (float) min(100, max(0, $raw['soft_skills'] ?? 50)),
+                'sector' => (float) min(100, max(0, $raw['sector'] ?? 50)),
+            ] : $this->neutralAiDimensions();
+        }
+
+        return $result;
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Neutral AI dimension scores used when the brief lacks context
+     * or when the AI call fails. 50.0 = no signal, no penalty.
+     *
+     * @return array{required_skills: float, soft_skills: float, sector: float}
+     */
+    private function neutralAiDimensions(): array
+    {
+        return ['required_skills' => 50.0, 'soft_skills' => 50.0, 'sector' => 50.0];
+    }
+
+    /**
+     * Resolve scoring weights from the brief or fall back to defaults.
+     * Ensures all six dimensions are always present.
+     *
+     * @return array<string, int>
+     */
+    private function resolveWeights(Brief $brief): array
+    {
+        return array_merge($this->defaultWeights(), $brief->scoring_weights ?? []);
+    }
+
+    /**
+     * Default weights. Required skills and experience carry the most signal.
+     * Location is weighted low to avoid penalizing remote-friendly candidates.
+     *
+     * Total = 100.
      *
      * @return array<string, int>
      */
     private function defaultWeights(): array
     {
-        return ['experience' => 20, 'education' => 20, 'sector' => 20, 'soft_skills' => 20, 'location' => 20];
+        return [
+            'experience' => 25,
+            'required_skills' => 25,
+            'education' => 15,
+            'soft_skills' => 20,
+            'sector' => 10,
+            'location' => 5,
+        ];
+    }
+
+    /**
+     * Fallback full score result used when a single-candidate lookup fails.
+     *
+     * @return array{score: float, breakdown: array<string, float>}
+     */
+    private function fallbackScore(Brief $brief): array
+    {
+        $weights = $this->resolveWeights($brief);
+        $total = array_sum($weights) ?: 100;
+
+        $breakdown = array_map(
+            fn (int $w) => 50.0 * ($w / $total),
+            $weights
+        );
+
+        return ['score' => round(array_sum($breakdown), 2), 'breakdown' => $breakdown];
     }
 }

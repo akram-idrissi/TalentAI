@@ -48,4 +48,16 @@ class Brief extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    public function apifyRuns(): HasMany
+    {
+        return $this->hasMany(ApifyRun::class);
+    }
+
+    public function candidates(): BelongsToMany
+    {
+        return $this->belongsToMany(Candidate::class)
+            ->withPivot(['score', 'score_breakdown', 'sourced_at'])
+            ->withTimestamps();
+    }
 }

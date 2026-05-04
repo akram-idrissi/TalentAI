@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('status')->default('pending');
             $table->unsignedInteger('candidates_imported')->nullable();
             $table->json('meta')->nullable();
+            $table->unsignedInteger('candidates_imported')->default(0);
             $table->timestamps();
         });
     }
