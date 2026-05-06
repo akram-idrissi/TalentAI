@@ -100,7 +100,7 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
-            return Inertia::render('Briefs/Fallback', [
+            return Inertia::render('Fallback', [
                 'error' => 'Impossible de charger la liste des briefs.',
             ]);
         }
@@ -144,7 +144,7 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
-            return Inertia::render('Briefs/Fallback', [
+            return Inertia::render('Fallback', [
                 'error' => 'Impossible d\'afficher le formulaire de création.',
             ]);
         }
@@ -193,7 +193,7 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
-            return Inertia::render('Briefs/Fallback', [
+            return Inertia::render('Fallback', [
                 'error' => 'Impossible de créer le brief.',
             ]);
         }
@@ -229,7 +229,7 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
-            return Inertia::render('Briefs/Fallback', [
+            return Inertia::render('Fallback', [
                 'error' => 'Impossible d\'afficher ce brief.',
             ]);
         }
@@ -277,7 +277,7 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
-            return Inertia::render('Briefs/Fallback', [
+            return Inertia::render('Fallback', [
                 'error' => 'Impossible d\'afficher le formulaire d\'édition.',
             ]);
         }
@@ -335,7 +335,7 @@ class BriefController extends Controller
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Throwable $e) {
-            return Inertia::render('Briefs/Fallback', [
+            return Inertia::render('Fallback', [
                 'error' => 'Impossible de mettre à jour ce brief.',
                 'brief' => $brief,
             ]);
@@ -376,7 +376,7 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
-            return Inertia::render('Briefs/Fallback', [
+            return Inertia::render('Fallback', [
                 'error' => 'Impossible de supprimer ce brief.',
             ]);
         }
@@ -412,7 +412,7 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
-            return Inertia::render('Briefs/Fallback', [
+            return Inertia::render('Fallback', [
                 'error' => "Impossible d'activer ce brief.",
             ]);
         }
