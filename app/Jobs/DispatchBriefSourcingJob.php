@@ -32,13 +32,34 @@ class DispatchBriefSourcingJob implements ShouldQueue
      * @param  BriefToQueryConverter  $converter  Builds the Apify actor input from the brief.
      * @param  ApifyJobDispatcher  $dispatcher  POSTs the run to Apify and creates an ApifyRun record.
      */
-    public function handle(BriefToQueryConverter $converter, ApifyJobDispatcher $dispatcher): void
-    {
-        if ($this->brief->apifyRuns()->whereIn('status', ['pending', 'succeeded'])->exists()) {
-            return;
+    public function handle(
+        BriefToQueryConverter $converter,
+        ApifyJobDispatcher $dispatcher
+    ): void {
+        try {
+
+            if ($this->brief->apifyRuns()
+                ->whereIn('status', ['pending', 'succeeded'])
+                ->exists()
+            ) {
+                return;
+            }
+
+            $query = $converter->convert($this->brief);
+
+            $run = $dispatcher->dispatch($this->brief, $query);
+
+            FetchApifyResultsJob::dispatch($run->id)
+                ->delay(now()->addMinutes(1));
+
+        } catch (\Throwable $e) {
+
+            logger()->error('DispatchBriefSourcingJob failed', [
+                'brief_id' => $this->brief->id,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
         }
-        $query = $converter->convert($this->brief);
-        $run = $dispatcher->dispatch($this->brief, $query);
-        FetchApifyResultsJob::dispatch($run)->delay(now()->addMinutes(1));
     }
 }

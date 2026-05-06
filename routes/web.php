@@ -14,6 +14,7 @@ Route::middleware(['auth'])->group(function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
     Route::resource('briefs', BriefController::class);
+    Route::post('/briefs/{brief}/activate', [BriefController::class, 'activate'])->name('briefs.activate');
     Route::post('/locale', function (Request $request) {
         $locale = $request->input('locale');
         if (in_array($locale, ['en', 'fr'])) {

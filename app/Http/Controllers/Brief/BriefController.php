@@ -6,6 +6,7 @@ use App\Enums\BriefStatus;
 use App\Enums\ContractType;
 use App\Enums\GenderPref;
 use App\Http\Controllers\Controller;
+use App\Jobs\DispatchBriefSourcingJob;
 use App\Models\Brief;
 use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
@@ -179,6 +180,7 @@ class BriefController extends Controller
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Throwable $e) {
+            dd($e->getMessage());
             $logger->log(
                 'brief.store.error',
                 'Erreur lors de la création du brief : '.$e->getMessage(),
@@ -302,6 +304,7 @@ class BriefController extends Controller
                 ->toArray();
 
             $statutAvant = $brief->status;
+
             $brief->update($validated);
 
             $champsModifiés = implode(', ', array_keys($modifications));
@@ -381,6 +384,42 @@ class BriefController extends Controller
 
             return Inertia::render('Briefs/Fallback', [
                 'error' => 'Impossible de supprimer ce brief.',
+            ]);
+        }
+    }
+
+    /**
+     * Activate the brief and dispatch the sourcing job.
+     */
+    public function activate(Brief $brief): RedirectResponse|Response
+    {
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $brief->update(['status' => BriefStatus::Active]);
+
+            DispatchBriefSourcingJob::dispatch($brief);
+
+            $logger->log(
+                'brief.activate',
+                "Activation du brief « {$brief->title} » (ID : {$brief->id}) et déclenchement du sourcing.",
+                ['brief_id' => $brief->id],
+                [Brief::class]
+            );
+
+            return redirect()->route('briefs.show', $brief->id)
+                ->with('success', 'Brief activé et sourcing lancé.');
+        } catch (\Throwable $e) {
+            $logger->log(
+                'brief.activate.error',
+                "Erreur lors de l'activation du brief (ID : {$brief->id}) : ".$e->getMessage(),
+                ['brief_id' => $brief->id, 'exception' => $e->getMessage()],
+                [Brief::class]
+            );
+
+            return Inertia::render('Briefs/Fallback', [
+                'error' => "Impossible d'activer ce brief.",
             ]);
         }
     }

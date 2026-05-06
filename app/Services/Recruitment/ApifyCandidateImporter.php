@@ -3,10 +3,9 @@
 namespace App\Services\Recruitment;
 
 use App\Models\ApifyRun;
-use App\Models\Candidate;
+use App\Models\Candidat;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Fetches scraped LinkedIn profiles from a completed Apify run,
@@ -32,21 +31,25 @@ class ApifyCandidateImporter
      */
     public function import(ApifyRun $run): int
     {
-        $items = $this->fetchDataset($run->run_id);
+        logger()->info("Starting candidate import for run {$run->id} (dataset: {$run->dataset_id})");
+        $items = $this->fetchDataset($run->dataset_id);
+
+        logger()->info('Fetched '.count($items)." items from Apify dataset {$run->dataset_id} for run {$run->id}");
         $brief = $run->brief;
 
         if (empty($items)) {
+            logger()->warning('[Importer] ⚠ Dataset is empty, aborting.', ['run_id' => $run->id]);
+
             return 0;
         }
 
-        // --- Step 1: Upsert all candidates, collecting the ones that succeed. ---
         $candidates = collect();
 
         foreach ($items as $item) {
             try {
                 $candidates->push($this->upsertCandidate($item));
             } catch (\Throwable $e) {
-                Log::warning('Failed to upsert candidate, skipping.', [
+                logger()->warning('Failed to upsert candidate, skipping.', [
                     'linkedin_url' => $item['linkedinUrl'] ?? 'unknown',
                     'error' => $e->getMessage(),
                 ]);
@@ -54,26 +57,45 @@ class ApifyCandidateImporter
         }
 
         if ($candidates->isEmpty()) {
+            logger()->warning('[Importer] ⚠ No candidates upserted, aborting before scoring.', [
+                'run_id' => $run->id,
+            ]);
+
             return 0;
         }
+        logger()->info('[Importer] 🤖 Starting batch scoring', [
+            'candidate_count' => $candidates->count(),
 
-        // --- Step 2: Score the whole batch in a single AI call. ---
+        ]);
+
         $scores = $this->scorer->scoreBatch($brief, $candidates);
+        logger()->info('[Importer] ✅ Batch scoring complete', [
+            'scored_count' => count($scores),
+            'candidate_count' => $candidates->count(),
+        ]);
 
-        // --- Step 3: Attach each candidate to the brief. ---
         $count = 0;
 
         foreach ($candidates as $candidate) {
-            $key = $candidate->linkedin_url ?? $candidates->search($candidate);
+
+            $key = $candidate->linkedin_url;
+            if (! $key) {
+                continue;
+            }
             $result = $scores[$key] ?? null;
 
             if (! $result) {
-                Log::warning('No score returned for candidate, skipping pivot attach.', [
+                logger()->warning('No score returned for candidate, skipping pivot attach.', [
                     'linkedin_url' => $candidate->linkedin_url,
                 ]);
 
                 continue;
             }
+            logger()->debug('[Importer] 🔗 Attaching candidate to brief', [
+                'linkedin_url' => $key,
+                'score' => $result['score'],
+                'breakdown' => $result['breakdown'],
+            ]);
 
             try {
                 $brief->candidates()->syncWithoutDetaching([
@@ -84,13 +106,24 @@ class ApifyCandidateImporter
                     ],
                 ]);
                 $count++;
+                logger()->info('[Importer] ✅ Attached candidate to brief', [
+                    'candidate_id' => $candidate->id,
+                    'linkedin_url' => $key,
+                    'score' => $result['score'],
+                    'brief_id' => $brief->id,
+                ]);
             } catch (\Throwable $e) {
-                Log::warning('Failed to attach candidate to brief.', [
+                logger()->warning('Failed to attach candidate to brief.', [
                     'candidate_id' => $candidate->id,
                     'error' => $e->getMessage(),
                 ]);
             }
         }
+        logger()->info('[Importer] 🏁 Import finished', [
+            'run_id' => $run->id,
+            'brief_id' => $brief->id,
+            'attached' => $count,
+        ]);
 
         return $count;
     }
@@ -100,38 +133,33 @@ class ApifyCandidateImporter
      * Uses linkedin_url as the unique key.
      *
      * @param  array  $item  Raw profile object from the Apify dataset.
-     * @return Candidate The upserted candidate.
+     * @return Candidat The upserted candidate.
      */
-    private function upsertCandidate(array $item): Candidate
+    private function upsertCandidate(array $item): Candidat
     {
-        return Candidate::updateOrCreate(
+        $currentPosition = $item['currentPosition'][0] ?? $item['experience'][0] ?? null;
+
+        return Candidat::updateOrCreate(
             ['linkedin_url' => $item['linkedinUrl'] ?? null],
             [
                 'full_name' => trim(($item['firstName'] ?? '').' '.($item['lastName'] ?? '')),
                 'headline' => $item['headline'] ?? null,
                 'location' => $item['location']['linkedinText'] ?? null,
                 'summary' => $item['about'] ?? null,
-                'skills' => collect($item['skills'] ?? [])->pluck('name')->values()->toArray(),
-                'current_company' => $item['currentPosition'][0]['companyName'] ?? null,
-                'current_title' => $item['currentPosition'][0]['title'] ?? null,
+                'skills' => collect($item['skills'] ?? [])->pluck('name')->filter()->values()->toArray(),
+                'current_company' => $currentPosition['companyName'] ?? null,
+                'current_title' => $currentPosition['position'] ?? $currentPosition['title'] ?? null,
                 'experience_years' => $this->calculateTotalExperience($item['experience'] ?? []),
                 'education_level' => $this->extractHighestDegree($item['education'] ?? []),
                 'open_to_work' => $item['openToWork'] ?? false,
                 'source' => 'apify',
+                'source_url' => $item['linkedinUrl'] ?? null,
                 'raw_data' => $item,
+                'status' => 'sourced',
             ]
         );
     }
 
-    /**
-     * Sum all experience entry durations into a total years float.
-     * Parses Apify duration strings like "2 yrs", "1 yr 2 mos", "5 mos".
-     *
-     * Note: sums naively — overlapping concurrent roles will inflate the total.
-     * Use date-based calculation from raw_data if precision is critical.
-     *
-     * @return float|null Total years rounded to 1 decimal, or null if no data.
-     */
     /**
      * Calculate total non-overlapping experience in years.
      *
@@ -260,8 +288,7 @@ class ApifyCandidateImporter
      */
     private function extractHighestDegree(array $education): ?string
     {
-        // Keys are match keywords; values are [rank, normalized_key].
-        // Normalized keys must exist in CandidateScoringService::$levels.
+
         $degreeMap = [
             'doctor' => [5, 'phd'],
             'phd' => [5, 'phd'],
@@ -299,13 +326,15 @@ class ApifyCandidateImporter
      *
      * @return array Raw profile objects, empty on failure.
      */
-    private function fetchDataset(string $runId): array
+    private function fetchDataset(string $datasetId): array
     {
         $response = Http::withToken(config('services.apify.token'))
-            ->get("https://api.apify.com/v2/actor-runs/{$runId}/dataset/items", [
+            ->get("https://api.apify.com/v2/datasets/{$datasetId}/items", [
                 'format' => 'json',
                 'clean' => true,
             ]);
+        logger()->info("Fetching dataset items from Apify dataset ID: {$datasetId}, status: {$response->status()}");
+        logger()->debug('Apify dataset response', ['response' => $response->json()]);
 
         return $response->json() ?? [];
     }

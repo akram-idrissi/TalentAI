@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('brief_id')->constrained()->cascadeOnDelete();
             $table->string('run_id')->unique();
+            $table->string('dataset_id')->nullable()->unique();
             $table->string('status')->default('pending');
-            $table->unsignedInteger('candidates_imported')->nullable();
             $table->json('meta')->nullable();
             $table->unsignedInteger('candidates_imported')->default(0);
             $table->timestamps();

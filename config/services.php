@@ -40,5 +40,8 @@ return [
     'anthropic' => [
         'key' => env('ANTHROPIC_KEY'),
     ],
+    'openrouter' => [
+        'key' => env('OPEN_ROUTER_KEY'),
+    ],
 
 ];

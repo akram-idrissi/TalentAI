@@ -12,12 +12,24 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('brief_candidate', function (Blueprint $table) {
-            $table->foreignId('brief_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('candidate_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('brief_id');
+            $table->unsignedBigInteger('candidate_id');
+
             $table->float('score')->nullable();
             $table->json('score_breakdown')->nullable();
             $table->timestamp('sourced_at')->nullable();
+
             $table->primary(['brief_id', 'candidate_id']);
+
+            $table->foreign('brief_id')
+                ->references('id')
+                ->on('briefs')
+                ->cascadeOnDelete();
+
+            $table->foreign('candidate_id')
+                ->references('id')
+                ->on('candidats')
+                ->cascadeOnDelete();
         });
     }
 

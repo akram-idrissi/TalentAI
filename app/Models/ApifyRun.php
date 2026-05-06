@@ -13,6 +13,7 @@ class ApifyRun extends Model
         'brief_id',
         'run_id',
         'status',
+        'dataset_id',
         'candidates_imported',
         'meta',
     ];

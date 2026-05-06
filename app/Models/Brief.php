@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\ContractType;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Brief extends Model
@@ -41,6 +43,7 @@ class Brief extends Model
         return [
             'scoring_weights' => 'array',
             'min_experience_years' => 'integer',
+            'contract_type' => ContractType::class,
         ];
     }
 
@@ -56,7 +59,7 @@ class Brief extends Model
 
     public function candidates(): BelongsToMany
     {
-        return $this->belongsToMany(Candidate::class)
+        return $this->belongsToMany(Candidat::class)
             ->withPivot(['score', 'score_breakdown', 'sourced_at'])
             ->withTimestamps();
     }

@@ -59,33 +59,30 @@ class BriefToQueryConverter
         ];
 
         $searchTerms = $this->buildSearchQuery($brief);
+
         if ($searchTerms) {
             $input['searchQuery'] = $searchTerms;
         }
 
         if ($brief->location) {
-            $input['locations'] = collect(explode(',', $brief->location))
-                ->map(fn ($loc) => trim($loc))
-                ->filter()
-                ->values()
-                ->toArray();
+            $input['locations'] = [trim($brief->location)];
         }
 
         if ($brief->min_experience_years !== null) {
-            $input['yearsOfExperienceIds'] = [$this->mapExperienceToId($brief->min_experience_years)];
+            $input['yearsOfExperienceIds'] = [
+                (string) $this->mapExperienceToId($brief->min_experience_years),
+            ];
         }
 
         if ($brief->contract_type) {
             $seniorityId = $this->mapContractTypeToSeniority($brief->contract_type);
+
             if ($seniorityId) {
                 $input['seniorityLevelIds'] = [$seniorityId];
             }
         }
 
-        $mongoFilter = $this->buildMongoFilter($brief);
-        if ($mongoFilter) {
-            $input['postFilteringMongoDbQuery'] = $mongoFilter;
-        }
+        logger()->info('Apify input', $input);
 
         return $input;
     }
@@ -104,21 +101,15 @@ class BriefToQueryConverter
             $parts[] = trim($brief->title);
         }
 
-        $skills = $this->parseMultiValue($brief->required_skills);
+        // LIMIT SKILLS (VERY IMPORTANT)
+        $skills = $this->parseMultiValue($brief->required_skills)
+            ->take(3); // max 3 skills
+
         if ($skills->isNotEmpty()) {
             $parts[] = $skills->implode(' ');
         }
 
-        if ($brief->sector) {
-            $parts[] = trim($brief->sector);
-        }
-
-        $languages = $this->parseMultiValue($brief->languages);
-        if ($languages->isNotEmpty()) {
-            $parts[] = $languages->implode(' ');
-        }
-
-        return implode(' ', array_filter($parts));
+        return implode(' ', $parts);
     }
 
     /**
@@ -216,8 +207,12 @@ class BriefToQueryConverter
      *
      * @return int|null Seniority ID, or null for no restriction.
      */
-    private function mapContractTypeToSeniority(ContractType $type): ?int
+    private function mapContractTypeToSeniority(string|ContractType $type): ?int
     {
+        if (is_string($type)) {
+            $type = ContractType::from($type);
+        }
+
         return match ($type) {
             ContractType::CDI => null,
             ContractType::CDD => null,

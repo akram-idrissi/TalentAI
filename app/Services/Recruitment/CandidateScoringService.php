@@ -3,7 +3,7 @@
 namespace App\Services\Recruitment;
 
 use App\Models\Brief;
-use App\Models\Candidate;
+use App\Models\Candidat;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -47,7 +47,7 @@ class CandidateScoringService
      *
      * @return array{score: float, breakdown: array<string, float>}
      */
-    public function score(Brief $brief, Candidate $candidate): array
+    public function score(Brief $brief, Candidat $candidate): array
     {
         $results = $this->scoreBatch($brief, collect([$candidate]));
         $key = $candidate->linkedin_url ?? 0;
@@ -65,23 +65,40 @@ class CandidateScoringService
      */
     public function scoreBatch(Brief $brief, Collection $candidates): array
     {
+        logger()->info('[Scorer] ▶ scoreBatch called', [
+            'brief_id' => $brief->id,
+            'candidate_count' => $candidates->count(),
+        ]);
         if ($candidates->isEmpty()) {
+            logger()->warning('[Scorer] ⚠ No candidates provided, returning empty.');
+
             return [];
         }
 
         $weights = $this->resolveWeights($brief);
         $total = array_sum($weights) ?: 100;
-
+        logger()->debug('[Scorer] ⚖ Resolved weights', [
+            'weights' => $weights,
+            'total' => $total,
+        ]);
+        logger()->info('[Scorer] 🔢 Computing deterministic scores for all candidates');
         // 1. Compute deterministic scores for every candidate (pure PHP, free).
         $deterministicScores = $candidates->mapWithKeys(
-            fn (Candidate $c, int $i) => [
+            fn (Candidat $c, int $i) => [
                 ($c->linkedin_url ?? $i) => $this->computeDeterministicDimensions($brief, $c),
             ]
         )->all();
 
         // 2. Get AI scores for all candidates in one call.
+        logger()->info('[Scorer] 🤖 Fetching AI scores batch', [
+            'brief_id' => $brief->id,
+            'candidate_count' => $candidates->count(),
+        ]);
         $aiScores = $this->fetchAiScoresBatch($brief, $candidates);
 
+        logger()->info('[Scorer] ✅ AI scores received', [
+            'scored_keys' => array_keys($aiScores),
+        ]);
         // 3. Merge and apply weights.
         $results = [];
 
@@ -98,23 +115,31 @@ class CandidateScoringService
                 $breakdown[$dimension] = $raw * ($weight / $total);
             }
 
+            $finalScore = round(array_sum($breakdown), 2);
+
+            logger()->info('[Scorer] 🏆 Final score for candidate', [
+                'linkedin_url' => $key,
+                'full_name' => $candidate->full_name,
+                'score' => $finalScore,
+                'breakdown' => $breakdown,
+            ]);
             $results[$key] = [
                 'score' => round(array_sum($breakdown), 2),
                 'breakdown' => $breakdown,
             ];
         }
+        logger()->info('[Scorer] 🏁 scoreBatch complete', [
+            'brief_id' => $brief->id,
+            'total_scored' => count($results),
+        ]);
 
         return $results;
     }
 
-    // -------------------------------------------------------------------------
-    // Deterministic scoring (PHP only)
-    // -------------------------------------------------------------------------
-
     /**
      * @return array<string, float> Raw 0–100 scores for deterministic dimensions.
      */
-    private function computeDeterministicDimensions(Brief $brief, Candidate $candidate): array
+    private function computeDeterministicDimensions(Brief $brief, Candidat $candidate): array
     {
         return [
             'experience' => $this->scoreExperience($brief, $candidate),
@@ -133,7 +158,7 @@ class CandidateScoringService
      *   <  0.50 →  20   significantly under
      *   missing →  50   neutral (no data = no penalty)
      */
-    private function scoreExperience(Brief $brief, Candidate $candidate): float
+    private function scoreExperience(Brief $brief, Candidat $candidate): float
     {
         if (! $brief->min_experience_years || ! $candidate->experience_years) {
             return 50.0;
@@ -161,7 +186,7 @@ class CandidateScoringService
      *   candidate <  required - 1 →  20
      *   unrecognized or missing   →  50   neutral
      */
-    private function scoreEducation(Brief $brief, Candidate $candidate): float
+    private function scoreEducation(Brief $brief, Candidat $candidate): float
     {
         if (! $brief->education_level || ! $candidate->education_level) {
             return 50.0;
@@ -198,7 +223,7 @@ class CandidateScoringService
      *   0 parts match  →  20
      *   missing        →  50   neutral
      */
-    private function scoreLocation(Brief $brief, Candidate $candidate): float
+    private function scoreLocation(Brief $brief, Candidat $candidate): float
     {
         if (! $brief->location || ! $candidate->location) {
             return 50.0;
@@ -238,9 +263,16 @@ class CandidateScoringService
      */
     private function fetchAiScoresBatch(Brief $brief, Collection $candidates): array
     {
+        logger()->info('[Scorer/AI] ▶ Building prompt for AI batch scoring', [
+            'brief_id' => $brief->id,
+            'candidate_count' => $candidates->count(),
+        ]);
         $briefContext = $this->buildBriefContext($brief);
         $candidateList = $this->buildCandidateList($candidates);
-
+        logger()->debug('[Scorer/AI] 📝 Prompt context built', [
+            'brief_context' => $briefContext,
+            'candidate_list_preview' => mb_substr($candidateList, 0, 500),
+        ]);
         $prompt = <<<PROMPT
             You are a recruitment scoring engine. Score each candidate 0–100 on three dimensions.
 
@@ -258,25 +290,47 @@ class CandidateScoringService
             - required_skills: how many required skills does the candidate demonstrably have? 100 = all, 0 = none.
             - soft_skills: how well does headline + summary reflect the required soft skills? Consider synonyms and implied traits.
             - sector: how relevant is the candidate's background to the job sector? Resolve abbreviations (IT = Information Technology).
-
+            Return ONLY valid JSON.
+            Do not include explanations.
+            Do not include markdown.
+            If unsure, return 0.
+            All values must be integers between 0 and 100.
             Example output shape (indices are illustrative):
             {"0":{"required_skills":85,"soft_skills":70,"sector":90},"1":{"required_skills":40,"soft_skills":60,"sector":75}}
+            
             PROMPT;
 
         try {
-            $response = Http::withHeaders([
-                'x-api-key' => config('services.anthropic.key'),
-                'anthropic-version' => '2023-06-01',
-                'content-type' => 'application/json',
-            ])->timeout(30)->post('https://api.anthropic.com/v1/messages', [
-                'model' => 'claude-haiku-4-5-20251001',
-                'max_tokens' => 600,
-                'messages' => [['role' => 'user', 'content' => trim($prompt)]],
-            ]);
 
-            $text = $response->json('content.0.text', '{}');
+            // $text = $response->json('content.0.text', '{}');
+            logger()->info('[Scorer/AI] 🚀 Sending request to OpenRouter', [
+                'model' => 'meta-llama/llama-3.1-8b-instruct',
+                'candidate_count' => $candidates->count(),
+            ]);
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer '.config('services.openrouter.key'),
+                'HTTP-Referer' => 'http://localhost',
+                'X-Title' => 'TalentAI',
+            ])->post('https://openrouter.ai/api/v1/chat/completions', [
+                'model' => 'meta-llama/llama-3.1-8b-instruct',
+                'messages' => [
+                    ['role' => 'user', 'content' => trim($prompt)],
+                ],
+                'max_tokens' => 600,
+            ]);
+            $text = $response->json('choices.0.message.content', '{}');
+            logger()->info('[Scorer/AI] ✅ Response received from OpenRouter', [
+                'http_status' => $response->status(),
+                'ok' => $response->ok(),
+            ]);
             $text = preg_replace('/^```(?:json)?\s*|\s*```$/s', '', trim($text));
+            logger()->debug('[Scorer/AI] 🧹 Cleaned AI response text', [
+                'cleaned' => $text,
+            ]);
             $parsed = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
+            logger()->info('[Scorer/AI] ✅ JSON parsed successfully', [
+                'keys_returned' => array_keys($parsed),
+            ]);
 
             return $this->mapAiResponseToKeys($candidates, $parsed);
 
@@ -288,7 +342,7 @@ class CandidateScoringService
 
             // Graceful degradation: every candidate gets neutral AI scores.
             return $candidates->mapWithKeys(
-                fn (Candidate $c, int $i) => [
+                fn (Candidat $c, int $i) => [
                     ($c->linkedin_url ?? $i) => $this->neutralAiDimensions(),
                 ]
             )->all();
@@ -323,7 +377,7 @@ class CandidateScoringService
      */
     private function buildCandidateList(Collection $candidates): string
     {
-        return $candidates->values()->map(function (Candidate $c, int $i) {
+        return $candidates->values()->map(function (Candidat $c, int $i) {
             $skills = is_array($c->skills) ? implode(', ', $c->skills) : ($c->skills ?? '');
             $summary = mb_substr($c->summary ?? '', 0, 300);
             $parts = ["[{$i}] {$c->full_name}"];

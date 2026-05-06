@@ -27,10 +27,7 @@ class FetchApifyResultsJob implements ShouldQueue
     /** @var int Seconds to wait between polling attempts. */
     public int $backoff = 60;
 
-    /**
-     * @param  ApifyRun  $run  The Apify run to poll.
-     */
-    public function __construct(public ApifyRun $run) {}
+    public function __construct(public int $runId) {}
 
     /**
      * Poll the Apify run status and react accordingly.
@@ -43,38 +40,81 @@ class FetchApifyResultsJob implements ShouldQueue
      */
     public function handle(ApifyCandidateImporter $importer): void
     {
-        $response = Http::withToken(config('services.apify.token'))
-            ->get("https://api.apify.com/v2/actor-runs/{$this->run->run_id}");
+        $run = ApifyRun::find($this->runId);
 
-        if ($response->status() === 429) {
-            $this->release(3600 + random_int(0, 300));
-
+        if (! $run) {
             return;
         }
 
-        $data = $response->json('data');
-        $status = $data['status'] ?? 'FAILED';
+        try {
+            $response = Http::withToken(config('services.apify.token'))
+                ->get("https://api.apify.com/v2/actor-runs/{$run->run_id}");
 
-        if (($data['statusMessage'] ?? '') === 'rate limited') {
-            $this->release(3600 + random_int(0, 300));
+            if ($response->status() === 429) {
+                $this->release(3600 + random_int(0, 300));
 
-            return;
+                return;
+            }
+
+            $data = $response->json('data');
+            $status = $data['status'] ?? 'FAILED';
+
+            if (! $run->dataset_id && ! empty($data['defaultDatasetId'])) {
+                $run->update([
+                    'dataset_id' => $data['defaultDatasetId'],
+                ]);
+            }
+
+            if (($data['statusMessage'] ?? '') === 'rate limited') {
+                $this->release(3600 + random_int(0, 300));
+
+                return;
+            }
+
+            match ($status) {
+                'SUCCEEDED' => $this->handleSuccess($run, $importer),
+                'RUNNING', 'READY', 'ABORTING' => $this->release($this->backoff),
+                default => $this->handleFailure($run, $status),
+            };
+
+        } catch (\Throwable $e) {
+
+            logger()->error('FetchApifyResultsJob failed', [
+                'run_id' => $run->run_id,
+                'attempt' => $this->attempts(),
+                'message' => $e->getMessage(),
+            ]);
+
+            $run->update(['status' => 'error']);
+
         }
-
-        match ($status) {
-            'SUCCEEDED' => $this->handleSuccess($importer),
-            'RUNNING', 'READY', 'ABORTING' => $this->release($this->backoff),
-            default => $this->handleFailure($status),
-        };
     }
 
     /**
      * Import candidates from the completed run and update the run record.
      */
-    private function handleSuccess(ApifyCandidateImporter $importer): void
+    private function handleSuccess(ApifyRun $run, ApifyCandidateImporter $importer): void
     {
-        $count = $importer->import($this->run);
-        $this->run->update(['status' => 'succeeded', 'candidates_imported' => $count]);
+        try {
+
+            if (! $run->dataset_id) {
+                $this->release(30);
+
+                return;
+            }
+
+            $count = $importer->import($run);
+
+            $run->update([
+                'status' => 'succeeded',
+                'candidates_imported' => $count,
+            ]);
+        } catch (\Throwable $e) {
+            logger()->error('Error in handleSuccess', [
+                'run_id' => $run->run_id,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -82,9 +122,16 @@ class FetchApifyResultsJob implements ShouldQueue
      *
      * @param  string  $status  The terminal status returned by Apify (e.g. 'ABORTED', 'TIMED-OUT').
      */
-    private function handleFailure(string $status): void
+    private function handleFailure(ApifyRun $run, string $status): void
     {
-        $this->run->update(['status' => 'failed']);
-        $this->fail("Apify run {$this->run->run_id} ended with: {$status}");
+        try {
+            $run->update(['status' => 'failed']);
+            $this->fail("Run ended with: {$status}");
+        } catch (\Throwable $e) {
+            logger()->error('Error in handleFailure', [
+                'run_id' => $run->run_id,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 }

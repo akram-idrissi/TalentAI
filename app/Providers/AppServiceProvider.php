@@ -2,8 +2,6 @@
 
 namespace App\Providers;
 
-use App\Models\Brief;
-use App\Observers\BriefObserver;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,8 +17,5 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Bootstrap any application services.
      */
-    public function boot(): void
-    {
-        Brief::observe(BriefObserver::class);
-    }
+    public function boot(): void {}
 }

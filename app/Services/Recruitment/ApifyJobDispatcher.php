@@ -32,11 +32,16 @@ class ApifyJobDispatcher
 
         $response->throw();
 
+        $data = $response->json('data');
+
         return ApifyRun::create([
             'brief_id' => $brief->id,
-            'run_id' => $response->json('data.id'),
+            'run_id' => $data['id'],
+            'dataset_id' => $data['defaultDatasetId'] ?? null,
             'status' => 'pending',
-            'meta' => ['actor_input' => $actorInput],
+            'meta' => [
+                'actor_input' => $actorInput,
+            ],
         ]);
     }
 }
