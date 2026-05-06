@@ -72,6 +72,8 @@ class BriefController extends Controller
                     'sector' => $brief->sector,
                     'contract_type' => $brief->contract_type,
                     'education_level' => $brief->education_level,
+                    'location' => $brief->location,
+                    'min_experience_years' => $brief->min_experience_years,
                     'gender_pref' => $brief->gender_pref,
                     'status' => $brief->status,
                     'created_by' => $brief->creator?->name,

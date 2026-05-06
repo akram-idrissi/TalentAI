@@ -76,7 +76,7 @@ export default function CreateBrief({ contractTypes, genderPrefs }: CreateBriefP
         soft_skills: '',
         scoring_weights: { experience: 30, education: 20, sector: 20, soft_skills: 20, location: 10 },
     });
-
+    console.log('data', data);
     useEffect(() => {
         transform((d) => ({ ...d, status: statusRef.current }));
     }, []);

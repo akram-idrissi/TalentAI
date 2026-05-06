@@ -159,40 +159,43 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
         [t],
     );
 
-  return (
-    <aside
-      className={`h-screen flex flex-col border-r transition-all duration-300
-      ${collapsed ? "w-[90px]" : "w-[300px]"}
-      bg-white text-gray-900 border-gray-200
-      dark:bg-[#111118] dark:text-white dark:border-white/10`}
-    >
+    return (
+        <>
+            {mobileOpen && <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden" onClick={() => setMobileOpen(false)} />}
 
-      {/* TOP HEADER */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200 dark:border-white/10">
-
-        {/* LOGO */}
-        {!collapsed && (
-          <div>
-            <h1
-              className="text-[26px] font-extrabold tracking-tight"
-              style={{ fontFamily: "Syne, sans-serif" }}
+            <aside
+                className={`border-sidebar-border bg-sidebar fixed z-50 flex h-screen flex-col border-r transition-all duration-300 ease-in-out md:static ${collapsed ? 'md:w-[60px]' : 'md:w-[220px]'} w-[220px] ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} `}
+                aria-label="Sidebar navigation"
             >
-              Talent<span className="text-secondary">AI</span>
-            </h1>
-            <p className="text-[11px] text-gray-400 uppercase tracking-wider">
-              Recrutement Intelligent
-            </p>
-          </div>
-        )}
-
-        {/* COLLAPSE BUTTON */}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#1E1E28]"
-        >
-          {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-        </button>
-      </div>
+                {/* Logo + collapse */}
+                <div className="border-sidebar-border relative flex items-center justify-between border-b px-4 py-4">
+                    {!collapsed && (
+                        <div>
+                            <h1
+                                className="text-ds-text text-[22px] leading-none font-extrabold tracking-tight"
+                                style={{ fontFamily: 'Syne, sans-serif' }}
+                            >
+                                Talent<span className="text-ds-accent">AI</span>
+                            </h1>
+                            <p className="text-ds-text3 mt-1 text-[10px] font-semibold tracking-[0.8px] uppercase">Recrutement Intelligent</p>
+                        </div>
+                    )}
+                    <button
+                        onClick={() => setCollapsed(!collapsed)}
+                        className={`text-ds-text3 hover:bg-ds-accent/[0.06] hover:text-ds-text hidden cursor-pointer rounded-lg p-1.5 transition md:flex ${collapsed ? 'mx-auto' : ''}`}
+                        aria-label="Toggle sidebar"
+                    >
+                        {collapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
+                    </button>
+                    {mobileOpen && (
+                        <button
+                            onClick={() => setMobileOpen(false)}
+                            className="text-ds-text3 hover:bg-ds-accent/[0.06] hover:text-ds-text absolute top-3 right-3 cursor-pointer rounded-lg p-1.5 md:hidden"
+                        >
+                            <X size={17} />
+                        </button>
+                    )}
+                </div>
 
                 {/* Nav */}
                 <nav className="custom-scroll flex-1 overflow-y-auto py-3">

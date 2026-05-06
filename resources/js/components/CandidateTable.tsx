@@ -1,148 +1,102 @@
-import React from "react";
+import { ReactNode } from "react";
 
-type Candidate = {
-  id: number;
-  rank?: number;
-  name: string;
-  city: string;
-  source: "LinkedIn" | "Indeed" | string;
-  position: string;
-  experience: number;
-  score: number;
-  status?: "invited" | "rejected" | "pending";
+type Column<T> = {
+  header: string;
+  accessor?: keyof T;
+  render?: (row: T, index: number) => ReactNode;
 };
 
-type Props = {
-  candidates: Candidate[];
-  onInvite?: (candidate: Candidate) => void;
+type Props<T> = {
+  data: T[];
 };
 
-const getScoreColor = (score: number) => {
-  if (score >= 90) return "text-emerald-400";
-  if (score >= 80) return "text-cyan-400";
-  if (score >= 70) return "text-amber-400";
-  return "text-red-400";
-};
-
-const getRankStyle = (rank?: number) => {
-  switch (rank) {
-    case 1:
-      return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
-    case 2:
-      return "bg-slate-400/20 text-slate-300 border-slate-400/30";
-    case 3:
-      return "bg-orange-500/20 text-orange-400 border-orange-500/30";
-    default:
-      return "bg-zinc-800 text-zinc-400 border-zinc-700";
-  }
-};
-
-export default function CandidateTable({ candidates, onInvite }: Props) {
-  return (
-    <div className="bg-[#1E1E28] border border-white/10 rounded-xl p-5">
-      
-      {/* Header */}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-sm font-semibold text-white">
-          Profils sourcés & filtrés par IA
-        </h2>
-
-        <span className="text-xs text-zinc-400">
-          {candidates.filter(c => c.score >= 70).length} retenus /{" "}
-          {candidates.length} analysés
+export default function CandidateTable<T extends any>({ data }: Props<T>) {
+  const columns: Column<any>[] = [
+    {
+      header: "#",
+      render: (_row, index: number) => index + 1,
+    },
+    {
+      header: "Candidat",
+      render: (row) => (
+        <div>
+          <p className="font-heading text-ds-text">{row.name}</p>
+          <p className="font-heading text-xs text-ds-text3">{row.location}</p>
+        </div>
+      ),
+    },
+    {
+      header: "Source",
+      render: (row) => (
+        <span className="font-heading text-[11px] bg-ds-accent/10 text-ds-accent2 border border-ds-accent/20 px-2 py-1 rounded">
+          {row.source}
         </span>
-      </div>
+      ),
+    },
+    {
+      header: "Poste",
+      accessor: "job",
+    },
+    {
+      header: "Expérience",
+      accessor: "experience",
+    },
+    {
+      header: "Score IA",
+      render: (row) => (
+        <span
+          className={`font-bold ${
+            row.score > 85
+              ? "text-ds-green"
+              : row.score > 70
+              ? "text-ds-amber"
+              : "text-ds-red"
+          }`}
+        >
+          {row.score}
+        </span>
+      ),
+    },
+    {
+      header: "Action",
+      render: () => (
+        <button className="text-ds-green border border-ds-green/30 px-2 py-1 rounded text-xs hover:bg-ds-green/10 transition">
+          Inviter
+        </button>
+      ),
+    },
+  ];
 
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-xs uppercase text-zinc-500 border-b border-white/10">
-            <tr>
-              <th className="p-3 text-left">#</th>
-              <th className="p-3 text-left">Candidat</th>
-              <th className="p-3 text-left">Source</th>
-              <th className="p-3 text-left">Poste</th>
-              <th className="p-3 text-left">Exp</th>
-              <th className="p-3 text-left">Score IA</th>
-              <th className="p-3 text-left">Action</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {candidates.map((c, index) => (
-              <tr
-                key={c.id}
-                className="border-b border-white/5 hover:bg-white/5 transition"
-              >
-                {/* Rank */}
-                <td className="p-3">
-                  <div
-                    className={`w-6 h-6 flex items-center justify-center rounded-md text-xs border ${getRankStyle(
-                      c.rank ?? index + 1
-                    )}`}
-                  >
-                    {c.rank ?? index + 1}
-                  </div>
-                </td>
-
-                {/* Name */}
-                <td className="p-3">
-                  <div className="font-semibold text-white">{c.name}</div>
-                  <div className="text-xs text-zinc-500">{c.city}</div>
-                </td>
-
-                {/* Source */}
-                <td className="p-3">
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full border ${
-                      c.source === "LinkedIn"
-                        ? "bg-indigo-500/10 text-indigo-300 border-indigo-500/20"
-                        : "bg-amber-500/10 text-amber-300 border-amber-500/20"
-                    }`}
-                  >
-                    {c.source}
-                  </span>
-                </td>
-
-                {/* Position */}
-                <td className="p-3 text-zinc-300 text-xs">
-                  {c.position}
-                </td>
-
-                {/* Experience */}
-                <td className="p-3 text-zinc-300">
-                  {c.experience} ans
-                </td>
-
-                {/* Score */}
-                <td className="p-3">
-                  <span
-                    className={`font-bold ${getScoreColor(c.score)}`}
-                  >
-                    {c.score}
-                  </span>
-                </td>
-
-                {/* Action */}
-                <td className="p-3">
-                  {c.score < 50 || c.status === "rejected" ? (
-                    <span className="text-xs px-2 py-1 rounded bg-red-500/10 text-red-400 border border-red-500/20">
-                      Écarté
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => onInvite?.(c)}
-                      className="px-3 py-1 text-xs rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25"
-                    >
-                      Inviter
-                    </button>
-                  )}
-                </td>
-              </tr>
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-[13px]">
+        <thead>
+          <tr className="text-ds-text3 text-[10px] border-b border-ds-border uppercase tracking-wide">
+            {columns.map((col, i) => (
+              <th key={i} className="text-left py-2 px-3 font-semibold">
+                {col.header}
+              </th>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </tr>
+        </thead>
+
+        <tbody>
+          {data.map((row, i) => (
+            <tr
+              key={i}
+              className="border-b border-ds-border hover:bg-ds-bg3/40 transition"
+            >
+              {columns.map((col, j) => (
+                <td key={j} className="py-3 px-3 text-ds-text">
+                  {col.render
+                    ? col.render(row, i)
+                    : row[col.accessor as keyof typeof row]}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
