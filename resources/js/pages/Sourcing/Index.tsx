@@ -1,5 +1,6 @@
 import CandidateTable from "@/components/CandidateTable";
 import AppSidebarLayout from "@/layouts/app/app-sidebar-layout";
+import { router } from "@inertiajs/react";
 import { Briefcase, icons, Search, Users } from "lucide-react";
 
 const sources = [
@@ -116,7 +117,10 @@ export default function SourcingPage() {
                 13 retenus / 34 analysés
               </span>
 
-              <button className="bg-ds-accent hover:bg-[#7C74FF] text-white text-[12px] px-3 py-1 rounded-md">
+              <button
+                onClick={() => router.visit(route('dashboard.classement'))}
+                className="bg-ds-accent hover:bg-[#7C74FF] text-white text-[12px] px-3 py-1 rounded-md"
+              >
                 Voir le classement
               </button>
             </div>
