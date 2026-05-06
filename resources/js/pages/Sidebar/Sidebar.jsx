@@ -1,81 +1,159 @@
 import { useI18n } from '@/hooks/useI18n';
-import { Link, usePage } from '@inertiajs/react';
-import { BarChart3, FileText, LayoutDashboard, Mic, PanelLeftClose, PanelLeftOpen, Search, Settings, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Link, router, usePage } from '@inertiajs/react';
+import {
+    BarChart3,
+    ChevronUp,
+    FileText,
+    LayoutDashboard,
+    LogOut,
+    Mic,
+    PanelLeftClose,
+    PanelLeftOpen,
+    Search,
+    Settings,
+    Trophy,
+    Users,
+    X,
+} from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+
+function NavBadge({ count, dot }) {
+    if (dot) return <span className="bg-ds-accent ml-auto h-1.5 w-1.5 shrink-0 rounded-full" />;
+    if (count)
+        return <span className="bg-ds-accent ml-auto shrink-0 rounded-full px-1.5 py-px text-[10px] leading-4 font-bold text-white">{count}</span>;
+    return null;
+}
+
+function UserDropdown({ user, collapsed }) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef(null);
+
+    const initials = useMemo(() => {
+        if (!user?.name) return 'U';
+        return user.name
+            .split(' ')
+            .slice(0, 2)
+            .map((w) => w[0])
+            .join('')
+            .toUpperCase();
+    }, [user]);
+
+    useEffect(() => {
+        const handler = (e) => {
+            if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    return (
+        <div ref={ref} className="border-sidebar-border relative border-t p-3">
+            {/* Dropdown menu — opens upward */}
+            {open && (
+                <div className="border-ds-border2 bg-ds-surface absolute right-3 bottom-full left-3 mb-2 overflow-hidden rounded-xl border shadow-xl">
+                    {/* User info */}
+                    <div className="border-ds-border border-b px-3 py-2.5">
+                        <p className="text-ds-text text-[13px] font-semibold">{user?.name}</p>
+                        <p className="text-ds-text3 text-[11px]">{user?.email}</p>
+                    </div>
+
+                    {/* Menu items */}
+                    <Link
+                        href={route('profile.edit')}
+                        className="text-ds-text2 hover:bg-ds-accent/[0.06] hover:text-ds-text flex cursor-pointer items-center gap-2.5 px-3 py-2 text-[13px] transition"
+                        onClick={() => setOpen(false)}
+                    >
+                        <Settings size={14} />
+                        Paramètres
+                    </Link>
+                    <button
+                        onClick={() => {
+                            setOpen(false);
+                            router.post(route('logout'));
+                        }}
+                        className="text-ds-red hover:bg-ds-red/[0.06] flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-[13px] transition"
+                    >
+                        <LogOut size={14} />
+                        Déconnexion
+                    </button>
+                </div>
+            )}
+
+            {/* Trigger */}
+            <button
+                onClick={() => setOpen((p) => !p)}
+                className={`hover:bg-ds-accent/[0.06] flex w-full cursor-pointer items-center gap-2.5 rounded-lg p-1.5 transition ${collapsed ? 'justify-center' : ''}`}
+            >
+                <div className="from-ds-accent to-ds-accent3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[11px] font-bold text-white">
+                    {initials}
+                </div>
+                {!collapsed && (
+                    <>
+                        <div className="min-w-0 flex-1 text-left">
+                            <p className="text-ds-text truncate text-[13px] font-medium">{user?.name ?? 'Utilisateur'}</p>
+                            <p className="text-ds-text3 truncate text-[11px]">{user?.email ?? 'Admin RH'}</p>
+                        </div>
+                        <ChevronUp size={14} className={`text-ds-text3 shrink-0 transition-transform duration-150 ${open ? '' : 'rotate-180'}`} />
+                    </>
+                )}
+            </button>
+        </div>
+    );
+}
 
 export default function Sidebar({ mobileOpen, setMobileOpen }) {
-    const { url } = usePage();
+    const { props } = usePage();
     const { t } = useI18n();
+    const authUser = props.auth?.user;
+
     const [collapsed, setCollapsed] = useState(() => {
         if (typeof window === 'undefined') return false;
-        return JSON.parse(localStorage.getItem('sidebar-collapsed')) ?? false;
+        return JSON.parse(localStorage.getItem('sidebar-collapsed') ?? 'false');
     });
 
     useEffect(() => {
         localStorage.setItem('sidebar-collapsed', JSON.stringify(collapsed));
     }, [collapsed]);
+
     const router = route();
+    const isActive = (name) => {
+        try {
+            return router.current(name) || router.current(`${name}.*`);
+        } catch {
+            return false;
+        }
+    };
 
-    const isActive = (name) => router.current(name) || router.current(`${name}.*`);
-
-    // MENU SECTIONS
     const sections = useMemo(
         () => [
             {
                 title: t('sidebar.dashboard.title'),
-                items: [
-                    {
-                        id: 'dashboard',
-                        label: t('sidebar.dashboard.overview'),
-                        icon: LayoutDashboard,
-                        route: 'dashboard',
-                    },
-                ],
+                items: [{ id: 'dashboard', label: t('sidebar.dashboard.overview'), icon: LayoutDashboard, route: 'dashboard' }],
             },
             {
                 title: t('sidebar.sourcing.title'),
                 items: [
-                    {
-                        id: 'brief',
-                        label: t('sidebar.sourcing.brief'),
-                        icon: FileText,
-                        route: 'briefs.index',
-                    },
-                    {
-                        id: 'sourcing',
-                        label: t('sidebar.sourcing.auto'),
-                        icon: Search,
-                        route: 'dashboard',
-                    },
+                    { id: 'briefs', label: t('sidebar.sourcing.brief'), icon: FileText, route: 'dashboard.briefs.index' },
+                    { id: 'sourcing', label: t('sidebar.sourcing.auto'), icon: Search, route: 'dashboard.sourcing', dot: true },
+                ],
+            },
+            {
+                title: t('sidebar.candidats.title'),
+                items: [
+                    { id: 'candidates', label: t('sidebar.candidats.base'), icon: Users, route: 'dashboard.candidates', badge: 24 },
+                    { id: 'rankings', label: t('sidebar.candidats.rankings'), icon: Trophy, route: 'dashboard.candidates.rankings' },
                 ],
             },
             {
                 title: t('sidebar.interviews.title'),
                 items: [
-                    {
-                        id: 'interviews',
-                        label: t('sidebar.interviews.list'),
-                        icon: Mic,
-                        route: 'dashboard',
-                    },
-                    {
-                        id: 'reports',
-                        label: t('sidebar.interviews.reports'),
-                        icon: BarChart3,
-                        route: 'dashboard',
-                    },
+                    { id: 'interviews', label: t('sidebar.interviews.list'), icon: Mic, route: 'dashboard.interviews', badge: 3 },
+                    { id: 'reports', label: t('sidebar.interviews.reports'), icon: BarChart3, route: 'dashboard.reports' },
                 ],
             },
             {
                 title: t('sidebar.settings.title'),
-                items: [
-                    {
-                        id: 'settings',
-                        label: t('sidebar.settings.integrations'),
-                        icon: Settings,
-                        route: 'dashboard',
-                    },
-                ],
+                items: [{ id: 'settings', label: t('sidebar.settings.integrations'), icon: Settings, route: 'dashboard.integrations' }],
             },
         ],
         [t],
@@ -83,99 +161,96 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
 
     return (
         <>
-            {mobileOpen && <div className="fixed inset-0 bg-black/40 md:hidden" onClick={() => setMobileOpen(false)}></div>}
+            {mobileOpen && <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden" onClick={() => setMobileOpen(false)} />}
+
             <aside
-                className={`fixed z-50 flex h-screen flex-col border-r transition-all duration-300 md:static ${collapsed ? 'md:w-[90px]' : 'md:w-[300px]'} w-[300px] md:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} bg-white dark:bg-[#111118]`}
+                className={`border-sidebar-border bg-sidebar fixed z-50 flex h-screen flex-col border-r transition-all duration-300 ease-in-out md:static ${collapsed ? 'md:w-[60px]' : 'md:w-[220px]'} w-[220px] ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} `}
                 aria-label="Sidebar navigation"
             >
-                {/* TOP HEADER */}
-
-                <div className="relative flex items-center justify-between border-b border-gray-200 px-4 py-4 dark:border-white/10">
-                    {/* LOGO */}
+                {/* Logo + collapse */}
+                <div className="border-sidebar-border relative flex items-center justify-between border-b px-4 py-4">
                     {!collapsed && (
                         <div>
-                            <h1 className="text-[26px] font-extrabold tracking-tight" style={{ fontFamily: 'Syne, sans-serif' }}>
-                                Talent<span className="text-secondary">AI</span>
+                            <h1
+                                className="text-ds-text text-[22px] leading-none font-extrabold tracking-tight"
+                                style={{ fontFamily: 'Syne, sans-serif' }}
+                            >
+                                Talent<span className="text-ds-accent">AI</span>
                             </h1>
-                            <p className="text-[11px] tracking-wider text-gray-400 uppercase">Recrutement Intelligent</p>
+                            <p className="text-ds-text3 mt-1 text-[10px] font-semibold tracking-[0.8px] uppercase">Recrutement Intelligent</p>
                         </div>
                     )}
-
-                    {/* DESKTOP COLLAPSE BUTTON */}
                     <button
                         onClick={() => setCollapsed(!collapsed)}
-                        className="hidden rounded-lg p-2 hover:bg-gray-100 md:flex dark:hover:bg-[#1E1E28]"
-                        aria-label="Toggle sidebar collapse"
+                        className={`text-ds-text3 hover:bg-ds-accent/[0.06] hover:text-ds-text hidden cursor-pointer rounded-lg p-1.5 transition md:flex ${collapsed ? 'mx-auto' : ''}`}
+                        aria-label="Toggle sidebar"
                     >
-                        {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+                        {collapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
                     </button>
-
-                    {/* MOBILE CLOSE BUTTON */}
                     {mobileOpen && (
                         <button
                             onClick={() => setMobileOpen(false)}
-                            className="absolute top-3 right-3 rounded-lg bg-gray-100/80 p-2 shadow-sm hover:bg-gray-200 md:hidden dark:bg-[#1E1E28]/80 dark:hover:bg-[#2A2A36]"
-                            aria-label="Close navigation menu"
+                            className="text-ds-text3 hover:bg-ds-accent/[0.06] hover:text-ds-text absolute top-3 right-3 cursor-pointer rounded-lg p-1.5 md:hidden"
                         >
-                            <X size={18} />
+                            <X size={17} />
                         </button>
                     )}
                 </div>
 
-                {/* MENU */}
-
-                <nav className="custom-scroll flex-1 overflow-y-auto py-4">
+                {/* Nav */}
+                <nav className="custom-scroll flex-1 overflow-y-auto py-3">
                     {sections.map((section, i) => (
-                        <div key={i} className="mb-4">
-                            {/* SECTION TITLE */}
+                        <div key={i} className="mb-1">
                             {!collapsed && (
-                                <div className="mb-2 px-5 text-[10px] font-semibold tracking-widest text-gray-400 uppercase">{section.title}</div>
+                                <p className="text-ds-text3 mb-1 px-5 pt-3 text-[10px] font-semibold tracking-[1.2px] uppercase">{section.title}</p>
                             )}
+                            {collapsed && i !== 0 && <div className="border-sidebar-border mx-3 my-2 border-t" />}
 
-                            {/* ITEMS */}
                             {section.items.map((item) => {
                                 const Icon = item.icon;
-
+                                const active = isActive(item.route);
                                 return (
                                     <Link
                                         key={item.id}
+                                        href={route(item.route)}
                                         title={collapsed ? item.label : undefined}
                                         aria-label={item.label}
-                                        href={route(item.route)}
-                                        className={`flex items-center gap-3 border-l-2 px-5 py-2 transition-all ${
-                                            isActive(item.route)
-                                                ? 'bg-secondary/10 border-secondary text-secondary font-medium'
-                                                : 'hover:bg-secondary/5 hover:text-secondary border-transparent text-gray-400'
-                                        }`}
-                                        aria-current={isActive(item.route) ? 'page' : undefined}
+                                        aria-current={active ? 'page' : undefined}
+                                        className={`group relative flex items-center gap-2.5 border-l-2 py-2 text-[13.5px] transition-all duration-150 ${collapsed ? 'justify-center px-0' : 'px-5'} ${
+                                            active
+                                                ? 'border-ds-accent bg-ds-accent/10 text-ds-text font-medium'
+                                                : 'text-ds-text2 hover:border-ds-accent/40 hover:bg-ds-accent/[0.06] hover:text-ds-text border-transparent'
+                                        } `}
                                     >
-                                        <Icon size={18} />
-                                        {!collapsed && <span>{item.label}</span>}
+                                        <Icon
+                                            size={17}
+                                            className={`shrink-0 transition-colors ${active ? 'text-ds-accent' : 'text-ds-text3 group-hover:text-ds-accent'}`}
+                                        />
+                                        {!collapsed && (
+                                            <>
+                                                <span className="flex-1 truncate">{item.label}</span>
+                                                <NavBadge count={item.badge} dot={item.dot} />
+                                            </>
+                                        )}
+                                        {collapsed && (
+                                            <span className="border-ds-border2 bg-ds-surface text-ds-text pointer-events-none absolute left-full z-50 ml-3 hidden rounded-md border px-2.5 py-1.5 text-xs font-medium whitespace-nowrap shadow-lg group-hover:block">
+                                                {item.label}
+                                                {item.badge ? (
+                                                    <span className="bg-ds-accent ml-1.5 rounded-full px-1.5 py-px text-[10px] font-bold text-white">
+                                                        {item.badge}
+                                                    </span>
+                                                ) : null}
+                                            </span>
+                                        )}
                                     </Link>
                                 );
                             })}
-
-                            {/* DIVIDER */}
-                            {i !== sections.length - 1 && <div className="mt-3 border-b border-gray-100 dark:border-white/5" />}
                         </div>
                     ))}
                 </nav>
 
-                {/* USER */}
-                <div className="border-t border-gray-200 p-4 dark:border-white/10">
-                    <div className="flex items-center gap-2">
-                        <div className="from-secondary flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br to-cyan-400 text-xs font-bold text-white">
-                            SA
-                        </div>
-
-                        {!collapsed && (
-                            <div>
-                                <p className="text-sm font-medium">Said Isium</p>
-                                <p className="text-xs text-gray-400">Admin RH</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
+                {/* User footer */}
+                <UserDropdown user={authUser} collapsed={collapsed} />
             </aside>
         </>
     );

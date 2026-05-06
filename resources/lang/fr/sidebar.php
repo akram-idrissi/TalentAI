@@ -12,6 +12,12 @@ return [
         'auto' => 'Sourcing auto',
     ],
 
+    'candidats' => [
+        'title' => 'Candidats',
+        'base' => 'Base candidats',
+        'rankings' => 'Classements IA',
+    ],
+
     'interviews' => [
         'title' => 'Entretiens',
         'list' => 'Entretiens',
