@@ -133,7 +133,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                 title: t('sidebar.sourcing.title'),
                 items: [
                     { id: 'briefs', label: t('sidebar.sourcing.brief'), icon: FileText, route: 'dashboard.briefs.index' },
-                    { id: 'sourcing', label: t('sidebar.sourcing.auto'), icon: Search, route: 'dashboard.sourcing', dot: true },
+                    { id: 'sourcing', label: t('sidebar.sourcing.auto'), icon: Search, route: 'dashboard.sourcing.index', dot: true },
                 ],
             },
             {
