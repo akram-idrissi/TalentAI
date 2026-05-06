@@ -17,7 +17,7 @@ export default function ShowBrief({ brief }: ShowBriefProps) {
         day: 'numeric',
     });
     function handleDelete() {
-        router.delete(route('briefs.destroy', brief.id));
+        router.delete(route('dashboard.briefs.destroy', brief.id));
         setConfirmingDelete(false);
     }
     const val = (v?: string) => (v?.trim() ? v : <span className="text-gray-400">—</span>);
@@ -35,7 +35,7 @@ export default function ShowBrief({ brief }: ShowBriefProps) {
                         </div>
                         <div className="flex items-center gap-3">
                             <Link
-                                href={route('briefs.edit', brief.id)}
+                                href={route('dashboard.briefs.edit', brief.id)}
                                 className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-100 dark:border-white/10 dark:text-gray-400 dark:hover:bg-white/5"
                             >
                                 <svg
@@ -56,7 +56,7 @@ export default function ShowBrief({ brief }: ShowBriefProps) {
                             </Link>
 
                             <button
-                                onClick={() => router.post(route('briefs.activate', brief.id))}
+                                onClick={() => router.post(route('dashboard.briefs.activate', brief.id))}
                                 className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700"
                             >
                                 <svg

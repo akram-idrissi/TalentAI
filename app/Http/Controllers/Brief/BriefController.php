@@ -72,6 +72,8 @@ class BriefController extends Controller
                     'title' => $brief->title,
                     'sector' => $brief->sector,
                     'contract_type' => $brief->contract_type,
+                    'location' => $brief->location,
+                    'min_experience_years' => $brief->min_experience_years,
                     'education_level' => $brief->education_level,
                     'gender_pref' => $brief->gender_pref,
                     'status' => $brief->status,
@@ -400,7 +402,7 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
-            return redirect()->route('briefs.show', $brief->id)
+            return redirect()->route('dashboard.briefs.show', $brief->id)
                 ->with('success', 'Brief activé et sourcing lancé.');
         } catch (\Throwable $e) {
             $logger->log(

@@ -66,7 +66,7 @@ export default function Index({ briefs, filters }: IndexBriefProps) {
 
     function handleDelete() {
         if (!deletingBrief) return;
-        router.delete(route('briefs.destroy', deletingBrief.id), { onSuccess: () => setDeletingBrief(null) });
+        router.delete(route('dashboard.briefs.destroy', deletingBrief.id), { onSuccess: () => setDeletingBrief(null) });
     }
 
     function handleSearch() {
@@ -208,14 +208,14 @@ export default function Index({ briefs, filters }: IndexBriefProps) {
                                                 <td className="px-4 py-3.5">
                                                     <div className="flex items-center justify-end gap-1">
                                                         <Link
-                                                            href={route('briefs.show', brief.id)}
+                                                            href={route('dashboard.briefs.show', brief.id)}
                                                             className="border-ds-border text-ds-text3 hover:border-ds-border2 hover:text-ds-text flex h-7 w-7 items-center justify-center rounded-lg border transition"
                                                             title={t('briefs.index.actions.view')}
                                                         >
                                                             <Eye size={13} />
                                                         </Link>
                                                         <Link
-                                                            href={route('briefs.edit', brief.id)}
+                                                            href={route('dashboard.briefs.edit', brief.id)}
                                                             className="border-ds-border text-ds-text3 hover:border-ds-amber/40 hover:text-ds-amber flex h-7 w-7 items-center justify-center rounded-lg border transition"
                                                             title={t('briefs.index.actions.edit')}
                                                         >
