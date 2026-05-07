@@ -48,11 +48,13 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => fn () => session('success'),
                 'error' => fn () => session('error'),
+                'test_result' => $request->session()->get('test_result'),
             ],
             'locale' => session('locale', config('app.locale')),
             'translations' => fn () => [
                 'sidebar' => __('sidebar'),
                 'briefs' => __('briefs'),
+                'integrations' => __('integrations'),
             ],
         ];
     }

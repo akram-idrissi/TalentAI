@@ -153,7 +153,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
             },
             {
                 title: t('sidebar.settings.title'),
-                items: [{ id: 'settings', label: t('sidebar.settings.integrations'), icon: Settings, route: 'dashboard.integrations' }],
+                items: [{ id: 'settings', label: t('sidebar.settings.integrations'), icon: Settings, route: 'dashboard.integrations.index' }],
             },
         ],
         [t],
