@@ -1,8 +1,5 @@
 <?php
 
-use Inertia\Inertia;
+use App\Http\Controllers\Sourcing\SourcingController;
 
-Route::get('/sourcing', fn () => Inertia::render('ComingSoon', [
-    'title' => 'Sourcing automatique',
-    'description' => 'Le sourcing automatique sera disponible prochainement.',
-]))->name('sourcing');
+Route::resource('sourcing', SourcingController::class);

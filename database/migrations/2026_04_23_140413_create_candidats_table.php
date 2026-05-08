@@ -10,21 +10,27 @@ return new class extends Migration
     {
         Schema::create('candidats', function (Blueprint $table) {
             $table->id();
-            $table->string('full_name');
-            $table->string('email')->nullable()->unique();
-            $table->string('phone')->nullable();
-            $table->string('current_title')->nullable();
-            $table->string('current_company')->nullable();
+            $table->string('linkedin_url')->unique()->nullable();
+            $table->string('full_name')->nullable();
+            $table->string('headline')->nullable();
             $table->string('location')->nullable();
-            $table->integer('experience_years')->nullable();
-            $table->string('education_level')->nullable();
-            $table->enum('source', [
-                'linkedin',
-                'indeed',
-                'facebook',
-                'manual',
-                'cv_upload',
-            ]);
+            $table->text('summary')->nullable();
+            $table->json('skills')->nullable();
+            $table->string('current_company')->nullable();
+            $table->string('current_title')->nullable();
+            $table->float('experience_years')->nullable();
+            $table->string('education_level')->nullable();  // normalized key
+            $table->string('sector')->nullable();
+            $table->boolean('open_to_work')->default(false);
+            $table->string('source')->default('apify');
+            $table->json('raw_data')->nullable();
+            // $table->enum('source', [
+            //     'linkedin',
+            //     'indeed',
+            //     'facebook',
+            //     'manual',
+            //     'cv_upload',
+            // ]);
             $table->string('source_url')->nullable();
             $table->enum('status', [
                 'sourced',
@@ -33,7 +39,7 @@ return new class extends Migration
                 'recommended',
                 'offer',
                 'rejected',
-            ]);
+            ])->default('sourced');
             $table->timestamps();
             $table->softDeletes();
         });

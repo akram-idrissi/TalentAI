@@ -91,7 +91,7 @@ export default function EditBrief({ brief, contractTypes, genderPrefs }: EditBri
             return;
         }
         statusRef.current = 'active';
-        put(route('briefs.update', brief.id));
+        put(route('dashboard.briefs.update', brief.id));
     }
 
     function saveDraft() {
@@ -101,7 +101,7 @@ export default function EditBrief({ brief, contractTypes, genderPrefs }: EditBri
             return;
         }
         statusRef.current = 'draft';
-        put(route('briefs.update', brief.id));
+        put(route('dashboard.briefs.update', brief.id));
     }
 
     const toOption = (val: string, opts: SelectOption[]) => opts.find((o) => o.value === val) ?? null;
@@ -134,7 +134,7 @@ export default function EditBrief({ brief, contractTypes, genderPrefs }: EditBri
                             <p className="text-ds-text2 mt-1 text-[14px]">{t('briefs.edit_brief.subtitle')}</p>
                         </div>
                         <Link
-                            href={route('briefs.show', brief.id)}
+                            href={route('dashboard.briefs.show', brief.id)}
                             className="border-ds-border text-ds-text2 hover:bg-ds-surface hover:text-ds-text flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[13px] transition"
                         >
                             <Eye size={14} />
@@ -211,7 +211,7 @@ export default function EditBrief({ brief, contractTypes, genderPrefs }: EditBri
                                         <ReactSelect
                                             classNamePrefix="rs"
                                             options={EXPERIENCE_OPTIONS}
-                                            value={toOption(data.min_experience_years, EXPERIENCE_OPTIONS)}
+                                            value={toOption(String(data.min_experience_years ?? ''), EXPERIENCE_OPTIONS)}
                                             onChange={(opt) => setData('min_experience_years', opt?.value ?? '')}
                                             placeholder={t('briefs.create_briefs.fields.min_experience_years_placeholder')}
                                         />
@@ -319,7 +319,7 @@ export default function EditBrief({ brief, contractTypes, genderPrefs }: EditBri
                             {confirmingCancel ? (
                                 <div className="border-ds-border flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-[12px]">
                                     <span className="text-ds-text3">{t('briefs.edit_brief.actions.cancel_confirm')}</span>
-                                    <Link href={route('briefs.show', brief.id)} className="text-ds-red font-semibold hover:underline">
+                                    <Link href={route('dashboard.briefs.show', brief.id)} className="text-ds-red font-semibold hover:underline">
                                         {t('briefs.edit_brief.actions.cancel_yes')}
                                     </Link>
                                     <span className="text-ds-text3">·</span>
