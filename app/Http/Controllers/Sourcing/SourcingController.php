@@ -44,6 +44,7 @@ class SourcingController extends Controller
                     ->through(fn ($candidat) => [
                         'id' => $candidat->id,
                         'full_name' => $candidat->full_name,
+                        'linkedin_url' => $candidat->linkedin_url,
                         'current_title' => $candidat->current_title,
                         'current_company' => $candidat->current_company,
                         'location' => $candidat->location,

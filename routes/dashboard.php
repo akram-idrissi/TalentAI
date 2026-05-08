@@ -13,5 +13,6 @@ Route::middleware(['auth'])->group(function () {
         require __DIR__.'/interviews.php';
         require __DIR__.'/reports.php';
         require __DIR__.'/integrations.php';
+        require __DIR__.'/classement.php';
     });
 });
