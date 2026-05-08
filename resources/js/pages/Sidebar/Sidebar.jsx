@@ -11,7 +11,6 @@ import {
     PanelLeftOpen,
     Search,
     Settings,
-    Trophy,
     Users,
     X,
 } from 'lucide-react';
@@ -134,14 +133,14 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                 title: t('sidebar.sourcing.title'),
                 items: [
                     { id: 'briefs', label: t('sidebar.sourcing.brief'), icon: FileText, route: 'dashboard.briefs.index' },
-                    { id: 'sourcing', label: t('sidebar.sourcing.auto'), icon: Search, route: 'dashboard.sourcing', dot: true },
+                    { id: 'sourcing', label: t('sidebar.sourcing.auto'), icon: Search, route: 'dashboard.sourcing.index', dot: true },
                 ],
             },
             {
                 title: t('sidebar.candidats.title'),
                 items: [
-                    { id: 'candidates', label: t('sidebar.candidats.base'), icon: Users, route: 'dashboard.candidates', badge: 24 },
-                    { id: 'rankings', label: t('sidebar.candidats.rankings'), icon: Trophy, route: 'dashboard.candidates.rankings' },
+                    { id: 'candidates', label: t('sidebar.candidats.base'), icon: Users, route: 'dashboard.candidats.index', badge: 24 },
+                    // { id: 'rankings', label: t('sidebar.candidats.rankings'), icon: Trophy, route: 'dashboard.candidates.rankings' },
                 ],
             },
             {

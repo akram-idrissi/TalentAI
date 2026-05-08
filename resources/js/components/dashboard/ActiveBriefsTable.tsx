@@ -37,7 +37,7 @@ export default function ActiveBriefsTable({ briefs }: { briefs: Brief[] }) {
                             <tr
                                 key={brief.id}
                                 className="border-ds-border hover:bg-ds-bg3/40 cursor-pointer border-b transition-colors last:border-0"
-                                onClick={() => router.visit(route('briefs.show', brief.id))}
+                                onClick={() => router.visit(route('dashboard.briefs.show', brief.id))}
                             >
                                 <td className="py-3.5 pr-4">
                                     <p className="text-ds-text font-medium">{brief.title}</p>

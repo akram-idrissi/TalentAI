@@ -23,6 +23,7 @@ class Candidat extends Model
         'source',
         'source_url',
         'status',
+        'linkedin_url', 'headline', 'summary', 'skills', 'open_to_work', 'raw_data',
 
     ];
 
@@ -34,7 +35,10 @@ class Candidat extends Model
     protected function casts(): array
     {
         return [
-            'experience_years' => 'integer',
+            'skills' => 'array',
+            'raw_data' => 'array',
+            'open_to_work' => 'boolean',
+            'experience_years' => 'float',
         ];
     }
 }

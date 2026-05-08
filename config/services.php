@@ -34,5 +34,14 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    'apify' => [
+        'token' => env('APIFY_TOKEN'),
+    ],
+    'anthropic' => [
+        'key' => env('ANTHROPIC_KEY'),
+    ],
+    'openrouter' => [
+        'key' => env('OPEN_ROUTER_KEY'),
+    ],
 
 ];

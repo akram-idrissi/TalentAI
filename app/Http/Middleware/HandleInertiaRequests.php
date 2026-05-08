@@ -55,6 +55,7 @@ class HandleInertiaRequests extends Middleware
                 'sidebar' => __('sidebar'),
                 'briefs' => __('briefs'),
                 'integrations' => __('integrations'),
+                'candidats' => __('candidats'),
             ],
         ];
     }
