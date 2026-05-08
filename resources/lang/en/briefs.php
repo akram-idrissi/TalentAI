@@ -126,6 +126,8 @@ return [
             'delete_yes' => 'Yes, delete',
             'delete_no' => 'Cancel',
             'delete_confirming' => 'Are you sure?',
+            'activate' => 'Activate & Start Sourcing',
+
         ],
     ],
     'fallback' => [

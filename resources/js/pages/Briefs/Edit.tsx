@@ -91,7 +91,7 @@ export default function EditBrief({ brief, contractTypes, genderPrefs }: EditBri
             return;
         }
         statusRef.current = 'active';
-        put(route('briefs.update', brief.id));
+        put(route('dashboard.briefs.update', brief.id));
     }
 
     function saveDraft() {
@@ -101,7 +101,7 @@ export default function EditBrief({ brief, contractTypes, genderPrefs }: EditBri
             return;
         }
         statusRef.current = 'draft';
-        put(route('briefs.update', brief.id));
+        put(route('dashboard.briefs.update', brief.id));
     }
 
     const toOption = (val: string, opts: SelectOption[]) => opts.find((o) => o.value === val) ?? null;
@@ -211,7 +211,7 @@ export default function EditBrief({ brief, contractTypes, genderPrefs }: EditBri
                                         <ReactSelect
                                             classNamePrefix="rs"
                                             options={EXPERIENCE_OPTIONS}
-                                            value={toOption(data.min_experience_years, EXPERIENCE_OPTIONS)}
+                                            value={toOption(String(data.min_experience_years ?? ''), EXPERIENCE_OPTIONS)}
                                             onChange={(opt) => setData('min_experience_years', opt?.value ?? '')}
                                             placeholder={t('briefs.create_briefs.fields.min_experience_years_placeholder')}
                                         />

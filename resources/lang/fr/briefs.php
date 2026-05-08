@@ -127,6 +127,7 @@ return [
             'delete_yes' => 'Oui, supprimer',
             'delete_no' => 'Annuler',
             'delete_confirming' => 'Êtes-vous sûr ?',
+            'activate' => 'Activer & Lancer le sourcing',
         ],
     ],
     'fallback' => [

@@ -1,5 +1,8 @@
 import { useState } from "react";
 import AppSidebarLayout from "@/layouts/app/app-sidebar-layout";
+
+import AppLayout from '@/layouts/app-layout';
+
 import {
   Linkedin,
   Search,
@@ -77,7 +80,9 @@ export default function SourcingRankingPage() {
   const [selected, setSelected] = useState(candidates[0]);
 
   return (
-    <AppSidebarLayout>
+
+    <AppLayout>
+
       <div className="min-h-screen bg-ds-bg dark:bg-[#0A0A0F] text-ds-text dark:text-white p-6">
 
         {/* HEADER */}
@@ -241,6 +246,7 @@ export default function SourcingRankingPage() {
           </div>
         </div>
       </div>
-    </AppSidebarLayout>
+    </AppLayout>
+
   );
 }

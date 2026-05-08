@@ -1,0 +1,137 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Models\ApifyRun;
+use App\Services\Recruitment\ApifyCandidateImporter;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Http;
+
+/**
+ * Polls an Apify run until it succeeds or fails.
+ * Re-queues itself every 60 seconds, up to 20 attempts (~20 minutes total).
+ * On success, delegates candidate import and scoring to ApifyCandidateImporter.
+ * Handles Apify rate limits by releasing back to the queue for 1 hour.
+ */
+class FetchApifyResultsJob implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    /** @var int Maximum number of polling attempts before Laravel marks the job as failed. */
+    public int $tries = 20;
+
+    /** @var int Seconds to wait between polling attempts. */
+    public int $backoff = 60;
+
+    public function __construct(public int $runId) {}
+
+    /**
+     * Poll the Apify run status and react accordingly.
+     * - SUCCEEDED  → import candidates and mark run as succeeded.
+     * - RUNNING / READY / ABORTING → release back to queue after $backoff seconds.
+     * - 429 or rate-limited statusMessage → release for 1 hour.
+     * - Any other status → mark run as failed and fail the job.
+     *
+     * @param  ApifyCandidateImporter  $importer  Handles dataset fetching, upsert, and scoring.
+     */
+    public function handle(ApifyCandidateImporter $importer): void
+    {
+        $run = ApifyRun::find($this->runId);
+
+        if (! $run) {
+            return;
+        }
+
+        try {
+            $response = Http::withToken(config('services.apify.token'))
+                ->get("https://api.apify.com/v2/actor-runs/{$run->run_id}");
+
+            if ($response->status() === 429) {
+                $this->release(3600 + random_int(0, 300));
+
+                return;
+            }
+
+            $data = $response->json('data');
+            $status = $data['status'] ?? 'FAILED';
+
+            if (! $run->dataset_id && ! empty($data['defaultDatasetId'])) {
+                $run->update([
+                    'dataset_id' => $data['defaultDatasetId'],
+                ]);
+            }
+
+            if (($data['statusMessage'] ?? '') === 'rate limited') {
+                $this->release(3600 + random_int(0, 300));
+
+                return;
+            }
+
+            match ($status) {
+                'SUCCEEDED' => $this->handleSuccess($run, $importer),
+                'RUNNING', 'READY', 'ABORTING' => $this->release($this->backoff),
+                default => $this->handleFailure($run, $status),
+            };
+
+        } catch (\Throwable $e) {
+
+            logger()->error('FetchApifyResultsJob failed', [
+                'run_id' => $run->run_id,
+                'attempt' => $this->attempts(),
+                'message' => $e->getMessage(),
+            ]);
+
+            $run->update(['status' => 'error']);
+
+        }
+    }
+
+    /**
+     * Import candidates from the completed run and update the run record.
+     */
+    private function handleSuccess(ApifyRun $run, ApifyCandidateImporter $importer): void
+    {
+        try {
+
+            if (! $run->dataset_id) {
+                $this->release(30);
+
+                return;
+            }
+
+            $count = $importer->import($run);
+
+            $run->update([
+                'status' => 'succeeded',
+                'candidates_imported' => $count,
+            ]);
+        } catch (\Throwable $e) {
+            logger()->error('Error in handleSuccess', [
+                'run_id' => $run->run_id,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Mark the run as failed and fail the job with a descriptive message.
+     *
+     * @param  string  $status  The terminal status returned by Apify (e.g. 'ABORTED', 'TIMED-OUT').
+     */
+    private function handleFailure(ApifyRun $run, string $status): void
+    {
+        try {
+            $run->update(['status' => 'failed']);
+            $this->fail("Run ended with: {$status}");
+        } catch (\Throwable $e) {
+            logger()->error('Error in handleFailure', [
+                'run_id' => $run->run_id,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+}

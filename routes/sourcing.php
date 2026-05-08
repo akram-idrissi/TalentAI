@@ -1,7 +1,7 @@
 <?php
 
-use Inertia\Inertia;
+use App\Http\Controllers\Sourcing\SourcingController;
 
-Route::get('/sourcing', function () {
-    return Inertia::render('Sourcing/Index');
-})->name('sourcing');
+
+Route::resource('sourcing', SourcingController::class);
+

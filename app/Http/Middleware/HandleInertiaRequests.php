@@ -53,6 +53,7 @@ class HandleInertiaRequests extends Middleware
             'translations' => fn () => [
                 'sidebar' => __('sidebar'),
                 'briefs' => __('briefs'),
+                'candidats' => __('candidats'),
             ],
         ];
     }

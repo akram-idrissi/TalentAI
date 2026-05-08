@@ -1,135 +1,161 @@
-import CandidateTable from "@/components/CandidateTable";
-import AppSidebarLayout from "@/layouts/app/app-sidebar-layout";
-import { router } from "@inertiajs/react";
-import { Briefcase, icons, Search, Users } from "lucide-react";
 
-const sources = [
-  {
-    name: "LinkedIn",
-    icon:<Search className="w-5 h-5 text-ds-text3" />,
-    stats: "23 profils trouvés · 8 retenus",
-    status: "connected",
-  },
-  {
-    name: "Indeed",
-    icon:<Briefcase className="w-5 h-5 text-ds-text3" />,
-    stats: "11 CVs importés · 5 retenus",
-    status: "connected",
-  },
-  {
-    name: "Facebook Jobs",
-    icon:<Users className="w-5 h-5 text-ds-text3" />,
-    stats: "Non configuré",
-    status: "not_configured",
-  },
-];
+import CandidateTable from '@/components/Candidats/CandidatsTable';
+import AppLayout from '@/layouts/app-layout';
+import { Head, router } from '@inertiajs/react';
+import dayjs from 'dayjs';
+import 'dayjs/locale/fr';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import { Briefcase, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
 
-const candidates = [
-  {
-    id: 1,
-    name: "Karim Benali",
-    location: "Casablanca",
-    source: "LinkedIn",
-    job: "Dir. Commercial · Atlas Group",
-    experience: "14 ans",
-    score: 94,
-  },
-    {
-    id: 1,
-    name: "Karim Benali",
-    location: "Casablanca",
-    source: "LinkedIn",
-    job: "Dir. Commercial · Atlas Group",
-    experience: "14 ans",
-    score: 94,
-  },
-    {
-    id: 1,
-    name: "Karim Benali",
-    location: "Casablanca",
-    source: "LinkedIn",
-    job: "Dir. Commercial · Atlas Group",
-    experience: "14 ans",
-    score: 94,
-  },
-];
+dayjs.extend(relativeTime);
+dayjs.locale('fr');
 
-export default function SourcingPage() {
-  return (
-    <AppSidebarLayout>
-      <div className="bg-ds-bg text-ds-text min-h-full px-6 py-8">
-        
-        {/* HEADER */}
-        <div className="mb-6">
-          <p className="font-heading text-ds-text3 text-xs">
-            Sourcing <span className="text-ds-text2">› Sourcing automatisé</span>
-          </p>
+/* ---------------- TYPES ---------------- */
 
-          <h1 className="font-heading text-[26px] font-bold">
-            Sourcing IA · Directeur Commercial MENA
-          </h1>
-
-          <p className="font-heading text-ds-text2 mt-1 text-[14px]">
-            Connectez vos plateformes · L'IA extrait et qualifie les profils automatiquement
-          </p>
-        </div>
-
-        {/* SOURCES */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          {sources.map((s, i) => (
-            <div
-              key={i}
-              className="bg-ds-surface border-ds-border hover:border-ds-border2 rounded-xl border p-4 transition"
-            >
-              <div className="mb-2 text-xl">{s.icon}</div>
-
-              <h3 className="font-heading text-[14px] font-semibold">
-                {s.name}
-              </h3>
-
-              <p className="font-heading text-ds-text2 text-[12px]">
-                {s.stats}
-              </p>
-
-              {s.status === "connected" ? (
-                <span className="font-heading text-[11px] text-green-400 mt-2 inline-block">
-                  ● Connecté
-                </span>
-              ) : (
-                <span className="font-heading text-ds-text3 text-[11px] mt-2 inline-block">
-                  Configurer →
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* TABLE */}
-        <div className="bg-ds-surface border-ds-border rounded-xl border p-4">
-          
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-heading text-[14px] font-semibold">
-              Profils sourcés & filtrés par IA
-            </h2>
-
-            <div className="flex items-center gap-3">
-              <span className="font-heading text-ds-text3 text-xs">
-                13 retenus / 34 analysés
-              </span>
-
-              <button
-                onClick={() => router.visit(route('dashboard.classement'))}
-                className="bg-ds-accent hover:bg-[#7C74FF] text-white text-[12px] px-3 py-1 rounded-md"
-              >
-                Voir le classement
-              </button>
-            </div>
-          </div>
-
-          <CandidateTable data={candidates} />
-
-        </div>
-      </div>
-    </AppSidebarLayout>
-  );
+interface Brief {
+    id: number;
+    title: string;
 }
+
+interface Candidat {
+    id: number;
+    full_name: string;
+    current_title?: string;
+    current_company?: string;
+    location?: string;
+    experience_years?: number;
+    status: string;
+    score?: number;
+    sourced_at?: string;
+}
+
+interface PaginationMeta<T> {
+    data: T[];
+    current_page: number;
+    last_page: number;
+    from: number | null;
+    to: number | null;
+    total: number;
+}
+
+interface Props {
+    briefs: Brief[];
+    candidats: PaginationMeta<Candidat> | null;
+    filters: {
+        brief_id?: number;
+    };
+}
+
+/* ---------------- PAGINATION ---------------- */
+
+function Pagination({ meta, brief_id }: { meta: PaginationMeta<Candidat>; brief_id?: number }) {
+    if (meta.last_page <= 1) return null;
+
+    function goTo(page: number) {
+        router.get(route('dashboard.sourcing.index'), { page, ...(brief_id ? { brief_id } : {}) }, { preserveState: true });
+    }
+
+    return (
+        <div className="mt-4 flex items-center justify-between text-[13px]">
+            <p className="text-ds-text3">{meta.from != null && meta.to != null ? `${meta.from}–${meta.to} sur ${meta.total}` : `${meta.total}`}</p>
+
+            <div className="flex items-center gap-2">
+                <button onClick={() => goTo(meta.current_page - 1)} disabled={meta.current_page === 1} className="border-ds-border rounded px-3 py-1">
+                    <ChevronLeft size={14} />
+                </button>
+
+                <span className="text-ds-text2 text-sm">
+                    {meta.current_page} / {meta.last_page}
+                </span>
+
+                <button
+                    onClick={() => goTo(meta.current_page + 1)}
+                    disabled={meta.current_page === meta.last_page}
+                    className="border-ds-border rounded px-3 py-1"
+                >
+                    <ChevronRight size={14} />
+                </button>
+            </div>
+        </div>
+    );
+}
+
+/* ---------------- PAGE ---------------- */
+
+export default function Index({ briefs, candidats, filters }: Props) {
+    const [briefId, setBriefId] = useState<number | ''>(filters.brief_id ?? '');
+
+    function handleSelect(id: number | '') {
+        setBriefId(id);
+
+        router.get(route('dashboard.sourcing.index'), id ? { brief_id: id } : {}, { preserveState: true });
+    }
+
+    return (
+        <>
+            <Head title="Sourcing" />
+
+            <AppLayout>
+                <div className="bg-ds-bg min-h-full px-6 py-8">
+                    {/* Header */}
+                    <div className="mb-6">
+                        <h1 className="font-heading text-ds-text text-[26px] font-bold">Sourcing</h1>
+                        <p className="text-ds-text2 mt-1 text-[14px]">Sélectionnez un brief pour afficher les candidats sourcés</p>
+                    </div>
+
+                    {/* Select */}
+                    <div className="mb-6 max-w-md">
+                        <select
+                            value={briefId}
+                            onChange={(e) => handleSelect(e.target.value ? Number(e.target.value) : '')}
+                            className="border-ds-border bg-ds-bg3 text-ds-text w-full rounded-lg border px-3 py-2 text-[13px]"
+                        >
+                            <option value="">-- Choisir un brief --</option>
+                            {briefs.map((b) => (
+                                <option key={b.id} value={b.id}>
+                                    {b.title}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* No brief selected */}
+                    {!briefId && (
+                        <div className="border-ds-border bg-ds-surface flex flex-col items-center justify-center rounded-xl border py-24 text-center">
+                            <div className="bg-ds-accent/10 mb-4 flex h-14 w-14 items-center justify-center rounded-2xl">
+                                <Briefcase className="text-ds-accent" size={24} />
+                            </div>
+                            <p className="font-heading text-ds-text text-[15px] font-semibold">Aucun brief sélectionné</p>
+                            <p className="text-ds-text2 mt-1 text-[13px]">Choisissez un brief pour voir les candidats</p>
+                        </div>
+                    )}
+
+                    {/* No candidats */}
+                    {briefId && candidats && candidats.data.length === 0 && (
+                        <div className="border-ds-border bg-ds-surface flex flex-col items-center justify-center rounded-xl border py-24 text-center">
+                            <p className="text-ds-text2 text-[13px]">Aucun candidat trouvé pour ce brief</p>
+                        </div>
+                    )}
+
+                    {/* Table */}
+                    {briefId && candidats && candidats.data.length > 0 && (
+                        <div className="border-ds-border bg-ds-surface overflow-hidden rounded-xl border">
+                            <div className="overflow-x-auto">
+                                <CandidateTable
+                                    data={candidats.data}
+                                    onDelete={(candidat) => setDeletingCandidat(candidat)}
+                                />
+                            </div>
+
+                            <div className="px-4 pb-4">
+                                <Pagination meta={candidats} brief_id={typeof briefId === 'number' ? briefId : undefined} />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </AppLayout>
+        </>
+    );
+}
+

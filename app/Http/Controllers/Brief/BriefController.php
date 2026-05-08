@@ -6,6 +6,7 @@ use App\Enums\BriefStatus;
 use App\Enums\ContractType;
 use App\Enums\GenderPref;
 use App\Http\Controllers\Controller;
+use App\Jobs\DispatchBriefSourcingJob;
 use App\Models\Brief;
 use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
@@ -71,6 +72,8 @@ class BriefController extends Controller
                     'title' => $brief->title,
                     'sector' => $brief->sector,
                     'contract_type' => $brief->contract_type,
+                    'location' => $brief->location,
+                    'min_experience_years' => $brief->min_experience_years,
                     'education_level' => $brief->education_level,
                     'location' => $brief->location,
                     'min_experience_years' => $brief->min_experience_years,
@@ -99,7 +102,7 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
-            return Inertia::render('Briefs/Fallback', [
+            return Inertia::render('Fallback', [
                 'error' => 'Impossible de charger la liste des briefs.',
             ]);
         }
@@ -143,7 +146,7 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
-            return Inertia::render('Briefs/Fallback', [
+            return Inertia::render('Fallback', [
                 'error' => 'Impossible d\'afficher le formulaire de création.',
             ]);
         }
@@ -184,9 +187,15 @@ class BriefController extends Controller
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Throwable $e) {
-            \Log::error('brief.store error: '.$e->getMessage(), ['exception' => $e]);
 
-            return Inertia::render('Briefs/Fallback', [
+            $logger->log(
+                'brief.store.error',
+                'Erreur lors de la création du brief : '.$e->getMessage(),
+                ['exception' => $e->getMessage()],
+                [Brief::class]
+            );
+
+            return Inertia::render('Fallback', [
                 'error' => 'Impossible de créer le brief.',
             ]);
         }
@@ -222,7 +231,7 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
-            return Inertia::render('Briefs/Fallback', [
+            return Inertia::render('Fallback', [
                 'error' => 'Impossible d\'afficher ce brief.',
             ]);
         }
@@ -270,7 +279,7 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
-            return Inertia::render('Briefs/Fallback', [
+            return Inertia::render('Fallback', [
                 'error' => 'Impossible d\'afficher le formulaire d\'édition.',
             ]);
         }
@@ -302,6 +311,7 @@ class BriefController extends Controller
                 ->toArray();
 
             $statutAvant = $brief->status;
+
             $brief->update($validated);
 
             try {
@@ -327,7 +337,7 @@ class BriefController extends Controller
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Throwable $e) {
-            return Inertia::render('Briefs/Fallback', [
+            return Inertia::render('Fallback', [
                 'error' => 'Impossible de mettre à jour ce brief.',
                 'brief' => $brief,
             ]);
@@ -368,8 +378,44 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
-            return Inertia::render('Briefs/Fallback', [
+            return Inertia::render('Fallback', [
                 'error' => 'Impossible de supprimer ce brief.',
+            ]);
+        }
+    }
+
+    /**
+     * Activate the brief and dispatch the sourcing job.
+     */
+    public function activate(Brief $brief): RedirectResponse|Response
+    {
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $brief->update(['status' => BriefStatus::Active]);
+
+            DispatchBriefSourcingJob::dispatch($brief);
+
+            $logger->log(
+                'brief.activate',
+                "Activation du brief « {$brief->title} » (ID : {$brief->id}) et déclenchement du sourcing.",
+                ['brief_id' => $brief->id],
+                [Brief::class]
+            );
+
+            return redirect()->route('dashboard.briefs.show', $brief->id)
+                ->with('success', 'Brief activé et sourcing lancé.');
+        } catch (\Throwable $e) {
+            $logger->log(
+                'brief.activate.error',
+                "Erreur lors de l'activation du brief (ID : {$brief->id}) : ".$e->getMessage(),
+                ['brief_id' => $brief->id, 'exception' => $e->getMessage()],
+                [Brief::class]
+            );
+
+            return Inertia::render('Fallback', [
+                'error' => "Impossible d'activer ce brief.",
             ]);
         }
     }

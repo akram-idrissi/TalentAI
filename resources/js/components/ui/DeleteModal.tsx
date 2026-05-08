@@ -1,15 +1,20 @@
-import type {  DeleteBriefModalProps    } from '@/types/brief';
 import { useI18n } from '@/hooks/useI18n';
-export default function DeleteModal({ brief, onConfirm, onCancel }: DeleteBriefModalProps) {
+
+interface DeleteModalProps {
+    label: string;       
+    i18nPrefix?: string;  
+    onConfirm: () => void;
+    onCancel: () => void;
+}
+
+export default function DeleteModal({ label, i18nPrefix = 'common.modal.delete', onConfirm, onCancel }: DeleteModalProps) {
     const { t } = useI18n();
 
     return (
-        // Backdrop
         <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
             onClick={onCancel}
         >
-            {/* Modal */}
             <div
                 className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#111118]"
                 onClick={(e) => e.stopPropagation()}
@@ -23,13 +28,13 @@ export default function DeleteModal({ brief, onConfirm, onCancel }: DeleteBriefM
 
                 {/* Content */}
                 <h3 className="mb-1 text-lg font-semibold text-gray-900 dark:text-white">
-                    {t('briefs.index.modal.title')}
+                    {t(`${i18nPrefix}.title`)}
                 </h3>
                 <p className="mb-1 text-sm text-gray-500 dark:text-gray-400">
-                    {t('briefs.index.modal.description')}
+                    {t(`${i18nPrefix}.description`)}
                 </p>
                 <p className="mb-6 rounded-lg bg-gray-50 px-3 py-2 text-sm font-medium text-gray-800 dark:bg-white/5 dark:text-gray-200">
-                    « {brief.title} »
+                    « {label} »
                 </p>
 
                 {/* Actions */}
@@ -38,13 +43,13 @@ export default function DeleteModal({ brief, onConfirm, onCancel }: DeleteBriefM
                         onClick={onCancel}
                         className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-100 dark:border-white/10 dark:text-gray-400 dark:hover:bg-white/5"
                     >
-                        {t('briefs.index.modal.cancel')}
+                        {t(`${i18nPrefix}.cancel`)}
                     </button>
                     <button
                         onClick={onConfirm}
                         className="rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-600"
                     >
-                        {t('briefs.index.modal.confirm')}
+                        {t(`${i18nPrefix}.confirm`)}
                     </button>
                 </div>
             </div>
