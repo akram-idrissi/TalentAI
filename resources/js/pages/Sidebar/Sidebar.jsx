@@ -174,7 +174,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                                 className="text-ds-text text-[22px] leading-none font-extrabold tracking-tight"
                                 style={{ fontFamily: 'Syne, sans-serif' }}
                             >
-                                Talent<span className="text-ds-accent">AI</span>
+                                Recrute<span className="text-ds-accent">AI</span>
                             </h1>
                             <p className="text-ds-text3 mt-1 text-[10px] font-semibold tracking-[0.8px] uppercase">Recrutement Intelligent</p>
                         </div>
