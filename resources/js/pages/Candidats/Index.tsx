@@ -1,29 +1,36 @@
 import DeleteModal from '@/components/ui/DeleteModal';
 import { useI18n } from '@/hooks/useI18n';
 import AppLayout from '@/layouts/app-layout';
-import type { Candidat, IndexCandidatProps } from '@/types/Candidat';
+import type { Candidat, CandidatStatus, IndexCandidatProps } from '@/types/Candidat';
 import { Head, Link, router } from '@inertiajs/react';
-import dayjs from 'dayjs';
-import 'dayjs/locale/fr';
-import relativeTime from 'dayjs/plugin/relativeTime';
-import { Briefcase, ChevronLeft, ChevronRight, Edit2, Eye, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
-
-dayjs.extend(relativeTime);
-dayjs.locale('fr');
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
     sourced: { label: 'Sourcé', className: 'bg-ds-bg3 text-ds-text2 border border-ds-border' },
-    contacted: { label: 'Contacté', className: 'bg-badge-sourcing-bg text-badge-sourcing-text border border-badge-sourcing-text/20' },
-    interview: { label: 'Entretien', className: 'bg-badge-interview-bg text-badge-interview-text border border-badge-interview-text/20' },
-    recommended: { label: 'Recommandé', className: 'bg-badge-active-bg text-badge-active-text border border-badge-active-text/20' },
+    contacted: { label: 'Contacté', className: 'bg-[#F59E0B]/10 text-[#F59E0B] border border-[#F59E0B]/20' },
+    interview: { label: 'Entretien', className: 'bg-[#818CF8]/10 text-[#818CF8] border border-[#818CF8]/20' },
+    recommended: { label: 'Recommandé', className: 'bg-[#34D399]/15 text-[#34D399] border border-[#34D399]/25' },
     offer: { label: 'Offre', className: 'bg-ds-accent/10 text-ds-accent2 border border-ds-accent/20' },
     rejected: { label: 'Rejeté', className: 'bg-ds-red/10 text-ds-red border border-ds-red/20' },
 };
 
-function CandidatStatusBadge({ status }: { status: string }) {
-    const cfg = STATUS_CONFIG[status] ?? { label: status, className: 'bg-ds-bg3 text-ds-text2 border border-ds-border' };
-    return <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${cfg.className}`}>{cfg.label}</span>;
+const SOURCE_CONFIG: Record<string, { className: string }> = {
+    linkedin: { className: 'bg-[#6C63FF]/15 text-[#818CF8] border border-[#6C63FF]/25' },
+    indeed: { className: 'bg-[#F59E0B]/15 text-[#F59E0B] border border-[#F59E0B]/25' },
+    default: { className: 'bg-ds-accent/10 text-ds-accent2 border border-ds-accent/20' },
+};
+
+function sourceStyle(source: string) {
+    const key = source.toLowerCase();
+    return SOURCE_CONFIG[key]?.className ?? SOURCE_CONFIG.default.className;
+}
+
+function scoreColor(score: number) {
+    if (score >= 85) return 'text-[#34D399]';
+    if (score >= 70) return 'text-[#818CF8]';
+    if (score >= 55) return 'text-[#22D3EE]';
+    return 'text-ds-text3';
 }
 
 const AVATAR_COLORS = [
@@ -32,6 +39,7 @@ const AVATAR_COLORS = [
     'from-[#FBBF24] to-[#F87171]',
     'from-[#A78BFA] to-[#6C63FF]',
     'from-[#F87171] to-[#FBBF24]',
+    'from-[#EC4899] to-[#818CF8]',
 ];
 
 function CandidatAvatar({ name, index }: { name: string; index: number }) {
@@ -43,18 +51,10 @@ function CandidatAvatar({ name, index }: { name: string; index: number }) {
         .toUpperCase();
     return (
         <div
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${AVATAR_COLORS[index % AVATAR_COLORS.length]} text-[11px] font-bold text-white`}
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${AVATAR_COLORS[index % AVATAR_COLORS.length]} text-[12px] font-bold text-white`}
         >
             {initials}
         </div>
-    );
-}
-
-function OpenToWorkBadge() {
-    return (
-        <span className="border-badge-active-text/20 bg-badge-active-bg text-badge-active-text inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold">
-            Open
-        </span>
     );
 }
 
@@ -68,7 +68,6 @@ interface PaginationMeta {
 
 function Pagination({ meta, search }: { meta: PaginationMeta; search: string }) {
     const { current_page, last_page, from, to, total } = meta;
-
     if (last_page <= 1) return null;
 
     function goTo(page: number) {
@@ -86,38 +85,26 @@ function Pagination({ meta, search }: { meta: PaginationMeta; search: string }) 
     return (
         <div className="mt-4 flex items-center justify-between text-[13px]">
             <p className="text-ds-text3">{from != null && to != null ? `${from}–${to} sur ${total} candidats` : `${total} candidats`}</p>
-
             <div className="flex items-center gap-1">
-                {/* Prev */}
                 <button
                     onClick={() => goTo(current_page - 1)}
                     disabled={current_page === 1}
                     className={`${btnBase} ${current_page === 1 ? btnDisabled : btnIdle}`}
-                    aria-label="Page précédente"
                 >
                     <ChevronLeft size={13} />
                 </button>
-
-                {/* Page numbers */}
                 {visible.map((p, i) => (
                     <span key={p} className="flex items-center gap-1">
                         {i > 0 && visible[i - 1] !== p - 1 && <span className="text-ds-text3 px-0.5">…</span>}
-                        <button
-                            onClick={() => goTo(p)}
-                            className={`${btnBase} ${p === current_page ? btnActive : btnIdle}`}
-                            aria-current={p === current_page ? 'page' : undefined}
-                        >
+                        <button onClick={() => goTo(p)} className={`${btnBase} ${p === current_page ? btnActive : btnIdle}`}>
                             {p}
                         </button>
                     </span>
                 ))}
-
-                {/* Next */}
                 <button
                     onClick={() => goTo(current_page + 1)}
                     disabled={current_page === last_page}
                     className={`${btnBase} ${current_page === last_page ? btnDisabled : btnIdle}`}
-                    aria-label="Page suivante"
                 >
                     <ChevronRight size={13} />
                 </button>
@@ -126,9 +113,20 @@ function Pagination({ meta, search }: { meta: PaginationMeta; search: string }) 
     );
 }
 
+const STATUT_OPTIONS: { value: CandidatStatus | ''; label: string }[] = [
+    { value: '', label: 'Tous les statuts' },
+    { value: 'sourced', label: 'Sourcé' },
+    { value: 'contacted', label: 'Contacté' },
+    { value: 'interview', label: 'Entretien' },
+    { value: 'recommended', label: 'Recommandé' },
+    { value: 'offer', label: 'Offre' },
+    { value: 'rejected', label: 'Rejeté' },
+];
+
 export default function Index({ candidats, filters }: IndexCandidatProps) {
     const { t } = useI18n();
     const [search, setSearch] = useState(filters.search ?? '');
+    const [statusFilter, setStatusFilter] = useState<CandidatStatus | ''>((filters.status as CandidatStatus | undefined) ?? '');
     const [deletingCandidat, setDeletingCandidat] = useState<Candidat | null>(null);
 
     function handleDelete() {
@@ -138,75 +136,77 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
         });
     }
 
-    function handleSearch() {
-        router.get(route('dashboard.candidats.index'), { search }, { preserveState: true });
+    function applyFilters(newSearch?: string, newStatus?: CandidatStatus | '') {
+        const s = newSearch ?? search;
+        const st = newStatus ?? statusFilter;
+        router.get(route('dashboard.candidats.index'), { ...(s ? { search: s } : {}), ...(st ? { status: st } : {}) }, { preserveState: true });
     }
 
-    function handleReset() {
-        setSearch('');
-        router.get(route('dashboard.candidats.index'));
-    }
+    const totalLabel = `${candidats.total} profil${candidats.total !== 1 ? 's' : ''} actif${candidats.total !== 1 ? 's' : ''} · Toutes sources confondues`;
+
+    const COLUMNS = ['CANDIDAT', 'POSTE VISÉ', 'SOURCE', 'SCORE CV', 'SCORE ENTRETIEN', 'STATUT', ''];
 
     return (
         <>
             <Head title={t('candidats.index.title')} />
             <AppLayout>
-                <div className="bg-ds-bg min-h-full px-6 py-8">
+                <div className="bg-ds-bg min-h-full px-6 py-6">
                     {/* Header */}
                     <div className="mb-6">
-                        <h1 className="font-heading text-ds-text text-[26px] font-bold">{t('candidats.index.title')}</h1>
-                        <p className="text-ds-text2 mt-1 text-[14px]">{t('candidats.index.subtitle')}</p>
+                        <h1 className="text-ds-text text-3xl font-bold">{t('candidats.index.title')}</h1>
+                        <p className="text-ds-text2 mt-1 text-sm">{totalLabel}</p>
                     </div>
 
                     {/* Toolbar */}
-                    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-                        <div className="relative flex-1">
-                            <Search size={14} className="text-ds-text3 absolute top-1/2 left-3 -translate-y-1/2" />
+                    <div className="mb-5 flex flex-wrap items-center gap-3">
+                        {/* Search */}
+                        <div className="relative min-w-[260px] flex-1">
+                            <Search size={14} className="text-ds-text3 absolute top-1/2 left-3.5 -translate-y-1/2" />
                             <input
                                 type="text"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                placeholder={t('candidats.index.search_placeholder')}
-                                className="border-ds-border bg-ds-bg3 text-ds-text placeholder:text-ds-text3 focus:border-ds-accent focus:ring-ds-accent/20 w-full rounded-lg border py-2.5 pr-4 pl-9 text-[13px] focus:ring-1 focus:outline-none"
+                                onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
+                                placeholder="Rechercher un candidat..."
+                                className="border-ds-border bg-ds-bg3 text-ds-text placeholder:text-ds-text3 focus:border-ds-accent w-full rounded-xl border py-2.5 pr-4 pl-9 text-[13px] focus:outline-none"
                             />
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={handleSearch}
-                                className="bg-ds-accent rounded-lg px-4 py-2.5 text-[13px] font-medium text-white transition hover:bg-[#7C74FF]"
-                            >
-                                {t('candidats.index.actions.search')}
-                            </button>
-                            <button
-                                onClick={handleReset}
-                                className="border-ds-border text-ds-text2 hover:bg-ds-surface hover:text-ds-text flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-[13px] transition"
-                            >
-                                <RotateCcw size={13} />
-                                {t('candidats.index.actions.reset')}
-                            </button>
-                            <Link
-                                href={route('dashboard.candidats.create')}
-                                className="bg-ds-accent flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-[#7C74FF]"
-                            >
-                                <Plus size={14} />
-                                {t('candidats.index.actions.create')}
-                            </Link>
-                        </div>
+                        {/* Status filter */}
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => {
+                                const v = e.target.value as CandidatStatus | '';
+                                setStatusFilter(v);
+                                applyFilters(undefined, v);
+                            }}
+                            className="border-ds-border bg-ds-bg3 text-ds-text focus:border-ds-accent rounded-xl border px-4 py-2.5 text-[13px] focus:outline-none"
+                        >
+                            {STATUT_OPTIONS.map((o) => (
+                                <option key={o.value} value={o.value}>
+                                    {o.label}
+                                </option>
+                            ))}
+                        </select>
+
+                        {/* Add button */}
+                        <Link
+                            href={route('dashboard.candidats.create')}
+                            className="bg-ds-accent ml-auto flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-semibold text-white transition hover:opacity-90"
+                        >
+                            <Plus size={14} />
+                            Ajouter manuellement
+                        </Link>
                     </div>
 
                     {/* Empty state */}
                     {candidats.data.length === 0 && (
-                        <div className="border-ds-border bg-ds-surface flex flex-col items-center justify-center rounded-xl border py-24 text-center">
-                            <div className="bg-ds-accent/10 mb-4 flex h-14 w-14 items-center justify-center rounded-2xl">
-                                <Briefcase className="text-ds-accent" size={24} />
-                            </div>
-                            <p className="font-heading text-ds-text text-[15px] font-semibold">{t('candidats.index.empty.title')}</p>
+                        <div className="border-ds-border bg-ds-surface flex flex-col items-center justify-center rounded-2xl border py-24 text-center">
+                            <p className="text-ds-text text-[15px] font-semibold">{t('candidats.index.empty.title')}</p>
                             <p className="text-ds-text2 mt-1 text-[13px]">{t('candidats.index.empty.description')}</p>
                             <Link
                                 href={route('dashboard.candidats.create')}
-                                className="bg-ds-accent mt-5 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#7C74FF]"
+                                className="bg-ds-accent mt-5 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-[13px] font-semibold text-white transition hover:opacity-90"
                             >
                                 <Plus size={14} />
                                 {t('candidats.index.actions.create')}
@@ -216,21 +216,19 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
 
                     {/* Table */}
                     {candidats.data.length > 0 && (
-                        <div className="border-ds-border bg-ds-surface overflow-hidden rounded-xl border">
+                        <div className="border-ds-border bg-ds-surface overflow-hidden rounded-2xl border">
                             <div className="overflow-x-auto">
                                 <table className="w-full border-collapse text-[13px]">
                                     <thead>
                                         <tr className="border-ds-border border-b">
-                                            {['candidat', 'current_position', 'experience', 'location', 'source', 'status', 'created_at', ''].map(
-                                                (col) => (
-                                                    <th
-                                                        key={col}
-                                                        className="text-ds-text3 px-4 py-3 text-left text-[10px] font-semibold tracking-[0.8px] uppercase"
-                                                    >
-                                                        {col ? t(`candidats.index.columns.${col}`) : ''}
-                                                    </th>
-                                                ),
-                                            )}
+                                            {COLUMNS.map((col, i) => (
+                                                <th
+                                                    key={i}
+                                                    className="text-ds-text3 px-5 py-3.5 text-left text-[10px] font-semibold tracking-[0.8px] uppercase"
+                                                >
+                                                    {col}
+                                                </th>
+                                            ))}
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -239,67 +237,98 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
                                                 key={candidat.id}
                                                 className="border-ds-border hover:bg-ds-bg3/40 border-b transition-colors last:border-0"
                                             >
-                                                <td className="px-4 py-3.5">
+                                                {/* CANDIDAT */}
+                                                <td className="px-5 py-4">
                                                     <div className="flex items-center gap-3">
                                                         <CandidatAvatar name={candidat.full_name} index={index} />
                                                         <div className="min-w-0">
                                                             <div className="flex items-center gap-1.5">
-                                                                <p className="font-heading text-ds-text truncate font-semibold">
+                                                                <p className="text-ds-text max-w-[150px] truncate font-semibold">
                                                                     {candidat.full_name}
                                                                 </p>
-                                                                {candidat.open_to_work && <OpenToWorkBadge />}
+                                                                {candidat.linkedin_url && (
+                                                                    <a
+                                                                        href={candidat.linkedin_url}
+                                                                        target="_blank"
+                                                                        rel="noreferrer"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        className="text-ds-text3 shrink-0 transition hover:text-[#818CF8]"
+                                                                        title="Voir profil LinkedIn"
+                                                                    >
+                                                                        <ExternalLink size={12} />
+                                                                    </a>
+                                                                )}
                                                             </div>
-                                                            <p className="text-ds-text3 truncate text-[11px]">{candidat.email}</p>
+                                                            <p className="text-ds-text3 max-w-[150px] truncate text-[11px]">
+                                                                {[
+                                                                    candidat.location,
+                                                                    candidat.experience_years != null ? `${candidat.experience_years} ans` : null,
+                                                                ]
+                                                                    .filter(Boolean)
+                                                                    .join(' · ')}
+                                                            </p>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3.5">
-                                                    <p className="text-ds-text2 truncate">{candidat.current_title ?? '—'}</p>
-                                                    {candidat.current_company && (
-                                                        <p className="text-ds-text3 truncate text-[11px]">{candidat.current_company}</p>
-                                                    )}
+
+                                                {/* POSTE VISÉ */}
+                                                <td className="px-5 py-4">
+                                                    <p className="text-ds-text2 max-w-[140px] truncate">
+                                                        {candidat.brief_title ?? candidat.current_title ?? '—'}
+                                                    </p>
                                                 </td>
-                                                <td className="text-ds-text2 px-4 py-3.5">
-                                                    {candidat.experience_years != null ? `${candidat.experience_years} ans` : '—'}
-                                                </td>
-                                                <td className="text-ds-text2 px-4 py-3.5">{candidat.location ?? '—'}</td>
-                                                <td className="px-4 py-3.5">
+
+                                                {/* SOURCE */}
+                                                <td className="px-5 py-4">
                                                     {candidat.source ? (
-                                                        <span className="border-ds-accent/20 bg-ds-accent/10 text-ds-accent2 inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold">
+                                                        <span
+                                                            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize ${sourceStyle(candidat.source)}`}
+                                                        >
                                                             {candidat.source}
                                                         </span>
                                                     ) : (
                                                         <span className="text-ds-text3">—</span>
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-3.5">
-                                                    <CandidatStatusBadge status={candidat.status} />
+
+                                                {/* SCORE CV */}
+                                                <td className="px-5 py-4">
+                                                    {candidat.score_cv != null ? (
+                                                        <span className={`text-[13px] font-bold ${scoreColor(candidat.score_cv)}`}>
+                                                            {candidat.score_cv}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-ds-text3">—</span>
+                                                    )}
                                                 </td>
-                                                <td className="text-ds-text3 px-4 py-3.5 text-[12px]">{dayjs(candidat.created_at).fromNow()}</td>
-                                                <td className="px-4 py-3.5">
-                                                    <div className="flex items-center justify-end gap-1">
-                                                        <Link
-                                                            href={route('dashboard.candidats.show', candidat.id)}
-                                                            className="border-ds-border text-ds-text3 hover:border-ds-border2 hover:text-ds-text flex h-7 w-7 items-center justify-center rounded-lg border transition"
-                                                            title={t('candidats.index.actions.view')}
-                                                        >
-                                                            <Eye size={13} />
-                                                        </Link>
-                                                        <Link
-                                                            href={route('dashboard.candidats.edit', candidat.id)}
-                                                            className="border-ds-border text-ds-text3 hover:border-ds-amber/40 hover:text-ds-amber flex h-7 w-7 items-center justify-center rounded-lg border transition"
-                                                            title={t('candidats.index.actions.edit')}
-                                                        >
-                                                            <Edit2 size={13} />
-                                                        </Link>
-                                                        <button
-                                                            onClick={() => setDeletingCandidat(candidat)}
-                                                            className="border-ds-border text-ds-text3 hover:border-ds-red/40 hover:text-ds-red flex h-7 w-7 items-center justify-center rounded-lg border transition"
-                                                            title={t('candidats.index.actions.delete')}
-                                                        >
-                                                            <Trash2 size={13} />
-                                                        </button>
-                                                    </div>
+
+                                                {/* SCORE ENTRETIEN */}
+                                                <td className="px-5 py-4">
+                                                    <span className="text-ds-text3">—</span>
+                                                </td>
+
+                                                {/* STATUT */}
+                                                <td className="px-5 py-4">
+                                                    {(() => {
+                                                        const cfg = STATUS_CONFIG[candidat.status] ?? STATUS_CONFIG.sourced;
+                                                        return (
+                                                            <span
+                                                                className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${cfg.className}`}
+                                                            >
+                                                                {cfg.label}
+                                                            </span>
+                                                        );
+                                                    })()}
+                                                </td>
+
+                                                {/* ACTIONS */}
+                                                <td className="px-5 py-4">
+                                                    <Link
+                                                        href={route('dashboard.candidats.show', candidat.id)}
+                                                        className="border-ds-border text-ds-text2 hover:border-ds-border2 hover:text-ds-text rounded-xl border px-3 py-1.5 text-[12px] transition"
+                                                    >
+                                                        Voir
+                                                    </Link>
                                                 </td>
                                             </tr>
                                         ))}
@@ -307,8 +336,7 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
                                 </table>
                             </div>
 
-                            {/* ── Pagination ── */}
-                            <div className="px-4 pb-4">
+                            <div className="px-5 pb-4">
                                 <Pagination meta={candidats} search={search} />
                             </div>
                         </div>

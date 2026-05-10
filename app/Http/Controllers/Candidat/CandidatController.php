@@ -61,6 +61,7 @@ class CandidatController extends Controller
                     ->orWhere('current_title', 'like', "%$s%"))
                 ->when($request->status, fn ($q, $s) => $q->where('status', $s))
                 ->latest()
+                ->with(['briefs' => fn ($q) => $q->orderByDesc('brief_candidat.sourced_at')->limit(1)])
                 ->paginate(10)
                 ->through(fn ($candidat) => [
                     'id' => $candidat->id,
@@ -73,9 +74,14 @@ class CandidatController extends Controller
                     'experience_years' => $candidat->experience_years,
                     'education_level' => $candidat->education_level,
                     'source' => $candidat->source,
+                    'linkedin_url' => $candidat->linkedin_url,
                     'status' => $candidat->status,
                     'open_to_work' => $candidat->open_to_work,
                     'created_at' => $candidat->created_at->toDateTimeString(),
+                    'brief_title' => $candidat->briefs->first()?->title,
+                    'score_cv' => $candidat->briefs->first()?->pivot->score
+                        ? round($candidat->briefs->first()->pivot->score)
+                        : null,
                 ]);
 
             $logger->log(

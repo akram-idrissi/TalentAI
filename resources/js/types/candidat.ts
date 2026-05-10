@@ -21,6 +21,8 @@ export interface Candidat {
     raw_data: Record<string, unknown> | null;
     created_at: string;
     updated_at: string;
+    brief_title: string | null;
+    score_cv: number | null;
 }
 
 export interface PaginatedCandidats {

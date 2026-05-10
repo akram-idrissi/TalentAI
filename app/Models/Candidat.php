@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Candidat extends Model
@@ -32,6 +33,13 @@ class Candidat extends Model
      *
      * @return array<string, string>
      */
+    public function briefs(): BelongsToMany
+    {
+        return $this->belongsToMany(Brief::class, 'brief_candidat')
+            ->withPivot(['score', 'score_breakdown', 'sourced_at'])
+            ->withTimestamps();
+    }
+
     protected function casts(): array
     {
         return [
