@@ -1,5 +1,6 @@
 import CandidateTable from '@/components/Candidats/CandidatsTable';
 import AppLayout from '@/layouts/app-layout';
+import { Candidat } from '@/types/candidat';
 import { Head, router } from '@inertiajs/react';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
@@ -11,26 +12,9 @@ import Select from 'react-select';
 dayjs.extend(relativeTime);
 dayjs.locale('fr');
 
-/* ---------------- TYPES ---------------- */
-
 interface Brief {
     id: number;
     title: string;
-}
-
-interface Candidat {
-    id: number;
-    full_name: string;
-    linkedin_url?: string;
-    current_title?: string;
-    current_company?: string;
-    location?: string;
-    experience_years?: number;
-    status: string;
-    score?: number;
-    score_breakdown?: Record<string, unknown>;
-    sourced_at?: string;
-    created_at: string;
 }
 
 interface Props {
