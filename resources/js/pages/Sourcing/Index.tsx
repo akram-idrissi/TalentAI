@@ -1,3 +1,5 @@
+
+import CandidateTable from '@/components/Candidats/CandidatsTable';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
 import dayjs from 'dayjs';
@@ -140,43 +142,10 @@ export default function Index({ briefs, candidats, filters }: Props) {
                     {briefId && candidats && candidats.data.length > 0 && (
                         <div className="border-ds-border bg-ds-surface overflow-hidden rounded-xl border">
                             <div className="overflow-x-auto">
-                                <table className="w-full text-[13px]">
-                                    <thead>
-                                        <tr className="border-ds-border border-b">
-                                            <th className="text-ds-text3 px-4 py-3 text-left text-[10px] uppercase">Candidat</th>
-                                            <th className="text-ds-text3 px-4 py-3 text-left text-[10px] uppercase">Poste</th>
-                                            <th className="text-ds-text3 px-4 py-3 text-left text-[10px] uppercase">Expérience</th>
-                                            <th className="text-ds-text3 px-4 py-3 text-left text-[10px] uppercase">Score</th>
-                                            <th className="text-ds-text3 px-4 py-3 text-left text-[10px] uppercase">Sourcé</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {candidats.data.map((c) => (
-                                            <tr key={c.id} className="border-ds-border border-b">
-                                                <td className="px-4 py-3">
-                                                    <p className="text-ds-text font-semibold">{c.full_name}</p>
-                                                    <p className="text-ds-text3 text-[11px]">{c.current_company ?? '—'}</p>
-                                                </td>
-
-                                                <td className="text-ds-text2 px-4 py-3">{c.current_title ?? '—'}</td>
-
-                                                <td className="text-ds-text2 px-4 py-3">
-                                                    {c.experience_years != null ? `${c.experience_years} ans` : '—'}
-                                                </td>
-
-                                                <td className="px-4 py-3">
-                                                    <span className="bg-ds-accent/10 text-ds-accent rounded px-2 py-1 text-[11px] font-semibold">
-                                                        {c.score ?? '—'}
-                                                    </span>
-                                                </td>
-
-                                                <td className="text-ds-text3 px-4 py-3 text-[12px]">
-                                                    {c.sourced_at ? dayjs(c.sourced_at).fromNow() : '—'}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                <CandidateTable
+                                    data={candidats.data}
+                                    onDelete={(candidat) => setDeletingCandidat(candidat)}
+                                />
                             </div>
 
                             <div className="px-4 pb-4">
@@ -189,3 +158,4 @@ export default function Index({ briefs, candidats, filters }: Props) {
         </>
     );
 }
+
