@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
-import { Award, Download, Linkedin as LI, MapPin, Phone } from 'lucide-react';
+import { Award, Download, Phone } from 'lucide-react';
 import { useState } from 'react';
 
 interface Brief {
@@ -56,10 +56,10 @@ const AVATAR_GRADIENTS = [
     'from-[#34D399] to-[#22D3EE]',
 ];
 
-function scoreColor(score: number) {
-    if (score >= 85) return 'text-[#34D399]';
-    if (score >= 65) return 'text-[#F59E0B]';
-    return 'text-[#F87171]';
+const RANK_COLORS = ['text-[#34D399]', 'text-[#818CF8]', 'text-[#22D3EE]'];
+
+function rankColor(index: number) {
+    return RANK_COLORS[index] ?? 'text-ds-text3';
 }
 
 function initials(name: string) {
@@ -71,8 +71,11 @@ function initials(name: string) {
         .toUpperCase();
 }
 
+const SUMMARY_LIMIT = 120;
+
 export default function ClassementIndex({ briefs, selectedBriefId, candidates }: Props) {
     const [selected, setSelected] = useState<Candidate | null>(candidates[0] ?? null);
+    const [expanded, setExpanded] = useState(false);
 
     const currentBrief = briefs.find((b) => b.id === selectedBriefId) ?? null;
 
@@ -82,9 +85,21 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
         router.get(route('dashboard.classement'), { brief_id: id }, { preserveScroll: true });
     }
 
+    function handleSelect(c: Candidate) {
+        setSelected(c);
+        setExpanded(false);
+    }
+
     const breakdown = selected?.score_breakdown ? Object.entries(selected.score_breakdown).filter(([, v]) => v !== undefined && v !== null) : [];
 
     const selectedIndex = candidates.findIndex((c) => c.id === selected?.id);
+
+    const summary =
+        selected?.summary ??
+        'Profil solide avec une expérience pertinente pour ce poste. Les compétences techniques et le parcours correspondent aux exigences du brief. Candidat recommandé pour un entretien.';
+
+    const isTruncatable = summary.length > SUMMARY_LIMIT;
+    const displayedSummary = !expanded && isTruncatable ? summary.slice(0, SUMMARY_LIMIT).trimEnd() + '…' : summary;
 
     return (
         <>
@@ -92,21 +107,20 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
             <AppLayout>
                 <div className="bg-ds-bg text-ds-text min-h-screen p-6">
                     {/* HEADER */}
-                    <div className="mb-8">
+                    <div className="mb-5">
                         <p className="text-ds-text3 text-xs">Candidats &rsaquo; Classement IA</p>
 
-                        <h1 className="text-ds-text mt-1 text-4xl font-extrabold tracking-tight">
+                        <h1 className="text-ds-text mt-1 text-3xl font-bold">
                             {currentBrief ? `Classement IA · ${currentBrief.title}` : 'Classements IA'}
                         </h1>
 
                         {candidates.length > 0 && (
                             <p className="text-ds-text2 mt-1.5 text-sm">
-                                {candidates.length} candidat{candidates.length > 1 ? 's' : ''} analysé{candidates.length > 1 ? 's' : ''} · Triés par
-                                score de correspondance global
+                                {candidates.length} candidat{candidates.length > 1 ? 's' : ''} analysé
+                                {candidates.length > 1 ? 's' : ''} · Triés par score de correspondance global
                             </p>
                         )}
 
-                        {/* brief switcher — minimal, below subtitle */}
                         {briefs.length > 1 && (
                             <select
                                 value={selectedBriefId ?? ''}
@@ -142,10 +156,10 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
                                 {candidates.map((c, index) => (
                                     <div
                                         key={c.id}
-                                        onClick={() => setSelected(c)}
-                                        className={`flex cursor-pointer items-center gap-4 rounded-xl border p-4 transition-all duration-150 ${
+                                        onClick={() => handleSelect(c)}
+                                        className={`flex cursor-pointer items-center gap-4 rounded-2xl border px-5 py-4 transition-all duration-150 ${
                                             selected?.id === c.id
-                                                ? 'border-ds-accent bg-ds-accent/10'
+                                                ? 'border-[#6C63FF]/60 bg-[#6C63FF]/10 shadow-[0_0_0_1px_rgba(108,99,255,0.3)]'
                                                 : 'border-ds-border bg-ds-surface hover:border-ds-border2 hover:bg-ds-bg3'
                                         }`}
                                     >
@@ -153,11 +167,11 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
                                         <div
                                             className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${
                                                 index === 0
-                                                    ? 'bg-[#F59E0B]/25 text-[#F59E0B]'
+                                                    ? 'bg-[#F59E0B]/20 text-[#F59E0B]'
                                                     : index === 1
-                                                      ? 'text-ds-text2 bg-white/10'
+                                                      ? 'text-ds-text2 bg-white/8'
                                                       : index === 2
-                                                        ? 'bg-[#cd7f32]/20 text-[#cd7f32]'
+                                                        ? 'bg-[#cd7f32]/15 text-[#cd7f32]'
                                                         : 'bg-ds-bg3 text-ds-text3'
                                             }`}
                                         >
@@ -175,10 +189,7 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
 
                                         {/* info */}
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-ds-text flex items-center gap-1.5 text-[15px] font-semibold">
-                                                {c.linkedin_url && <LI size={13} className="shrink-0 text-[#5b9bd5]" />}
-                                                {c.name}
-                                            </p>
+                                            <p className="text-ds-text text-[15px] font-semibold">{c.name}</p>
                                             <p className="text-ds-text2 mt-0.5 text-xs">
                                                 {[c.role, c.company, c.experience_years ? `${c.experience_years} ans` : null]
                                                     .filter(Boolean)
@@ -200,7 +211,12 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
 
                                         {/* score */}
                                         <div className="shrink-0 text-right">
-                                            <span className={`text-4xl leading-none font-bold ${scoreColor(c.score)}`}>{c.score}</span>
+                                            <span
+                                                className={`text-xl leading-none font-bold ${rankColor(index)}`}
+                                                style={{ fontFamily: 'var(--font-heading)' }}
+                                            >
+                                                {c.score}
+                                            </span>
                                             <p className="text-ds-text3 mt-0.5 text-[11px]">/100</p>
                                         </div>
                                     </div>
@@ -209,77 +225,88 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
 
                             {/* ── DETAIL PANEL ── */}
                             {selected && (
-                                <div className="border-ds-border bg-ds-surface rounded-xl border p-6">
-                                    {/* top: avatar + name */}
-                                    <div className="border-ds-border border-b pb-5 text-center">
-                                        <div
-                                            className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br text-xl font-bold text-white ${
-                                                AVATAR_GRADIENTS[selectedIndex % AVATAR_GRADIENTS.length]
-                                            }`}
-                                        >
-                                            {initials(selected.name)}
+                                <div className="flex flex-col gap-4">
+                                    {/* Card 1: score + breakdown + actions */}
+                                    <div className="border-ds-border bg-ds-surface rounded-2xl border p-5">
+                                        <div className="border-ds-border border-b pb-4 text-center">
+                                            <div
+                                                className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br text-lg font-bold text-white ${
+                                                    AVATAR_GRADIENTS[selectedIndex % AVATAR_GRADIENTS.length]
+                                                }`}
+                                            >
+                                                {initials(selected.name)}
+                                            </div>
+
+                                            <h2 className="text-ds-text mt-2.5 text-base font-bold">{selected.name}</h2>
+
+                                            <p className="text-ds-text2 mt-0.5 text-center text-xs">
+                                                {[selected.role, selected.company].filter(Boolean).join(' · ')}
+                                            </p>
+
+                                            <div className="mt-2.5 flex justify-center gap-2">
+                                                {selected.linkedin_url && (
+                                                    <a
+                                                        href={selected.linkedin_url}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="rounded-full border border-[#5b9bd5]/40 bg-[#5b9bd5]/15 px-3 py-1 text-xs font-medium text-[#5b9bd5]"
+                                                    >
+                                                        LinkedIn
+                                                    </a>
+                                                )}
+                                                {selectedIndex === 0 && (
+                                                    <span className="rounded-full border border-[#34D399]/40 bg-[#34D399]/20 px-3 py-1 text-xs font-semibold text-[#34D399]">
+                                                        Top match
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <p
+                                                className={`mt-3 leading-none font-extrabold ${rankColor(selectedIndex)}`}
+                                                style={{ fontFamily: 'var(--font-heading)', fontSize: '3rem' }}
+                                            >
+                                                {selected.score}
+                                            </p>
+                                            <p className="text-ds-text3 mt-1 text-xs">/100 · Score IA global</p>
                                         </div>
 
-                                        <h2 className="text-ds-text mt-3 text-lg font-bold">{selected.name}</h2>
-
-                                        <p className="text-ds-text2 mt-0.5 flex items-center justify-center gap-1 text-xs">
-                                            <MapPin size={11} />
-                                            {[selected.role, selected.company].filter(Boolean).join(' · ')}
-                                        </p>
-
-                                        <div className="mt-3 flex justify-center gap-2">
-                                            {selected.linkedin_url && (
-                                                <a
-                                                    href={selected.linkedin_url}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="flex items-center gap-1 rounded-md border border-[#5b9bd5]/30 bg-[#5b9bd5]/10 px-2.5 py-1 text-xs font-medium text-[#5b9bd5]"
-                                                >
-                                                    <LI size={11} /> LinkedIn
-                                                </a>
-                                            )}
-                                            {selected.score >= 85 && (
-                                                <span className="rounded-md border border-[#34D399]/30 bg-[#34D399]/10 px-2.5 py-1 text-xs font-medium text-[#34D399]">
-                                                    Top match
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        <p className={`mt-4 text-6xl leading-none font-extrabold ${scoreColor(selected.score)}`}>{selected.score}</p>
-                                        <p className="text-ds-text3 mt-1 text-xs">/100 · Score IA global</p>
+                                        {/* breakdown bars */}
+                                        {breakdown.length > 0 && (
+                                            <div className="mt-4 space-y-2.5">
+                                                {breakdown.map(([key, value]) => {
+                                                    const meta = BREAKDOWN_META[key] ?? {
+                                                        label: key,
+                                                        bar: 'bg-ds-accent',
+                                                        text: 'text-ds-accent',
+                                                    };
+                                                    return (
+                                                        <div key={key} className="flex items-center gap-3">
+                                                            <span className="text-ds-text2 w-24 shrink-0 text-xs">{meta.label}</span>
+                                                            <div className="bg-ds-bg3 h-2 flex-1 overflow-hidden rounded-full">
+                                                                <div className={`h-full rounded-full ${meta.bar}`} style={{ width: `${value}%` }} />
+                                                            </div>
+                                                            <span className={`w-8 shrink-0 text-right text-sm font-bold ${meta.text}`}>{value}</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
 
-                                    {/* breakdown bars */}
-                                    {breakdown.length > 0 && (
-                                        <div className="mt-5 space-y-3.5">
-                                            {breakdown.map(([key, value]) => {
-                                                const meta = BREAKDOWN_META[key] ?? {
-                                                    label: key,
-                                                    bar: 'bg-ds-accent',
-                                                    text: 'text-ds-accent',
-                                                };
-                                                return (
-                                                    <div key={key} className="flex items-center gap-3">
-                                                        <span className="text-ds-text2 w-24 shrink-0 text-xs">{meta.label}</span>
-                                                        <div className="bg-ds-bg3 h-2 flex-1 overflow-hidden rounded-full">
-                                                            <div className={`h-full rounded-full ${meta.bar}`} style={{ width: `${value}%` }} />
-                                                        </div>
-                                                        <span className={`w-8 shrink-0 text-right text-sm font-bold ${meta.text}`}>{value}</span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-
-                                    {/* Analyse IA */}
-                                    <div className="mt-6">
+                                    {/* Card 2: Analyse IA */}
+                                    <div className="border-ds-border bg-ds-surface rounded-2xl border p-6">
                                         <h3 className="text-ds-text text-base font-bold">Analyse IA</h3>
-                                        <p className="text-ds-text2 mt-2 text-sm leading-relaxed">
-                                            {selected.summary ??
-                                                'Profil solide avec une expérience pertinente pour ce poste. Les compétences techniques et le parcours correspondent aux exigences du brief. Candidat recommandé pour un entretien.'}
-                                        </p>
+                                        <p className="text-ds-text2 mt-2 text-sm leading-relaxed">{displayedSummary}</p>
+                                        {isTruncatable && (
+                                            <button
+                                                onClick={() => setExpanded((v) => !v)}
+                                                className="text-ds-accent mt-1.5 text-xs font-medium hover:underline"
+                                            >
+                                                {expanded ? 'Réduire' : 'Lire plus'}
+                                            </button>
+                                        )}
                                         {selected.skills.length > 0 && (
-                                            <div className="mt-3 flex flex-wrap gap-1.5">
+                                            <div className="mt-4 flex flex-wrap gap-1.5">
                                                 {selected.skills.map((s) => (
                                                     <span
                                                         key={s}
@@ -292,12 +319,12 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
                                         )}
                                     </div>
 
-                                    {/* actions */}
-                                    <button className="bg-ds-accent mt-6 flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-white transition hover:opacity-90">
+                                    {/* actions — standalone below Analyse IA */}
+                                    <button className="bg-ds-accent flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white transition hover:opacity-90">
                                         <Phone size={14} />
                                         Planifier entretien
                                     </button>
-                                    <button className="border-ds-border text-ds-text2 hover:bg-ds-bg3 mt-2 flex w-full items-center justify-center gap-2 rounded-lg border py-3 text-sm transition">
+                                    <button className="border-ds-border text-ds-text2 hover:bg-ds-bg3 flex w-full items-center justify-center gap-2 rounded-xl border py-2.5 text-sm transition">
                                         <Download size={14} />
                                         Télécharger fiche
                                     </button>
