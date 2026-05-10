@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Sourcing;
 
 use App\Http\Controllers\Controller;
 use App\Models\Brief;
+use App\Models\Candidat;
 use App\Models\UserApiToken;
 use App\Services\ActivityLogger;
 use App\Services\Recruitment\ApifyCandidateImporter;
@@ -29,7 +30,7 @@ class SourcingController extends Controller
         $logger = app(ActivityLogger::class);
 
         try {
-            $briefId = $request->get('brief_id');
+            $briefId = $request->input('brief_id');
 
             $briefs = Brief::query()
                 ->select('id', 'title')

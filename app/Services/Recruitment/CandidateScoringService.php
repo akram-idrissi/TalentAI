@@ -36,10 +36,6 @@ class CandidateScoringService
      */
     private const AI_DIMENSIONS = ['required_skills', 'soft_skills', 'sector'];
 
-    // -------------------------------------------------------------------------
-    // Public API
-    // -------------------------------------------------------------------------
-
     /**
      * Score a single candidate. Triggers one AI call for the three semantic
      * dimensions. If you have multiple candidates, use scoreBatch() instead
@@ -59,7 +55,7 @@ class CandidateScoringService
      * Score a collection of candidates against a brief in one AI call.
      * This is the preferred entry point from ApifyCandidateImporter.
      *
-     * @param  Collection<int, Candidate>  $candidates
+     * @param  Collection<int, Candidat>  $candidates
      * @return array<string, array{score: float, breakdown: array<string, float>}>
      *                                                                             Keyed by linkedin_url (falls back to collection index).
      */
@@ -243,10 +239,6 @@ class CandidateScoringService
         };
     }
 
-    // -------------------------------------------------------------------------
-    // Batched AI scoring
-    // -------------------------------------------------------------------------
-
     /**
      * Send all candidates to Claude Haiku in one request and parse back
      * per-candidate scores for required_skills, soft_skills, and sector.
@@ -257,7 +249,7 @@ class CandidateScoringService
      *   - max_tokens is capped at 600: 50 candidates × ~10 tokens each + overhead.
      *   - On any parse failure, neutral 50.0 scores are used (no exception thrown).
      *
-     * @param  Collection<int, Candidate>  $candidates
+     * @param  Collection<int, Candidat>  $candidates
      * @return array<string, array{required_skills: float, soft_skills: float, sector: float}>
      *                                                                                         Keyed by linkedin_url (falls back to collection index).
      */
@@ -420,10 +412,6 @@ class CandidateScoringService
 
         return $result;
     }
-
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
 
     /**
      * Neutral AI dimension scores used when the brief lacks context

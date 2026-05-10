@@ -213,8 +213,6 @@ class ApiTokenController extends Controller
         }
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────
-
     private function mask(string $token): string
     {
         return substr($token, 0, 6).str_repeat('•', 12).substr($token, -4);

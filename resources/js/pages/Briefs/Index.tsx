@@ -1,4 +1,3 @@
-import DataTable from '@/components/briefs/DataTable';
 import DeleteModal from '@/components/ui/DeleteModal';
 import { useI18n } from '@/hooks/useI18n';
 import AppLayout from '@/layouts/app-layout';
@@ -34,8 +33,6 @@ const AVATAR_COLORS = [
     'from-[#A78BFA] to-[#6C63FF]',
     'from-[#F87171] to-[#FBBF24]',
 ];
-
-
 
 function BriefAvatar({ title, index }: { title: string; index: number }) {
     const initials = title
@@ -148,109 +145,6 @@ export default function Index({ briefs, filters }: IndexBriefProps) {
         setSearch('');
         router.get(route('dashboard.briefs.index'));
     }
-
-      const columns = [
-    {
-      header: "POSTE VISÉ",
-      render: (brief: any, index: number) => (
-        <div className="flex items-center gap-3">
-          {/* Avatar */}
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#6C63FF] to-[#38BDF8] text-[11px] font-bold text-white">
-            {brief.title.slice(0, 2).toUpperCase()}
-          </div>
-
-          <div className="min-w-0">
-            <p className="font-heading text-ds-text truncate font-semibold">
-              {brief.title}
-            </p>
-            <p className="text-ds-text3 truncate text-[11px]">
-              {brief.location} · {brief.min_experience_years} ans exp.
-            </p>
-          </div>
-        </div>
-      ),
-    },
-
-    {
-      header: "SECTEUR",
-      render: (brief: any) => brief.sector,
-    },
-
-    {
-      header: "CONTRAT",
-      render: (brief: any) => (
-        <span className="bg-ds-accent/10 text-ds-accent2 border-ds-accent/20 rounded-full border px-2.5 py-1 text-[11px] font-semibold">
-          {brief.contract_type}
-        </span>
-      ),
-    },
-
-    {
-      header: "EXPÉRIENCE",
-      render: (brief: any) => `${brief.min_experience_years} ans`,
-    },
-
-    {
-      header: "LOCALISATION",
-      render: (brief: any) => brief.location,
-    },
-
-    {
-      header: "STATUT",
-      render: (brief: any) => {
-        const map: any = {
-          active: "bg-green-500/10 text-green-400 border-green-400/20",
-          draft: "bg-indigo-500/10 text-indigo-400 border-indigo-400/20",
-          sourcing: "bg-yellow-500/10 text-yellow-400 border-yellow-400/20",
-        };
-
-        return (
-          <span className={`border rounded-full px-2.5 py-1 text-[11px] font-semibold ${map[brief.status]}`}>
-            {brief.status}
-          </span>
-        );
-      },
-    },
-
-    {
-      header: "CRÉÉ",
-      render: (brief: any) => (
-        <span className="text-ds-text3 text-[12px]">
-          {dayjs(brief.created_at).fromNow()}
-        </span>
-      ),
-    },
-
-    {
-      header: "",
-      headerClassName: "text-right",
-      className: "text-right",
-      render: (brief: any) => (
-        <div className="flex items-center justify-end gap-1">
-          
-          <button 
-            onClick={() => router.get(route('dashboard.briefs.show', brief.id))}
-            className="border-ds-border text-ds-text3 hover:text-blue-500 flex h-7 w-7 items-center justify-center rounded-lg border">
-            <Eye size={13} />
-          </button>
-
-          <button
-            onClick={() => router.get(route('dashboard.briefs.edit', brief.id))}
-            className="border-ds-border text-ds-text3 hover:text-yellow-400 flex h-7 w-7 items-center justify-center rounded-lg border">
-            <Edit2 size={13} />
-          </button>
-
-          <button
-            onClick={() => setDeletingBrief(brief)}
-            className="border-ds-border text-ds-text3 hover:text-red-400 flex h-7 w-7 items-center justify-center rounded-lg border"
-          >
-            <Trash2 size={13} />
-          </button>
-
-        </div>
-      ),
-    },
-  ];
 
     return (
         <>
@@ -392,7 +286,6 @@ export default function Index({ briefs, filters }: IndexBriefProps) {
                                         ))}
                                     </tbody>
                                 </table>
-
                             </div>
 
                             {/* ── Pagination ── */}

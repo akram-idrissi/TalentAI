@@ -24,13 +24,6 @@ return new class extends Migration
             $table->boolean('open_to_work')->default(false);
             $table->string('source')->default('apify');
             $table->json('raw_data')->nullable();
-            // $table->enum('source', [
-            //     'linkedin',
-            //     'indeed',
-            //     'facebook',
-            //     'manual',
-            //     'cv_upload',
-            // ]);
             $table->string('source_url')->nullable();
             $table->enum('status', [
                 'sourced',
