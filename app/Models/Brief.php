@@ -24,6 +24,8 @@ class Brief extends Model
         'min_experience_years',
         'education_level',
         'languages',
+        'seniority_level',
+        'target_companies',
         'gender_pref',
         'age_range',
         'mission_description',

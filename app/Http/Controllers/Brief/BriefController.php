@@ -6,7 +6,6 @@ use App\Enums\BriefStatus;
 use App\Enums\ContractType;
 use App\Enums\GenderPref;
 use App\Http\Controllers\Controller;
-use App\Jobs\DispatchBriefSourcingJob;
 use App\Models\Brief;
 use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
@@ -34,6 +33,8 @@ class BriefController extends Controller
             'min_experience_years' => 'required|integer|min:0',
             'education_level' => 'required|string|max:255',
             'languages' => 'nullable|string',
+            'seniority_level' => 'nullable|string|in:intern,entry,mid,senior,manager,director,executive',
+            'target_companies' => 'nullable|string',
             'gender_pref' => ['nullable', Rule::enum(GenderPref::class)],
             'age_range' => 'nullable|string|max:50',
             'mission_description' => 'required|string',
@@ -220,8 +221,12 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
+            $brief->load('creator');
+
             return Inertia::render('Briefs/Show', [
-                'brief' => $brief,
+                'brief' => array_merge($brief->toArray(), [
+                    'created_by' => $brief->creator?->name,
+                ]),
             ]);
         } catch (\Throwable $e) {
             $logger->log(
@@ -385,7 +390,7 @@ class BriefController extends Controller
     }
 
     /**
-     * Activate the brief and dispatch the sourcing job.
+     * Activate the brief (sourcing is now triggered from the Sourcing page).
      */
     public function activate(Brief $brief): RedirectResponse|Response
     {
@@ -395,17 +400,15 @@ class BriefController extends Controller
         try {
             $brief->update(['status' => BriefStatus::Active]);
 
-            DispatchBriefSourcingJob::dispatch($brief);
-
             $logger->log(
                 'brief.activate',
-                "Activation du brief « {$brief->title} » (ID : {$brief->id}) et déclenchement du sourcing.",
+                "Activation du brief « {$brief->title} » (ID : {$brief->id}).",
                 ['brief_id' => $brief->id],
                 [Brief::class]
             );
 
             return redirect()->route('dashboard.briefs.show', $brief->id)
-                ->with('success', 'Brief activé et sourcing lancé.');
+                ->with('success', 'Brief activé.');
         } catch (\Throwable $e) {
             $logger->log(
                 'brief.activate.error',

@@ -56,6 +56,16 @@ const LANGUAGE_OPTIONS: SelectOption[] = [
     { value: 'Amazigh', label: 'Amazigh' },
 ];
 
+const SENIORITY_OPTIONS: SelectOption[] = [
+    { value: 'intern', label: 'Stage / Alternance' },
+    { value: 'entry', label: 'Débutant (0-2 ans)' },
+    { value: 'mid', label: 'Intermédiaire (2-5 ans)' },
+    { value: 'senior', label: 'Senior (5+ ans)' },
+    { value: 'manager', label: 'Manager' },
+    { value: 'director', label: 'Directeur' },
+    { value: 'executive', label: 'Cadre dirigeant' },
+];
+
 export default function CreateBrief({ contractTypes, genderPrefs }: CreateBriefProps) {
     const { t } = useI18n();
     const statusRef = useRef<'active' | 'draft'>('active');
@@ -69,6 +79,8 @@ export default function CreateBrief({ contractTypes, genderPrefs }: CreateBriefP
         min_experience_years: '',
         education_level: '',
         languages: '',
+        seniority_level: '',
+        target_companies: '',
         gender_pref: '',
         age_range: '',
         mission_description: '',
@@ -252,6 +264,26 @@ export default function CreateBrief({ contractTypes, genderPrefs }: CreateBriefP
                                         value={toMultiOptions(data.languages, LANGUAGE_OPTIONS)}
                                         onChange={(opts) => setData('languages', opts.map((o) => o.value).join(', '))}
                                         placeholder={t('briefs.create_briefs.fields.languages_placeholder')}
+                                    />
+                                </FormField>
+
+                                <FormField label="Niveau de séniorité" error={errors.seniority_level}>
+                                    <ReactSelect
+                                        classNamePrefix="rs"
+                                        options={SENIORITY_OPTIONS}
+                                        value={toOption(data.seniority_level, SENIORITY_OPTIONS)}
+                                        onChange={(opt) => setData('seniority_level', opt?.value ?? '')}
+                                        placeholder="Choisir un niveau…"
+                                        isClearable
+                                    />
+                                </FormField>
+
+                                <FormField label="Entreprises cibles" error={errors.target_companies}>
+                                    <input
+                                        className={inputCls(errors.target_companies)}
+                                        placeholder="ex: Google, Meta, Amazon (séparés par des virgules)"
+                                        value={data.target_companies}
+                                        onChange={(e) => setData('target_companies', e.target.value)}
                                     />
                                 </FormField>
                             </div>

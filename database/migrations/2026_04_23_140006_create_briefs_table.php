@@ -19,6 +19,8 @@ return new class extends Migration
             $table->integer('min_experience_years');
             $table->string('education_level');
             $table->text('languages')->nullable();
+            $table->string('seniority_level')->nullable();
+            $table->text('target_companies')->nullable();
             $table->enum('gender_pref', ['M', 'F', 'any'])->nullable();
             $table->string('age_range')->nullable();
             $table->text('mission_description');

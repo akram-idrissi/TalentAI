@@ -15,6 +15,8 @@ export type BriefFormData = {
     min_experience_years: string;
     education_level: string;
     languages: string;
+    seniority_level: string;
+    target_companies: string;
     gender_pref: string;
     age_range: string;
     mission_description: string;
@@ -43,6 +45,8 @@ export type Brief = {
     min_experience_years: string;
     education_level: string;
     languages: string;
+    seniority_level: string;
+    target_companies: string;
     gender_pref: string;
     age_range: string;
     mission_description: string;
@@ -51,7 +55,7 @@ export type Brief = {
     scoring_weights: ScoringWeights;
     status: string;
     created_at: string;
-    created_by: number;
+    created_by: string | null;
 };
 export type EditBriefProps = {
     brief: Brief;
