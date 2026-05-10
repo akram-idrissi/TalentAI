@@ -4,7 +4,7 @@ return [
 
     'page' => [
         'title' => 'Integrations & API',
-        'subtitle' => 'Connect your tools · Tokens are AES-256 encrypted and personal per user',
+        'subtitle' => 'Connect your tools · Tokens are end to end encrypted and personal per user',
     ],
 
     'counter' => [
@@ -43,6 +43,12 @@ return [
     'test_result' => [
         'ok' => 'Connection validated',
         'fail' => 'Invalid token or service unreachable',
+    ],
+
+    'categories' => [
+        'sourcing' => 'Sourcing',
+        'ai' => 'Artificial Intelligence',
+        'scheduling' => 'Scheduling',
     ],
 
     'actions' => [

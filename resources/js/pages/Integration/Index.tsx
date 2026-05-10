@@ -2,7 +2,7 @@ import { useI18n } from '@/hooks/useI18n';
 import AppLayout from '@/layouts/app-layout';
 import type { Integration, IntegrationsProps } from '@/types/integration';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { CheckCircle2, ChevronDown, ChevronUp, Copy, ExternalLink, Eye, EyeOff, Loader2, RefreshCw, Trash2, Wifi, WifiOff } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronUp, Copy, ExternalLink, Eye, EyeOff, Loader2, Trash2, Wifi, WifiOff } from 'lucide-react';
 import { useState } from 'react';
 
 function StatusBadge({ integration }: { integration: Integration }) {
@@ -37,7 +37,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
     const { flash } = usePage<{ flash: { test_result?: { provider: string; ok: boolean } } }>().props;
 
     const testResult = flash.test_result?.provider === integration.provider ? (flash.test_result.ok ? 'ok' : 'fail') : null;
-    const [open, setOpen] = useState(integration.has_token);
+    const [open, setOpen] = useState(false);
     const [showToken, setShowToken] = useState(false);
     const [testing, setTesting] = useState(false);
 
@@ -87,20 +87,16 @@ function IntegrationCard({ integration }: { integration: Integration }) {
         setTimeout(() => setCopied(false), 1500);
     }
 
-    const dimmed = !integration.has_token && !integration.has_env_fallback;
-
     return (
-        <div
-            className={`border-ds-border bg-ds-surface rounded-xl border transition-all duration-150 ${dimmed ? 'opacity-60' : ''} hover:border-ds-border2`}
-        >
+        <div className="border-ds-border bg-ds-surface hover:border-ds-border2 rounded-xl border transition-all duration-150">
             {/* Card header */}
-            <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-3 px-5 py-4 text-left">
+            <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-3 px-4 py-4 text-left sm:px-5">
                 <div className="bg-ds-bg3 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl">{integration.icon}</div>
                 <div className="min-w-0 flex-1">
-                    <p className="font-heading text-ds-text truncate font-semibold">{integration.label}</p>
-                    <p className="text-ds-text3 truncate text-[12px]">{integration.description}</p>
+                    <p className="font-heading text-ds-text leading-tight font-semibold">{integration.label}</p>
+                    <p className="text-ds-text3 mt-0.5 text-[12px] leading-tight">{integration.description}</p>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                     <StatusBadge integration={integration} />
                     {open ? <ChevronUp size={14} className="text-ds-text3" /> : <ChevronDown size={14} className="text-ds-text3" />}
                 </div>
@@ -108,7 +104,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
 
             {/* Expandable body */}
             {open && (
-                <div className="border-ds-border border-t px-5 pt-4 pb-5">
+                <div className="border-ds-border border-t px-4 pt-4 pb-5 sm:px-5">
                     {/* Current token display */}
                     {integration.has_token && (
                         <div className="mb-4">
@@ -175,22 +171,6 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                             </div>
                         )}
 
-                        {/* Expiry date */}
-                        {/* <div className="mb-4">
-                            <p className="text-ds-text3 mb-1.5 text-[11px] font-semibold uppercase tracking-[0.8px]">
-                                {t('integrations.token.expiry_date')}{' '}
-                                <span className="font-normal normal-case">
-                                    {t('integrations.token.expiry_optional')}
-                                </span>
-                            </p>
-                            <input
-                                type="date"
-                                value={data.expires_at}
-                                onChange={(e) => setData('expires_at', e.target.value)}
-                                className="border-ds-border bg-ds-bg3 text-ds-text focus:border-ds-accent rounded-lg border px-3 py-2 text-[13px] outline-none transition"
-                            />
-                        </div> */}
-
                         {/* Test result */}
                         {testResult === 'ok' && (
                             <div className="border-badge-active-text/20 bg-badge-active-bg mb-3 flex items-center gap-2 rounded-lg border px-3 py-2">
@@ -206,7 +186,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                         )}
 
                         {/* Action row */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             <button
                                 type="submit"
                                 disabled={!data.token || processing}
@@ -272,12 +252,12 @@ export default function Integrations({ integrations, categoryLabels }: Integrati
         <>
             <Head title={t('integrations.page.title')} />
             <AppLayout>
-                <div className="bg-ds-bg min-h-full px-6 py-8">
+                <div className="bg-ds-bg min-h-full px-4 py-6 sm:px-6 sm:py-8">
                     {/* Header */}
-                    <div className="mb-6 flex items-start justify-between">
-                        <div>
-                            <h1 className="font-heading text-ds-text text-[26px] font-bold">{t('integrations.page.title')}</h1>
-                            <p className="text-ds-text2 mt-1 text-[14px]">{t('integrations.page.subtitle')}</p>
+                    <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                            <h1 className="font-heading text-ds-text text-[22px] font-bold sm:text-[26px]">{t('integrations.page.title')}</h1>
+                            <p className="text-ds-text2 mt-1 text-[13px] sm:text-[14px]">{t('integrations.page.subtitle')}</p>
                         </div>
                         <div className="border-ds-border bg-ds-surface flex items-center gap-2.5 rounded-xl border px-4 py-2.5">
                             <div className="flex h-8 w-8 items-center justify-center">
@@ -304,15 +284,6 @@ export default function Integrations({ integrations, categoryLabels }: Integrati
                         </div>
                     </div>
 
-                    {/* Fallback note */}
-                    <div className="border-ds-accent/20 bg-ds-accent/5 mb-6 flex items-start gap-3 rounded-xl border px-4 py-3.5">
-                        <RefreshCw size={13} className="text-ds-accent2 mt-0.5 shrink-0" />
-                        <p className="text-ds-text2 text-[13px] leading-relaxed">
-                            <span className="text-ds-accent2 font-semibold">{t('integrations.fallback_note.label')}</span> ·{' '}
-                            {t('integrations.fallback_note.message')}
-                        </p>
-                    </div>
-
                     {/* Categories */}
                     <div className="space-y-8">
                         {Object.entries(byCategory).map(([category, items]) => (
@@ -326,7 +297,7 @@ export default function Integrations({ integrations, categoryLabels }: Integrati
                                         {items.filter((i) => i.has_token).length}/{items.length}
                                     </span>
                                 </div>
-                                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                                <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
                                     {items.map((integration) => (
                                         <IntegrationCard key={integration.provider} integration={integration} />
                                     ))}

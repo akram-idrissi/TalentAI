@@ -4,7 +4,7 @@ return [
 
     'page' => [
         'title' => 'Intégrations & API',
-        'subtitle' => 'Connectez vos outils · Les tokens sont chiffrés AES-256 et personnels par utilisateur',
+        'subtitle' => 'Connectez vos outils · Les tokens sont chiffrés de bout en bout et personnels par utilisateur',
     ],
 
     'counter' => [
@@ -43,6 +43,12 @@ return [
     'test_result' => [
         'ok' => 'Connexion validée',
         'fail' => 'Token invalide ou service inaccessible',
+    ],
+
+    'categories' => [
+        'sourcing' => 'Sourcing',
+        'ai' => 'Intelligence artificielle',
+        'scheduling' => 'Planification',
     ],
 
     'actions' => [

@@ -56,7 +56,7 @@ return [
         'label' => 'Apify',
         'category' => 'sourcing',
         'icon' => '🔎',
-        'description' => 'Import Candidats depuis des crawlers personnalisés',
+        'description' => 'Sourcing depuis des crawlers personnalisés',
         'token_label' => 'Token API Apify',
         'placeholder' => 'apify_xxxxxxxxxxxxxxxxxxxx',
         'env_key' => 'APIFY_API_TOKEN',
