@@ -24,9 +24,9 @@ class ApifyJobDispatcher
      *
      * @throws RequestException If the Apify API returns a non-2xx response.
      */
-    public function dispatch(Brief $brief, array $actorInput): ApifyRun
+    public function dispatch(Brief $brief, array $actorInput, ?string $token = null): ApifyRun
     {
-        $response = Http::withToken(config('services.apify.token'))
+        $response = Http::withToken($token ?? config('services.apify.token'))
             ->timeout(20)
             ->post('https://api.apify.com/v2/acts/'.self::ACTOR_ID.'/runs', $actorInput);
 

@@ -129,6 +129,84 @@ class ApifyCandidateImporter
     }
 
     /**
+     * Same as import() but streams each scored candidate back via $onCandidate callback.
+     * Uses the provided $token instead of the config fallback.
+     *
+     * @param  string  $token  Apify API token (from user's saved integration).
+     * @param  callable  $onCandidate  Called with the candidate array after scoring.
+     * @return int Number of candidates imported.
+     */
+    public function streamImport(ApifyRun $run, string $token, callable $onCandidate): int
+    {
+        $items = $this->fetchDataset($run->dataset_id, $token);
+        $brief = $run->brief;
+
+        if (empty($items)) {
+            return 0;
+        }
+
+        $candidates = collect();
+
+        foreach ($items as $item) {
+            try {
+                $candidates->push($this->upsertCandidate($item));
+            } catch (\Throwable $e) {
+                logger()->warning('Failed to upsert candidate, skipping.', [
+                    'linkedin_url' => $item['linkedinUrl'] ?? 'unknown',
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if ($candidates->isEmpty()) {
+            return 0;
+        }
+
+        $scores = $this->scorer->scoreBatch($brief, $candidates);
+        $count = 0;
+
+        foreach ($candidates as $candidate) {
+            $key = $candidate->linkedin_url;
+            if (! $key) {
+                continue;
+            }
+            $result = $scores[$key] ?? null;
+            if (! $result) {
+                continue;
+            }
+
+            try {
+                $brief->candidates()->syncWithoutDetaching([
+                    $candidate->id => [
+                        'score' => $result['score'],
+                        'score_breakdown' => json_encode($result['breakdown']),
+                        'sourced_at' => now(),
+                    ],
+                ]);
+                $count++;
+                $onCandidate([
+                    'id' => $candidate->id,
+                    'full_name' => $candidate->full_name,
+                    'linkedin_url' => $candidate->linkedin_url,
+                    'current_title' => $candidate->current_title,
+                    'current_company' => $candidate->current_company,
+                    'location' => $candidate->location,
+                    'experience_years' => $candidate->experience_years,
+                    'status' => $candidate->status,
+                    'score' => $result['score'],
+                    'score_breakdown' => $result['breakdown'],
+                    'sourced_at' => now()->toDateTimeString(),
+                    'created_at' => $candidate->created_at?->toDateTimeString() ?? now()->toDateTimeString(),
+                ]);
+            } catch (\Throwable $e) {
+                logger()->warning('Failed to attach candidate.', ['error' => $e->getMessage()]);
+            }
+        }
+
+        return $count;
+    }
+
+    /**
      * Insert or update a Candidate record from raw Apify profile data.
      * Uses linkedin_url as the unique key.
      *
@@ -326,9 +404,9 @@ class ApifyCandidateImporter
      *
      * @return array Raw profile objects, empty on failure.
      */
-    private function fetchDataset(string $datasetId): array
+    private function fetchDataset(string $datasetId, ?string $token = null): array
     {
-        $response = Http::withToken(config('services.apify.token'))
+        $response = Http::withToken($token ?? config('services.apify.token'))
             ->get("https://api.apify.com/v2/datasets/{$datasetId}/items", [
                 'format' => 'json',
                 'clean' => true,

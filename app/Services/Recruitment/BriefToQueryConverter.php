@@ -54,14 +54,12 @@ class BriefToQueryConverter
     {
         $input = [
             'profileScraperMode' => 'Full',
-            'maxItems' => 50,
-            'takePages' => 2,
+            'maxItems' => 100,
+            'takePages' => 4,
         ];
 
-        $searchTerms = $this->buildSearchQuery($brief);
-
-        if ($searchTerms) {
-            $input['searchQuery'] = $searchTerms;
+        if ($brief->title) {
+            $input['currentJobTitles'] = [trim($brief->title)];
         }
 
         if ($brief->location) {
@@ -74,11 +72,40 @@ class BriefToQueryConverter
             ];
         }
 
-        if ($brief->contract_type) {
-            $seniorityId = $this->mapContractTypeToSeniority($brief->contract_type);
-
+        // Seniority — prefer the explicit seniority_level field; fall back to contract_type mapping
+        if ($brief->seniority_level) {
+            $seniorityId = $this->mapSeniorityLevel($brief->seniority_level);
             if ($seniorityId) {
-                $input['seniorityLevelIds'] = [$seniorityId];
+                $input['seniorityLevelIds'] = [(string) $seniorityId];
+            }
+        } elseif ($brief->contract_type) {
+            $seniorityId = $this->mapContractTypeToSeniority($brief->contract_type);
+            if ($seniorityId) {
+                $input['seniorityLevelIds'] = [(string) $seniorityId];
+            }
+        }
+
+        // Profile languages (e.g. "Français, Anglais" → ["fr", "en"])
+        if ($brief->languages) {
+            $langs = $this->parseMultiValue($brief->languages)
+                ->map(fn ($l) => $this->mapLanguageToCode($l))
+                ->filter()
+                ->values()
+                ->all();
+
+            if (! empty($langs)) {
+                $input['profileLanguages'] = $langs;
+            }
+        }
+
+        // Target companies (current company filter)
+        if ($brief->target_companies) {
+            $companies = $this->parseMultiValue($brief->target_companies)
+                ->values()
+                ->all();
+
+            if (! empty($companies)) {
+                $input['currentCompanies'] = $companies;
             }
         }
 
@@ -93,25 +120,6 @@ class BriefToQueryConverter
      *
      * @return string e.g. "Web Developer Python MongoDB Technology Anglais Arabe"
      */
-    private function buildSearchQuery(Brief $brief): string
-    {
-        $parts = [];
-
-        if ($brief->title) {
-            $parts[] = trim($brief->title);
-        }
-
-        // LIMIT SKILLS (VERY IMPORTANT)
-        $skills = $this->parseMultiValue($brief->required_skills)
-            ->take(3); // max 3 skills
-
-        if ($skills->isNotEmpty()) {
-            $parts[] = $skills->implode(' ');
-        }
-
-        return implode(' ', $parts);
-    }
-
     /**
      * Build a MongoDB $all query to post-filter scraped profiles,
      * keeping only candidates whose skills array contains ALL required skills
@@ -186,6 +194,42 @@ class BriefToQueryConverter
             $minYears <= 5 => 3,
             $minYears <= 10 => 4,
             default => 5,
+        };
+    }
+
+    /**
+     * Map an explicit seniority_level value to an Apify seniority ID.
+     *
+     * Apify IDs: 100=Internship, 110=Entry, 120=Senior, 130=Strategic,
+     *            200=Entry Manager, 210=Experienced Manager, 220=Director,
+     *            300=VP, 310=CXO, 320=Owner
+     */
+    private function mapSeniorityLevel(string $level): ?int
+    {
+        return match ($level) {
+            'intern' => 100,
+            'entry' => 110,
+            'mid' => 110,
+            'senior' => 120,
+            'manager' => 210,
+            'director' => 220,
+            'executive' => 310,
+            default => null,
+        };
+    }
+
+    /**
+     * Map a French language name to the full English name Apify expects.
+     */
+    private function mapLanguageToCode(string $language): ?string
+    {
+        return match (mb_strtolower(trim($language))) {
+            'anglais' => 'English',
+            'français', 'francais' => 'French',
+            'arabe' => 'Arabic',
+            'espagnol' => 'Spanish',
+            'amazigh' => null, // not a standard LinkedIn profile language
+            default => null,
         };
     }
 
