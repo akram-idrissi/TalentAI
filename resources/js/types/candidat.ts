@@ -23,12 +23,15 @@ export interface Candidat {
     updated_at: string;
     brief_title: string | null;
     score_cv: number | null;
+    ai_score: number | null;
 }
 
 export interface PaginatedCandidats {
     data: Candidat[];
     current_page: number;
     last_page: number;
+    from: number | null;
+    to: number | null;
     per_page: number;
     total: number;
     links: { url: string | null; label: string; active: boolean }[];

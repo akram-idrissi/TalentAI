@@ -1,7 +1,7 @@
 import DeleteModal from '@/components/ui/DeleteModal';
 import { useI18n } from '@/hooks/useI18n';
 import AppLayout from '@/layouts/app-layout';
-import type { Candidat, CandidatStatus, IndexCandidatProps } from '@/types/Candidat';
+import type { Candidat, CandidatStatus, IndexCandidatProps } from '@/types/candidat';
 import { Head, Link, router } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight, ExternalLink, Plus, Search } from 'lucide-react';
 import { useState } from 'react';

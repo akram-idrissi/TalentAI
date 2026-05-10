@@ -70,6 +70,11 @@ type Filters = {
 export type IndexBriefProps = {
     briefs: {
         data: Brief[];
+        current_page: number;
+        last_page: number;
+        from: number | null;
+        to: number | null;
+        total: number;
     };
     filters: Filters;
 };
