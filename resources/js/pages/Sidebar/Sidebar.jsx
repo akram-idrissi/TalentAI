@@ -11,6 +11,7 @@ import {
     PanelLeftOpen,
     Search,
     Settings,
+    Trophy,
     Users,
     X,
 } from 'lucide-react';
@@ -140,7 +141,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                 title: t('sidebar.candidats.title'),
                 items: [
                     { id: 'candidates', label: t('sidebar.candidats.base'), icon: Users, route: 'dashboard.candidats.index', badge: 24 },
-                    // { id: 'rankings', label: t('sidebar.candidats.rankings'), icon: Trophy, route: 'dashboard.candidates.rankings' },
+                    { id: 'classement', label: t('sidebar.candidats.rankings'), icon: Trophy, route: 'dashboard.classement' },
                 ],
             },
             {

@@ -8,7 +8,7 @@ return [
 
     'sourcing' => [
         'title' => 'Sourcing',
-        'brief' => 'Nouveau brief',
+        'brief' => 'Liste des briefs',
         'auto' => 'Sourcing auto',
     ],
 
