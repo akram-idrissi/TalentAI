@@ -1,28 +1,12 @@
+import { Candidat } from '@/types/candidat';
 import { Link, router } from '@inertiajs/react';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import relativeTime from 'dayjs/plugin/relativeTime';
-
 import { Edit2, ExternalLink, Eye, Trash2 } from 'lucide-react';
 
 dayjs.extend(relativeTime);
 dayjs.locale('fr');
-
-interface Candidat {
-    id: number;
-    full_name: string;
-    current_title?: string;
-    email?: string;
-    current_company?: string;
-    location?: string;
-    experience_years?: number;
-    source?: string;
-    status: string;
-    created_at: string;
-    open_to_work?: boolean;
-    ai_score?: number;
-    linkedin_url?: string;
-}
 
 interface Props {
     data: Candidat[];
@@ -61,7 +45,7 @@ function getRankStyle(index: number) {
     return 'bg-ds-bg3 text-ds-text3 border border-ds-border';
 }
 
-function SourceBadge({ source }: { source?: string }) {
+function SourceBadge({ source }: { source: string | null }) {
     if (!source) {
         return (
             <span className="border-ds-border text-ds-text3 inline-flex rounded-full border bg-white/5 px-2.5 py-1 text-[11px] font-semibold">—</span>
