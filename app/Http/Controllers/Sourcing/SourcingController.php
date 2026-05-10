@@ -83,6 +83,15 @@ class SourcingController extends Controller
     ): StreamedResponse {
         $briefId = (int) $request->query('brief_id');
 
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+        $logger->log(
+            'sourcing.stream',
+            'Démarrage du flux de sourcing SSE.',
+            ['brief_id' => $briefId],
+            [Brief::class, Candidat::class]
+        );
+
         // Release the session lock so other requests aren't blocked during the long-running stream
         request()->session()->save();
 
