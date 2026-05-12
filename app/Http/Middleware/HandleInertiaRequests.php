@@ -59,6 +59,7 @@ class HandleInertiaRequests extends Middleware
                 'integrations' => __('integrations'),
                 'candidats' => __('candidats'),
                 'users' => __('users'),
+                'roles' => __('roles'),
                 'errors' => __('errors'),
             ],
         ];
