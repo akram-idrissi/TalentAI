@@ -1,58 +1,10 @@
 import { usePermission } from '@/hooks/usePermission';
 import AppLayout from '@/layouts/app-layout';
+import { PageProps, Role } from '@/types/roles';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Edit2, Shield, Users } from 'lucide-react';
 import { useState } from 'react';
-
-// ── Types ────────────────────────────────────────────────────────────────────
-
-type Role = {
-    id: number;
-    name: string;
-    users_count: number;
-    permissions: string[];
-};
-
-type AllPermissions = Record<string, string[]>;
-
-type PageProps = {
-    roles: Role[];
-    allPermissions: AllPermissions;
-    flash: { success?: string; error?: string };
-};
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-const ROLE_LABELS: Record<string, string> = {
-    super_admin: 'Super Admin',
-    admin: 'Admin',
-    recruiter: 'Recruiter',
-    hiring_manager: 'Hiring Manager',
-    viewer: 'Viewer',
-};
-
-const ROLE_COLORS: Record<string, string> = {
-    super_admin: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
-    admin: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
-    recruiter: 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300',
-    hiring_manager: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
-    viewer: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-};
-
-const MODULE_LABELS: Record<string, string> = {
-    briefs: 'Briefs',
-    sourcing: 'Sourcing',
-    candidates: 'Candidates',
-    interviews: 'Interviews',
-    reports: 'Reports',
-    integrations: 'Integrations',
-    classement: 'Classement',
-    users: 'Users',
-    roles: 'Roles',
-    settings: 'Settings',
-};
-
-// ── Component ────────────────────────────────────────────────────────────────
+import { MODULE_LABELS, ROLE_COLORS, ROLE_LABELS } from './constants';
 
 export default function RolesIndex() {
     const { roles, allPermissions, flash } = usePage<PageProps>().props;
