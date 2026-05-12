@@ -1,6 +1,6 @@
+import { usePermission } from '@/hooks/usePermission';
 import { router } from '@inertiajs/react';
 import StatusBadge, { type BriefStatus } from './StatusBadge';
-
 interface Brief {
     id: number;
     title: string;
@@ -11,16 +11,20 @@ interface Brief {
 }
 
 export default function ActiveBriefsTable({ briefs }: { briefs: Brief[] }) {
+    const { can, isSuperAdmin } = usePermission();
+    const canCreateBriefs = isSuperAdmin() || can('briefs.create');
     return (
         <div className="border-ds-border bg-dash-card flex flex-col rounded-xl border p-6 shadow-sm">
             <div className="mb-5 flex items-center justify-between">
                 <h2 className="font-heading text-ds-text text-[15px] font-semibold">Briefs actifs</h2>
-                <button
-                    onClick={() => router.visit(route('dashboard.briefs.create'))}
-                    className="bg-ds-accent inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-medium text-white transition-all duration-150 hover:-translate-y-px hover:bg-[#7C74FF]"
-                >
-                    + Nouveau
-                </button>
+                {canCreateBriefs && (
+                    <button
+                        onClick={() => router.visit(route('dashboard.briefs.create'))}
+                        className="bg-ds-accent inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-medium text-white transition-all duration-150 hover:-translate-y-px hover:bg-[#7C74FF]"
+                    >
+                        + Nouveau
+                    </button>
+                )}
             </div>
 
             <div className="overflow-x-auto">
