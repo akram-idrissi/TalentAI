@@ -9,21 +9,22 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('transcriptions', function (Blueprint $table) {
-            $table->id();
+            // 1. Primary Key using UUID
+            $table->uuid('id')->primary();
 
-            $table->unsignedBigInteger('interview_id')->unique();
+            // 2. Foreign Key using UUID (darouri bach y-matchi Interviews)
+            $table->uuid('interview_id')->unique();
 
             $table->longText('transcript_text')->nullable();
-
             $table->float('whisper_confidence')->nullable();
-
             $table->string('language')->nullable();
-
             $table->integer('progress_pct')->default(0);
 
+            // 3. Constraints
             $table->foreign('interview_id')
                 ->references('id')
-                ->on('interviews');
+                ->on('interviews')
+                ->onDelete('cascade');
 
             $table->timestamps();
             $table->softDeletes();

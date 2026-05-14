@@ -12,15 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('brief_candidat', function (Blueprint $table) {
-            $table->unsignedBigInteger('brief_id');
-            $table->unsignedBigInteger('candidat_id');
+            // 1. Beddlna unsignedBigInteger b UUID
+            $table->uuid('brief_id');
+            $table->uuid('candidat_id');
 
             $table->float('score')->nullable();
             $table->json('score_breakdown')->nullable();
             $table->timestamp('sourced_at')->nullable();
 
+            // 2. Primary key using both UUIDs
             $table->primary(['brief_id', 'candidat_id']);
 
+            // 3. Constraints match with UUID parents
             $table->foreign('brief_id')
                 ->references('id')
                 ->on('briefs')
@@ -30,6 +33,7 @@ return new class extends Migration
                 ->references('id')
                 ->on('candidats')
                 ->cascadeOnDelete();
+
             $table->timestamps();
         });
     }
@@ -39,6 +43,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('brief_candidates');
+        Schema::dropIfExists('brief_candidat');
     }
 };

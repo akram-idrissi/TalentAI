@@ -9,9 +9,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('cv_analyses', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('candidate_id');
-            $table->unsignedBigInteger('brief_id');
+            // 1. Primary key using UUID
+            $table->uuid('id')->primary();
+
+            // 2. Foreign keys using UUID (Match with Candidats and Briefs)
+            $table->uuid('candidate_id');
+            $table->uuid('brief_id');
+
             $table->text('extracted_text');
             $table->integer('score_global');
             $table->integer('score_experience');
@@ -22,12 +26,18 @@ return new class extends Migration
             $table->text('ai_summary');
             $table->json('ai_tags')->nullable();
             $table->timestamp('analyzed_at');
+
+            // 3. Foreign Key Constraints
             $table->foreign('candidate_id')
                 ->references('id')
-                ->on('candidats');
+                ->on('candidats')
+                ->onDelete('cascade'); // Optional: deletes analysis if candidate is deleted
+
             $table->foreign('brief_id')
                 ->references('id')
-                ->on('briefs');
+                ->on('briefs')
+                ->onDelete('cascade');
+
             $table->timestamps();
             $table->softDeletes();
         });

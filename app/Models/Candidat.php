@@ -2,51 +2,80 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Candidat extends Model
 {
-    use SoftDeletes;
+    use HasFactory, HasUuids, SoftDeletes;
 
+    /**
+     * The table associated with the model.
+     *
+     * @var string
+     */
     protected $table = 'candidats';
 
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
     protected $fillable = [
         'full_name',
         'email',
-        'phone',
-        'current_title',
-        'current_company',
+        'linkedin_url',
+        'headline',
         'location',
+        'summary',
+        'skills',
+        'current_company',
+        'current_title',
         'experience_years',
         'education_level',
+        'sector',
+        'open_to_work',
         'source',
+        'raw_data',
         'source_url',
         'status',
-        'linkedin_url', 'headline', 'summary', 'skills', 'open_to_work', 'raw_data',
-
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * The attributes that should be cast.
      *
-     * @return array<string, string>
+     * @var array<string, string>
      */
-    public function briefs(): BelongsToMany
+    protected $casts = [
+        'skills' => 'json',
+        'raw_data' => 'json',
+        'open_to_work' => 'boolean',
+        'experience_years' => 'float',
+    ];
+
+    /**
+     * Relationship: A candidate can have many interviews.
+     */
+    public function interviews()
     {
-        return $this->belongsToMany(Brief::class, 'brief_candidat')
-            ->withPivot(['score', 'score_breakdown', 'sourced_at'])
-            ->withTimestamps();
+        return $this->hasMany(Interview::class, 'candidate_id');
     }
 
-    protected function casts(): array
+    /**
+     * Relationship: A candidate can have many sourcing results.
+     */
+    public function sourcingResults()
     {
-        return [
-            'skills' => 'array',
-            'raw_data' => 'array',
-            'open_to_work' => 'boolean',
-            'experience_years' => 'float',
-        ];
+        return $this->hasMany(SourcingResult::class, 'candidate_id');
+    }
+
+    /**
+     * Relationship: A candidate can have many CV analyses.
+     */
+    public function cvAnalyses()
+    {
+        return $this->hasMany(CvAnalysis::class, 'candidate_id');
     }
 }

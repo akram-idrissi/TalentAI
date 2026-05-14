@@ -9,8 +9,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('briefs', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('created_by');
+            // 1. Primary Key using UUID
+            $table->uuid('id')->primary();
+
+            // 2. Created by (User ID) - Often UUID in modern Laravel/Inertia apps
+            // If your 'users' table still uses normal IDs, keep it as bigInteger,
+            // but usually, it's better to use foreignUuid if users are also UUID.
+            $table->foreignId('created_by')->constrained('users');
+
             $table->string('title');
             $table->string('sector');
             $table->enum('contract_type', ['CDI', 'CDD', 'Freelance', 'Stage']);
@@ -28,10 +34,8 @@ return new class extends Migration
             $table->text('soft_skills')->nullable();
             $table->json('scoring_weights');
             $table->enum('status', ['draft', 'active', 'sourcing', 'interviews', 'closed']);
+
             $table->softDeletes();
-            $table->foreign('created_by')
-                ->references('id')
-                ->on('users');
             $table->timestamps();
         });
     }

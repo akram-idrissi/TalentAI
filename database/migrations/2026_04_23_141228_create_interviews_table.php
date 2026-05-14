@@ -9,43 +9,57 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('interviews', function (Blueprint $table) {
-            $table->id();
+            // 1. Primary Key using UUID
+            $table->uuid('id')->primary();
 
-            $table->unsignedBigInteger('candidate_id');
+            // 2. Foreign Keys (UUIDs to match Candidates and Briefs)
+            $table->uuid('candidate_id');
+            $table->uuid('brief_id')->nullable(); // Made nullable if brief is selected later
 
-            $table->unsignedBigInteger('brief_id');
+            // 3. Interviewer (User ID)
+            $table->unsignedBigInteger('interviewer_id')->nullable(); // Nullable for automated uploads
 
-            $table->unsignedBigInteger('interviewer_id');
+            $table->enum('platform', ['zoom', 'meet', 'teams', 'presentiel'])->default('zoom');
 
-            $table->enum('platform', ['zoom', 'meet', 'teams', 'presentiel']);
-
-            $table->string('recording_url')->nullable();
+            // Storage path for the recording file (MP4/MP3)
+            $table->string('video_path')->nullable();
 
             $table->integer('duration_seconds')->nullable();
 
+            /**
+             * AI & Transcription Columns (Module 4.1 & 4.2)
+             */
+            // Output from OpenAI Whisper API
+            $table->longText('transcription')->nullable();
+
+            // AI Analysis Report from Claude API (Scores, Strengths, Verdict)
+            $table->json('ai_report')->nullable();
+
+            // Final Verdict based on functional specs
+            $table->enum('verdict', ['recommended', 'solid', 'to_deepen', 'rejected'])->nullable();
+
             $table->enum('status', [
-                'scheduled',
-                'recording_uploaded',
+                'pending',
                 'transcribing',
-                'analyzed',
-                'done',
-            ]);
+                'analyzing',
+                'completed',
+                'failed',
+            ])->default('pending');
 
             $table->timestamp('scheduled_at')->nullable();
-
             $table->timestamp('completed_at')->nullable();
 
+            // 4. Relations (Constraints)
             $table->foreign('candidate_id')
                 ->references('id')
-                ->on('candidats');
+                ->on('candidats')
+                ->onDelete('cascade');
 
+            // Note: Ensure 'briefs' table exists before running this
             $table->foreign('brief_id')
                 ->references('id')
-                ->on('briefs');
-
-            $table->foreign('interviewer_id')
-                ->references('id')
-                ->on('users');
+                ->on('briefs')
+                ->onDelete('cascade');
 
             $table->timestamps();
             $table->softDeletes();
