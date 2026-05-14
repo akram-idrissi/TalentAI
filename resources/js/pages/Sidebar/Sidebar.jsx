@@ -147,7 +147,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
             {
                 title: t('sidebar.interviews.title'),
                 items: [
-                    { id: 'interviews', label: t('sidebar.interviews.list'), icon: Mic, route: 'dashboard.interviews', badge: 3 },
+                    { id: 'interviews', label: t('sidebar.interviews.list'), icon: Mic, route: 'dashboard.interviews.index', badge: 3 },
                     { id: 'reports', label: t('sidebar.interviews.reports'), icon: BarChart3, route: 'dashboard.reports' },
                 ],
             },
