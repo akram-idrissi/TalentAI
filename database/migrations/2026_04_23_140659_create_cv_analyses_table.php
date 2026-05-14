@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('candidate_id');
             $table->unsignedBigInteger('brief_id');
-            $table->text('extracted_text');
+            $table->json('extracted_text');
             $table->integer('score_global');
             $table->integer('score_experience');
             $table->integer('score_education');
@@ -20,6 +20,8 @@ return new class extends Migration
             $table->integer('score_softskills');
             $table->integer('score_location');
             $table->text('ai_summary');
+            $table->text('ai_summary_en');
+            $table->string('cv_file_path');
             $table->json('ai_tags')->nullable();
             $table->timestamp('analyzed_at');
             $table->foreign('candidate_id')
