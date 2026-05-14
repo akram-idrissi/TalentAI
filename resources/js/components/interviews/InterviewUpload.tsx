@@ -12,7 +12,8 @@ const InterviewUpload: React.FC<UploadProps> = ({ candidateId, briefId }) => {
     const [status, setStatus] = useState<string>('');
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFile(e.target.files?.[0] || null);
+        const selectedFile = e.target.files?.[0] || null;
+        setFile(selectedFile);
     };
 
     const handleUpload = async () => {
@@ -22,6 +23,7 @@ const InterviewUpload: React.FC<UploadProps> = ({ candidateId, briefId }) => {
         }
 
         const formData = new FormData();
+
         formData.append('file', file);
         formData.append('candidate_id', candidateId.toString());
         formData.append('brief_id', briefId.toString());
@@ -37,9 +39,11 @@ const InterviewUpload: React.FC<UploadProps> = ({ candidateId, briefId }) => {
             });
 
             console.log('Success:', response.data);
+
             setStatus('Done! Transcription ready.');
         } catch (error) {
             console.error('Error:', error);
+
             setStatus('Error during transcription.');
         } finally {
             setUploading(false);
