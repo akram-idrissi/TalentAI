@@ -48,44 +48,26 @@ const InterviewUpload: React.FC<UploadProps> = ({ candidateId, briefId }) => {
 
     return (
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-            <h3 className="mb-4 font-bold text-gray-800">
-                Upload Interview (3.1)
-            </h3>
+            <h3 className="mb-4 font-bold text-gray-800">Upload Interview (3.1)</h3>
 
             <input
                 type="file"
                 accept="video/*,audio/*"
                 onChange={handleFileChange}
-                className="mb-4 block w-full text-sm text-gray-500
-                file:mr-4 file:rounded-full file:border-0
-                file:bg-blue-50 file:px-4 file:py-2
-                file:text-sm file:font-semibold
-                file:text-blue-700 hover:file:bg-blue-100"
+                className="mb-4 block w-full text-sm text-gray-500 file:mr-4 file:rounded-full file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100"
             />
 
             <button
                 onClick={handleUpload}
                 disabled={uploading}
                 className={`w-full rounded-lg py-2 font-bold text-white transition-all ${
-                    uploading
-                        ? 'bg-gray-400 cursor-not-allowed'
-                        : 'bg-blue-600 hover:bg-blue-700'
+                    uploading ? 'cursor-not-allowed bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'
                 }`}
             >
                 {uploading ? 'Processing...' : 'Analyze Interview'}
             </button>
 
-            {status && (
-                <p
-                    className={`mt-4 text-sm ${
-                        status.includes('Error')
-                            ? 'text-red-600'
-                            : 'text-green-600'
-                    }`}
-                >
-                    {status}
-                </p>
-            )}
+            {status && <p className={`mt-4 text-sm ${status.includes('Error') ? 'text-red-600' : 'text-green-600'}`}>{status}</p>}
         </div>
     );
 };
