@@ -22,6 +22,7 @@ return [
             'last_login' => 'Dernière connexion',
             'joined' => 'Inscrit le',
             'no_roles' => 'Aucun rôle',
+            'inactive' => 'Inactif',
             'actions' => [
                 'edit' => 'Modifier les rôles',
                 'delete' => 'Supprimer l’utilisateur',

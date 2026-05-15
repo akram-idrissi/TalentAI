@@ -22,6 +22,7 @@ return [
             'last_login' => 'Last Login',
             'joined' => 'Joined',
             'no_roles' => 'No roles',
+            'inactive' => 'Inactive',
             'actions' => [
                 'edit' => 'Edit roles',
                 'delete' => 'Delete user',

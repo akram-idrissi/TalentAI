@@ -11,7 +11,7 @@ export function CreateUserModal({ roles, onClose }: { roles: Role[]; onClose: ()
 
     const submit = () => {
         setSaving(true);
-        router.post(route('roles.users.create'), form, {
+        router.post(route('dashboard.users.create'), form, {
             preserveScroll: true,
             onFinish: () => {
                 setSaving(false);

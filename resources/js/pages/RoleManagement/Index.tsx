@@ -40,7 +40,7 @@ export default function RolesIndex() {
                             <p className="text-ds-text2 mt-1 text-[14px]">{t('roles.index.subtitle')}</p>
                         </div>
                         <a
-                            href={route('roles.users.index')}
+                            href={route('dashboard.users.index')}
                             className="border-ds-border text-ds-text2 hover:bg-ds-surface hover:text-ds-text flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-[13px] font-medium transition"
                         >
                             <Users size={14} />

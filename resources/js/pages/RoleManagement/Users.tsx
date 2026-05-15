@@ -26,14 +26,15 @@ export default function UsersIndex() {
         success: Boolean(flash.success),
         error: Boolean(flash.error),
     });
+
     const toggleUserStatus = (user: User) => {
-        const routeName = user.is_active ? 'roles.users.deactivate' : 'roles.users.activate';
+        const routeName = user.is_active ? 'dashboard.users.deactivate' : 'dashboard.users.activate';
 
         router.patch(route(routeName, user.id), {}, { preserveScroll: true });
     };
     const deleteUser = (user: User) => {
         if (!confirm(t('users.index.delete_confirm', { name: user.full_name ?? user.name }))) return;
-        router.delete(route('roles.users.delete', user.id), { preserveScroll: true });
+        router.delete(route('dashboard.users.delete', user.id), { preserveScroll: true });
     };
 
     const subtitle = users.total === 1 ? t('users.index.subtitle_one') : t('users.index.subtitle_other', { count: users.total });
@@ -67,7 +68,7 @@ export default function UsersIndex() {
                         </div>
                         <div className="flex items-center gap-2">
                             <a
-                                href={route('roles.index')}
+                                href={route('dashboard.roles.index')}
                                 className="border-ds-border text-ds-text2 hover:bg-ds-surface hover:text-ds-text flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-[13px] font-medium transition"
                             >
                                 <Shield size={14} />
@@ -126,15 +127,22 @@ export default function UsersIndex() {
                                         {users.data.map((user, index) => (
                                             <tr
                                                 key={user.id}
-                                                className="border-ds-border hover:bg-ds-bg3/40 border-b transition-colors last:border-0"
+                                                className={`border-ds-border hover:bg-ds-bg3/40 border-b transition-colors last:border-0 ${
+                                                    !user.is_active ? 'opacity-50' : ''
+                                                }`}
                                             >
                                                 {/* User */}
                                                 <td className="px-4 py-3.5">
                                                     <div className="flex items-center gap-3">
                                                         <UserAvatar name={user.full_name ?? user.name} index={index} />
                                                         <div className="min-w-0">
-                                                            <p className="font-heading text-ds-text truncate font-semibold">
+                                                            <p className="font-heading text-ds-text flex items-center gap-2 truncate font-semibold">
                                                                 {user.full_name ?? user.name}
+                                                                {!user.is_active && (
+                                                                    <span className="bg-ds-red/10 text-ds-red rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+                                                                        {t('users.index.table.inactive')}
+                                                                    </span>
+                                                                )}
                                                             </p>
                                                             <p className="text-ds-text3 truncate text-[11px]">{user.email}</p>
                                                         </div>

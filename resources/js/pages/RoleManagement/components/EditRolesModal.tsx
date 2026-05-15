@@ -15,7 +15,7 @@ export function EditRolesModal({ user, roles, onClose }: { user: User; roles: Ro
     const save = () => {
         setSaving(true);
         router.put(
-            route('roles.users.update-role', user.id),
+            route('dashboard.users.update-role', user.id),
             { roles: selectedRoles },
             {
                 preserveScroll: true,

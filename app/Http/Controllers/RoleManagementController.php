@@ -133,9 +133,8 @@ class RoleManagementController extends Controller
         $logger = app(ActivityLogger::class);
 
         try {
-            $users = User::withTrashed()
-                ->with('roles:name')
-                ->select(['id', 'name', 'email', 'last_login_at', 'created_at', 'deleted_at'])
+            $users = User::with('roles:name')
+                ->select(['id', 'name', 'email', 'last_login_at', 'created_at', 'deleted_at', 'deactivated_at'])
                 ->latest()
                 ->paginate(20)
                 ->through(fn ($user) => [
@@ -145,7 +144,7 @@ class RoleManagementController extends Controller
                     'roles' => $user->roles->pluck('name'),
                     'last_login_at' => $user->last_login_at,
                     'created_at' => $user->created_at,
-                    'is_active' => ! $user->trashed(),
+                    'is_active' => ! $user->isDeactivated(),
                 ]);
 
             $logger->log(
@@ -341,7 +340,7 @@ class RoleManagementController extends Controller
         $logger = app(ActivityLogger::class);
 
         try {
-            $user->delete();
+            $user->deactivate();
 
             $logger->log(
                 'users.deactivate',
@@ -379,7 +378,7 @@ class RoleManagementController extends Controller
         try {
             $userModel = User::withTrashed()->findOrFail($user);
 
-            $userModel->restore();
+            $userModel->activate();
 
             $logger->log(
                 'users.activate',

@@ -45,6 +45,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'deactivated_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -69,5 +70,20 @@ class User extends Authenticatable
     public function roleNames(): array
     {
         return $this->getRoleNames()->toArray();
+    }
+
+    public function isDeactivated(): bool
+    {
+        return ! is_null($this->deactivated_at);
+    }
+
+    public function deactivate(): bool
+    {
+        return $this->forceFill(['deactivated_at' => now()])->save();
+    }
+
+    public function activate(): bool
+    {
+        return $this->forceFill(['deactivated_at' => null])->save();
     }
 }
