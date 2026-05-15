@@ -12,12 +12,16 @@ class Transcription extends Model
     protected $table = 'transcriptions';
 
     protected $fillable = [
-        'interview_id',
+        // 'interview_id',
         'transcript_text',
-        'whisper_confidence',
-        'language',
-        'progress_pct',
-        'created_at',
+        // 'whisper_confidence',
+        // 'language',
+        // 'progress_pct',
+        // 'created_at',
+        'audio_path',
+        'status',
+        'diarized_transcript',
+        'error',
     ];
 
     /**
@@ -28,14 +32,14 @@ class Transcription extends Model
     protected function casts(): array
     {
         return [
-            'whisper_confidence' => 'float',
-            'progress_pct' => 'integer',
+            // 'whisper_confidence' => 'float',
+            // 'progress_pct' => 'integer',
             'created_at' => 'datetime',
         ];
     }
 
-    public function interview()
-    {
-        return $this->belongsTo(Interview::class, 'interview_id');
-    }
+    // public function interview()
+    // {
+    //     return $this->belongsTo(Interview::class, 'interview_id');
+    // }
 }

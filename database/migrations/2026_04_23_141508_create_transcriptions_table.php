@@ -11,20 +11,23 @@ return new class extends Migration
         Schema::create('transcriptions', function (Blueprint $table) {
             $table->id();
 
-            $table->unsignedBigInteger('interview_id')->unique();
+            // $table->unsignedBigInteger('interview_id')->unique();
 
+            // $table->float('whisper_confidence')->nullable();
+
+            // $table->string('language')->nullable();
+
+            // $table->integer('progress_pct')->default(0);
+
+            // $table->foreign('interview_id')
+            //     ->references('id')
+            //     ->on('interviews');
+
+            $table->string('audio_path');
+            $table->string('status')->default('pending');
             $table->longText('transcript_text')->nullable();
-
-            $table->float('whisper_confidence')->nullable();
-
-            $table->string('language')->nullable();
-
-            $table->integer('progress_pct')->default(0);
-
-            $table->foreign('interview_id')
-                ->references('id')
-                ->on('interviews');
-
+            $table->longText('diarized_transcript')->nullable();
+            $table->text('error')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });
