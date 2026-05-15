@@ -25,4 +25,5 @@ export type PageProps = {
     roles: Role[];
     flash: { success?: string; error?: string };
     auth: { user: { id: number } };
+    filters: { search?: string; role?: string };
 };

@@ -4,7 +4,7 @@ import AppLayout from '@/layouts/app-layout';
 import { PageProps, Role } from '@/types/roles';
 import { Head, usePage } from '@inertiajs/react';
 import { Edit2, Shield, Users } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { EditPermissionsModal } from './components/EditPermissionsModal';
 import { FlashMessage } from './components/FlashMessage';
 import { ROLE_COLORS } from './constants';
@@ -17,6 +17,12 @@ export default function RolesIndex() {
         success: Boolean(flash.success),
         error: Boolean(flash.error),
     });
+    useEffect(() => {
+        setVisibleFlash({
+            success: Boolean(flash.success),
+            error: Boolean(flash.error),
+        });
+    }, [flash.success, flash.error]);
 
     const TABLE_COLS = [t('roles.index.table.role'), t('roles.index.table.users'), t('roles.index.table.permissions'), ''];
 

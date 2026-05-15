@@ -121,11 +121,12 @@ class RoleManagementController extends Controller
     // ─── Users ──────────────────────────────────────────────────────────────
 
     /**
-     * Display a paginated list of all users (including soft-deleted) with their roles.
+     * Display a paginated list of all users along with their roles.
      *
+     * @param  Request  $request  Supports query params: `search` (string), `email` (string)
      * @return Response Inertia page — RoleManagement/Users — or Fallback on failure
      */
-    public function usersIndex(): Response
+    public function usersIndex(Request $request): Response
     {
         $this->authorize('users.view');
 
@@ -133,10 +134,23 @@ class RoleManagementController extends Controller
         $logger = app(ActivityLogger::class);
 
         try {
+            $search = $request->string('search')->trim()->toString();
+            $role = $request->string('role')->trim()->toString();
+
             $users = User::with('roles:name')
-                ->select(['id', 'name', 'email', 'last_login_at', 'created_at', 'deleted_at', 'deactivated_at'])
+                ->select(['id', 'name',  'email', 'last_login_at', 'created_at', 'deleted_at', 'deactivated_at'])
+                ->when($search, function ($query, string $search) {
+                    $query->where(function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
+                })
+                ->when($role, function ($query, string $role) {
+                    $query->whereHas('roles', fn ($q) => $q->where('name', $role));
+                })
                 ->latest()
                 ->paginate(20)
+                ->withQueryString()
                 ->through(fn ($user) => [
                     'id' => $user->id,
                     'name' => $user->name,
@@ -147,16 +161,15 @@ class RoleManagementController extends Controller
                     'is_active' => ! $user->isDeactivated(),
                 ]);
 
-            $logger->log(
-                'users.index',
-                'Consultation de la liste des utilisateurs.',
-                [],
-                [User::class]
-            );
+            $logger->log('users.index', 'Consultation de la liste des utilisateurs.', [], [User::class]);
 
             return Inertia::render('RoleManagement/Users', [
                 'users' => $users,
                 'roles' => Role::all(['id', 'name']),
+                'filters' => [
+                    'search' => $search,
+                    'role' => $role,
+                ],
             ]);
         } catch (\Throwable $e) {
             $logger->log(

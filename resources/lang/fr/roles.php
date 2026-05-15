@@ -26,8 +26,12 @@ return [
             ],
         ],
         'flash' => [
-            'success' => 'Succès',
-            'error' => 'Erreur',
+            // Succès
+            'updated' => 'Permissions du rôle ":role" mises à jour.',
+
+            // Erreurs
+            'index_error' => 'Impossible de charger la liste des rôles.',
+            'update_error' => 'Impossible de mettre à jour les permissions.',
         ],
     ],
 

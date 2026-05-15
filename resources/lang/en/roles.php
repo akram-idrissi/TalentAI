@@ -25,9 +25,14 @@ return [
             ],
         ],
         'flash' => [
-            'success' => 'Success',
-            'error' => 'Error',
+            // Success
+            'updated' => 'Permissions for ":role" updated.',
+
+            // Errors
+            'index_error' => 'Unable to load the roles list.',
+            'update_error' => 'Unable to update permissions.',
         ],
+
     ],
 
     'edit_modal' => [
