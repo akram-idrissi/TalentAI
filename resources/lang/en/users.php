@@ -51,6 +51,12 @@ return [
             'deactivate_error' => 'Unable to deactivate the user.',
         ],
         'delete_confirm' => 'Delete {{name}}? This cannot be undone.',
+        'delete_modal' => [
+            'title' => 'Delete user',
+            'description' => 'This action is irreversible. The user will immediately lose access.',
+            'cancel' => 'Cancel',
+            'confirm' => 'Delete',
+        ],
         'search' => [
             'all_roles' => 'All Roles',
             'placeholder' => 'Search by name or email…',

@@ -50,6 +50,12 @@ return [
             'deactivate_error' => "Impossible de désactiver l'utilisateur.",
         ],
         'delete_confirm' => 'Supprimer {{name}} ? Cette action est irréversible.',
+        'delete_modal' => [
+            'title' => 'Supprimer l\'utilisateur',
+            'description' => 'Cette action est irréversible. L\'utilisateur perdra immédiatement l\'accès.',
+            'cancel' => 'Annuler',
+            'confirm' => 'Supprimer',
+        ],
         'search' => [
             'all_roles' => 'Tous les rôles',
             'placeholder' => 'Rechercher par nom ou e-mail…',

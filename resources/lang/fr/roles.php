@@ -6,7 +6,7 @@ return [
         'title' => 'Rôles',
         'subtitle' => 'Gérez les permissions de chaque rôle au sein de votre organisation.',
         'nav' => [
-            'users' => 'Gérer les utilisateurs →',
+            'users' => 'Utilisateurs',
         ],
         'table' => [
             'role' => 'Rôle',
@@ -61,6 +61,43 @@ return [
         'interviews' => 'Entretiens',
         'reports' => 'Rapports',
         'settings' => 'Paramètres',
+        'classement' => 'Classement',
+    ],
+
+    'actions' => [
+        'view' => 'Voir',
+        'create' => 'Créer',
+        'edit' => 'Modifier',
+        'delete' => 'Supprimer',
+        'approve' => 'Approuver',
+        'export' => 'Exporter',
+        'manage' => 'Gérer',
+    ],
+
+    'create_modal' => [
+        'title' => 'Nouveau rôle',
+        'fields' => [
+            'name' => 'Nom du rôle',
+            'name_placeholder' => 'ex. responsable_rh',
+        ],
+        'actions' => [
+            'cancel' => 'Annuler',
+            'submit' => 'Créer un rôle',
+            'submitting' => 'Création…',
+        ],
+        'flash' => [
+            'created' => 'Rôle « :name » créé.',
+            'create_error' => 'Impossible de créer le rôle.',
+        ],
+    ],
+
+    'role_users_modal' => [
+        'title' => 'Utilisateurs avec ce rôle',
+        'empty' => 'Aucun utilisateur assigné à ce rôle.',
+        'actions' => [
+            'remove' => 'Retirer le rôle',
+            'removing' => 'Retrait…',
+        ],
     ],
 
 ];
