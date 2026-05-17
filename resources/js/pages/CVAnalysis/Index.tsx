@@ -289,11 +289,6 @@ export default function Index() {
                                                                 {item.brief?.title}
                                                             </div>
 
-                                                            <div className="flex items-center gap-1">
-                                                                <MapPin size={13} />
-                                                                Maroc
-                                                            </div>
-
                                                         </div>
 
                                                     </div>
@@ -389,16 +384,14 @@ export default function Index() {
                                                 </h3>
                                             </div>
                                             <a
-                                                    href={`/storage/${selected.cv_file_path}`}
+                                                    href={`${selected.cv_file_path}`}
                                                     target="_blank"
-                                                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-ds-border py-3 text-sm font-semibold transition hover:bg-ds-bg3"
+                                                    className="flex w-full bg-ds-accent items-center justify-center gap-2 rounded-2xl border border-ds-border py-3 text-sm font-semibold transition hover:bg-ds-accent2 text-white"
                                                 >
                                                     Voir CV
                                                 </a>
 
-                                            <p className="text-ds-text2 text-sm leading-relaxed">
-                                                {selected.ai_summary ??
-                                                    "Aucune analyse disponible."}
+                                            <p className=" py-4 text-ds-text2 text-sm leading-relaxed">
                                                     {lang === "fr"
                                                         ? selected.ai_summary
                                                         : selected.ai_summary_en}
@@ -467,14 +460,88 @@ export default function Index() {
 
                                     </div>
 
-                                    {/* BUTTON */}
-                                    <button className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#6C63FF] py-3 text-sm font-semibold text-white transition hover:opacity-90">
+                                    <div className="rounded-3xl border border-ds-border bg-ds-surface p-6">
 
-                                        <ChevronRight size={16} />
+                                        <div className="mb-4 flex items-center gap-2">
 
-                                        Voir Profil Candidat
+                                            <Sparkles
+                                                size={18}
+                                                className="text-[#F59E0B]"
+                                            />
 
-                                    </button>
+                                            <h3 className="font-bold">
+                                                Skills CV
+                                            </h3>
+
+                                        </div>
+
+                                        {selected.extracted_text.technical_skills.length > 0 ? (
+
+                                            <div className="flex flex-wrap gap-2">
+
+                                                {selected.extracted_text.technical_skills.map(
+                                                    (
+                                                        tag: string,
+                                                        index: number
+                                                    ) => (
+                                                        <span
+                                                            key={index}
+                                                            className="rounded-xl border border-ds-border bg-ds-bg3 px-3 py-1.5 text-xs text-ds-text2"
+                                                        >
+                                                            {tag}
+                                                        </span>
+                                                    )
+                                                )}
+
+                                            </div>
+
+                                        ) : (
+
+                                            <p className="text-ds-text3 text-sm">
+                                                Aucun skill détecté.
+                                            </p>
+
+                                        )}
+
+                                    </div>
+
+                                    <div className="rounded-3xl border border-ds-border bg-ds-surface p-6">
+
+                                        <div className="mb-4 flex items-center gap-2">
+
+                                            <Sparkles
+                                                size={18}
+                                                className="text-[#F59E0B]"
+                                            />
+
+                                            <h3 className="font-bold">
+                                                Skills Brif
+                                            </h3>
+
+                                        </div>
+
+                                        {selected.brief.required_skills.length > 0 ? (
+
+                                            <div className="flex flex-wrap gap-2">
+                                                <p className="text-ds-text2">
+                                                    {selected.brief.required_skills}
+                                                </p>
+                                            </div>
+
+                                        ) : (
+
+                                            <p className="text-ds-text3 text-sm">
+                                                Aucun skill détecté.
+                                            </p>
+
+                                        )}
+
+                                    </div>
+
+
+
+
+
 
                                 </div>
 

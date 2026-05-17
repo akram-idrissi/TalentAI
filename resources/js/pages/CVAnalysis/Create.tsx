@@ -220,6 +220,33 @@ export default function Index({ briefs }: any) {
                     </div>
                 )}
 
+                {clientErrors.length > 0 && (
+                    <div className="mb-6 rounded-2xl border border-ds-border bg-ds-surface overflow-hidden">
+
+                        <div className="px-5 py-4 border-b border-ds-border flex items-center gap-2">
+                            <XCircle className="text-ds-red" size={18} />
+                            <h3 className="font-semibold text-ds-text">
+                                 Errors
+                            </h3>
+                        </div>
+
+                        <div className="p-4 space-y-3 max-h-[300px] overflow-auto">
+
+                            {clientErrors.map((error: any, index: number) => (
+                                <div
+                                    key={index}
+                                    className="rounded-xl border border-ds-border bg-ds-bg p-4"
+                                >
+                                    <p className="text-sm text-ds-red">
+                                        {error}
+                                    </p>
+                                </div>
+                            ))}
+
+                        </div>
+                    </div>
+                )}
+
                 {/* FORM */}
                 <div className="bg-ds-surface border border-ds-border rounded-2xl p-6 space-y-5">
 
