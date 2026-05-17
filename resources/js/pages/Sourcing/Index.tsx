@@ -36,8 +36,6 @@ const statusLabel: Record<StreamStatus, string> = {
     error: '',
 };
 
-/* ---------------- PAGE ---------------- */
-
 export default function Index({ briefs, filters }: Props) {
     const [briefId, setBriefId] = useState<number | ''>(filters.brief_id ?? '');
     const [candidates, setCandidates] = useState<Candidat[]>([]);

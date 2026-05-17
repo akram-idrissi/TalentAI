@@ -98,8 +98,6 @@ function UserDropdown({ user, collapsed }) {
     );
 }
 
-// ─── Main Sidebar ────────────────────────────────────────────────────────────
-
 export default function Sidebar({ mobileOpen, setMobileOpen }) {
     const { props } = usePage();
     const { t } = useI18n();
