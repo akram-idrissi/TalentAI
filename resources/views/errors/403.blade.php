@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 — {{ __('errors.404.title') }}</title>
+    <title>403 — {{ __('errors.403.title') }}</title>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -136,10 +136,10 @@
 </head>
 <body>
     <div class="wrap">
-        <div class="badge">{{ __('errors.404.badge') }}</div>
-        <div class="code">404</div>
-        <div class="title">{{ __('errors.404.title') }}</div>
-        <p class="desc">{{ __('errors.404.description') }}</p>
+        <div class="badge">{{ __('errors.403.badge') }}</div>
+        <div class="code">403</div>
+        <div class="title">{{ __('errors.403.title') }}</div>
+        <p class="desc">{{ __('errors.403.description') }}</p>
 
         <div class="divider"></div>
 
