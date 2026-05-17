@@ -122,24 +122,45 @@ class RoleManagementController extends Controller
         }
     }
 
+    /**
+     * Render the edit-role page for a given role.
+     *
+     * @return Response Inertia page — RoleManagement/EditRole
+     */
     public function rolesEdit(Role $role): Response
     {
         $this->authorize('roles.manage');
         abort_if($role->name === 'super_admin', 403);
 
-        return Inertia::render('RoleManagement/EditRole', [
-            'role' => [
-                'id' => $role->id,
-                'name' => $role->name,
-                'users_count' => $role->users()->count(),
-                'permissions' => $role->permissions->pluck('name'),
-            ],
-            'allPermissions' => Permission::all()->pluck('name')->groupBy(
-                fn ($perm) => explode('.', $perm)[0]
-            ),
-        ]);
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $logger->log('roles.edit.view', "Consultation de la page d'édition du rôle « {$role->name} ».", ['role' => $role->name], [Role::class]);
+
+            return Inertia::render('RoleManagement/EditRole', [
+                'role' => [
+                    'id' => $role->id,
+                    'name' => $role->name,
+                    'users_count' => $role->users()->count(),
+                    'permissions' => $role->permissions->pluck('name'),
+                ],
+                'allPermissions' => Permission::all()->pluck('name')->groupBy(
+                    fn ($perm) => explode('.', $perm)[0]
+                ),
+            ]);
+        } catch (\Throwable $e) {
+            $logger->log('roles.edit.error', "Erreur lors du chargement de l'édition du rôle : ".$e->getMessage(), ['exception' => $e->getMessage()], [Role::class]);
+
+            return Inertia::render('RoleManagement/EditRole', ['error' => 'Unable to load role.']);
+        }
     }
 
+    /**
+     * Create a new role with optional initial permissions.
+     *
+     * @return RedirectResponse Back with success or error flash
+     */
     public function rolesStore(Request $request): RedirectResponse
     {
         $this->authorize('roles.manage');
@@ -167,6 +188,11 @@ class RoleManagementController extends Controller
         }
     }
 
+    /**
+     * Remove a user from a role.
+     *
+     * @return RedirectResponse Back with success or error flash
+     */
     public function rolesRemoveUser(Role $role, User $user): RedirectResponse
     {
         $this->authorize('roles.manage');
@@ -175,11 +201,17 @@ class RoleManagementController extends Controller
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
-        $user->removeRole($role);
+        try {
+            $user->removeRole($role);
 
-        $logger->log('roles.remove-user', "Retrait du rôle « {$role->name} » de l'utilisateur « {$user->name} ».", ['role' => $role->name, 'user_id' => $user->id], [Role::class]);
+            $logger->log('roles.remove-user', "Retrait du rôle « {$role->name} » de l'utilisateur « {$user->name} ».", ['role' => $role->name, 'user_id' => $user->id], [Role::class]);
 
-        return back()->with('success', "Role removed from {$user->name}.");
+            return back()->with('success', "Role removed from {$user->name}.");
+        } catch (\Throwable $e) {
+            $logger->log('roles.remove-user.error', 'Erreur lors du retrait du rôle : '.$e->getMessage(), ['exception' => $e->getMessage()], [Role::class]);
+
+            return back()->with('error', 'Unable to remove role from user.');
+        }
     }
 
     /**
