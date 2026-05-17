@@ -1,13 +1,13 @@
+import DeleteModal from '@/components/ui/DeleteModal';
 import { useI18n } from '@/hooks/useI18n';
 import { usePermission } from '@/hooks/usePermission';
 import AppLayout from '@/layouts/app-layout';
 import { PageProps, User } from '@/types/users';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Edit2, Plus, Search, Shield, Trash2, UserCheck, Users, UserX, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { CreateUserModal } from './components/CreateUserModal';
 import { EditRolesModal } from './components/EditRolesModal';
-import { FlashMessage } from './components/FlashMessage';
 import { UserAvatar } from './components/UserAvatar';
 import { ROLE_COLORS } from './constants';
 
@@ -17,24 +17,17 @@ function formatDate(iso: string | null) {
 }
 
 export default function UsersIndex() {
-    const { users, roles, flash, auth, filters } = usePage<PageProps>().props;
+    const { users, roles, auth, filters } = usePage<PageProps>().props;
     const { t } = useI18n();
     const { can } = usePermission();
 
     const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [deletingUser, setDeletingUser] = useState<User | null>(null);
     const [showCreate, setShowCreate] = useState(false);
-    const [visibleFlash, setVisibleFlash] = useState({
-        success: Boolean(flash.success),
-        error: Boolean(flash.error),
-    });
 
     const [search, setSearch] = useState(filters?.search ?? '');
     const [roleFilter, setRoleFilter] = useState(filters?.role ?? '');
     const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    useEffect(() => {
-        setVisibleFlash({ success: Boolean(flash.success), error: Boolean(flash.error) });
-    }, [flash]);
 
     const applyFilters = useCallback((newSearch: string, newRole: string) => {
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
@@ -74,9 +67,12 @@ export default function UsersIndex() {
         router.patch(route(routeName, user.id), {}, { preserveScroll: true });
     };
 
-    const deleteUser = (user: User) => {
-        if (!confirm(t('users.index.delete_confirm', { name: user.full_name ?? user.name }))) return;
-        router.delete(route('dashboard.users.delete', user.id), { preserveScroll: true });
+    const deleteUser = () => {
+        if (!deletingUser) return;
+        router.delete(route('dashboard.users.delete', deletingUser.id), {
+            preserveScroll: true,
+            onFinish: () => setDeletingUser(null),
+        });
     };
 
     const subtitle = users.total === 1 ? t('users.index.subtitle_one') : t('users.index.subtitle_other', { count: users.total });
@@ -94,14 +90,6 @@ export default function UsersIndex() {
             <Head title={t('users.index.title')} />
             <AppLayout>
                 <div className="bg-ds-bg min-h-full px-6 py-8">
-                    {/* Flash */}
-                    {flash.success && visibleFlash.success && (
-                        <FlashMessage type="success" message={flash.success} onClose={() => setVisibleFlash((p) => ({ ...p, success: false }))} />
-                    )}
-                    {flash.error && visibleFlash.error && (
-                        <FlashMessage type="error" message={flash.error} onClose={() => setVisibleFlash((p) => ({ ...p, error: false }))} />
-                    )}
-
                     {/* Header */}
                     <div className="mb-6 flex items-start justify-between">
                         <div>
@@ -300,7 +288,7 @@ export default function UsersIndex() {
 
                                                         {can('users.delete') && user.id !== auth.user.id && (
                                                             <button
-                                                                onClick={() => deleteUser(user)}
+                                                                onClick={() => setDeletingUser(user)}
                                                                 className="border-ds-border text-ds-text3 hover:border-ds-red/40 hover:text-ds-red flex h-7 w-7 items-center justify-center rounded-lg border transition"
                                                                 title={t('users.index.table.actions.delete')}
                                                             >
@@ -349,6 +337,14 @@ export default function UsersIndex() {
                 {/* Modals */}
                 {editingUser && <EditRolesModal user={editingUser} roles={roles} onClose={() => setEditingUser(null)} />}
                 {showCreate && <CreateUserModal roles={roles} onClose={() => setShowCreate(false)} />}
+                {deletingUser && (
+                    <DeleteModal
+                        label={deletingUser.full_name ?? deletingUser.name}
+                        i18nPrefix="users.index.delete_modal"
+                        onConfirm={deleteUser}
+                        onCancel={() => setDeletingUser(null)}
+                    />
+                )}
             </AppLayout>
         </>
     );
