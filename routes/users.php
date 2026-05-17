@@ -3,7 +3,6 @@
 use App\Http\Controllers\RoleManagementController;
 use Illuminate\Support\Facades\Route;
 
-// Users list + role assignment
 Route::get('/users', [RoleManagementController::class, 'usersIndex'])
     ->name('users.index')
     ->middleware('can:users.view');

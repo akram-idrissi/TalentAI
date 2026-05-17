@@ -14,8 +14,6 @@ use Spatie\Permission\Models\Role;
 
 class RoleManagementController extends Controller
 {
-    // ─── Roles ──────────────────────────────────────────────────────────────
-
     /**
      * Display all roles with their permissions and user counts.
      *
@@ -30,12 +28,18 @@ class RoleManagementController extends Controller
 
         try {
             $roles = Role::withCount('users')
-                ->with('permissions:name')
+                ->with(['permissions:name', 'users' => fn ($q) => $q->select('users.id', 'name', 'email', 'deactivated_at')])
                 ->get()
                 ->map(fn ($role) => [
                     'id' => $role->id,
                     'name' => $role->name,
                     'users_count' => $role->users_count,
+                    'users' => $role->users->map(fn ($u) => [
+                        'id' => $u->id,
+                        'name' => $u->name,
+                        'email' => $u->email,
+                        'is_active' => ! $u->isDeactivated(),
+                    ]),
                     'permissions' => $role->permissions->pluck('name'),
                 ]);
 
@@ -118,7 +122,65 @@ class RoleManagementController extends Controller
         }
     }
 
-    // ─── Users ──────────────────────────────────────────────────────────────
+    public function rolesEdit(Role $role): Response
+    {
+        $this->authorize('roles.manage');
+        abort_if($role->name === 'super_admin', 403);
+
+        return Inertia::render('RoleManagement/EditRole', [
+            'role' => [
+                'id' => $role->id,
+                'name' => $role->name,
+                'users_count' => $role->users()->count(),
+                'permissions' => $role->permissions->pluck('name'),
+            ],
+            'allPermissions' => Permission::all()->pluck('name')->groupBy(
+                fn ($perm) => explode('.', $perm)[0]
+            ),
+        ]);
+    }
+
+    public function rolesStore(Request $request): RedirectResponse
+    {
+        $this->authorize('roles.manage');
+
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $data = $request->validate([
+                'name' => ['required', 'string', 'max:255', Rule::unique('roles', 'name')],
+                'permissions' => ['array'],
+                'permissions.*' => ['string', Rule::exists('permissions', 'name')],
+            ]);
+
+            $role = Role::create(['name' => $data['name'], 'guard_name' => 'web']);
+            $role->syncPermissions($data['permissions'] ?? []);
+
+            $logger->log('roles.store', "Création du rôle « {$role->name} ».", ['role' => $role->name], [Role::class]);
+
+            return back()->with('success', "Role \"{$role->name}\" created.");
+        } catch (\Throwable $e) {
+            $logger->log('roles.store.error', 'Erreur lors de la création du rôle : '.$e->getMessage(), ['exception' => $e->getMessage()], [Role::class]);
+
+            return back()->with('error', 'Unable to create role.');
+        }
+    }
+
+    public function rolesRemoveUser(Role $role, User $user): RedirectResponse
+    {
+        $this->authorize('roles.manage');
+        abort_if($role->name === 'super_admin', 403);
+
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        $user->removeRole($role);
+
+        $logger->log('roles.remove-user', "Retrait du rôle « {$role->name} » de l'utilisateur « {$user->name} ».", ['role' => $role->name, 'user_id' => $user->id], [Role::class]);
+
+        return back()->with('success', "Role removed from {$user->name}.");
+    }
 
     /**
      * Display a paginated list of all users along with their roles.
