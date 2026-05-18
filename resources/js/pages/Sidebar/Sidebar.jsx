@@ -123,6 +123,39 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
     };
 
     const sections = useMemo(
+        () => [
+            {
+                title: t('sidebar.dashboard.title'),
+                items: [{ id: 'dashboard', label: t('sidebar.dashboard.overview'), icon: LayoutDashboard, route: 'dashboard' }],
+            },
+            {
+                title: t('sidebar.sourcing.title'),
+                items: [
+                    { id: 'briefs', label: t('sidebar.sourcing.brief'), icon: FileText, route: 'dashboard.briefs.index' },
+                    { id: 'sourcing', label: t('sidebar.sourcing.auto'), icon: Search, route: 'dashboard.sourcing.index', dot: true },
+                ],
+            },
+            {
+                title: t('sidebar.candidats.title'),
+                items: [
+                    { id: 'candidates', label: t('sidebar.candidats.base'), icon: Users, route: 'dashboard.candidats.index', badge: 24 },
+                    { id: 'classement', label: t('sidebar.candidats.rankings'), icon: Trophy, route: 'dashboard.classement' },
+                ],
+            },
+            {
+                title: t('sidebar.interviews.title'),
+                items: [
+                    { id: 'interviews', label: t('sidebar.interviews.list'), icon: Mic, route: 'dashboard.interviews', badge: 3 },
+                    { id: 'reports', label: t('sidebar.interviews.reports'), icon: BarChart3, route: 'dashboard.reports' },
+                    { id: 'cv-analysis', label: 'CV Analysis', icon: FileText, route: 'dashboard.cv-analysis.index' },
+                ],
+            },
+            {
+                title: t('sidebar.settings.title'),
+                items: [{ id: 'settings', label: t('sidebar.settings.integrations'), icon: Settings, route: 'dashboard.integrations.index' }],
+            },
+        ],
+        [t],
         () =>
             [
                 {
