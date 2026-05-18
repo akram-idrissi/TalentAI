@@ -7,90 +7,89 @@ use App\Jobs\AnalyseCVJob;
 use App\Models\Brief;
 use App\Models\CvAnalysis;
 use App\Services\ActivityLogger;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CVAnalysisController extends Controller
 {
+    /**
+     * Display list of CV analyses.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index(Request $request): Response
+    {
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
 
-        /**
-         * Display list of CV analyses.
-         *
-         * @return \Illuminate\Http\Response
-         */
-public function index(Request $request): Response
-{
-    /** @var ActivityLogger $logger */
-    $logger = app(ActivityLogger::class);
+        try {
 
-    try {
+            $search = $request->search;
+            $briefId = $request->brief_id;
 
-        $search = $request->search;
-        $briefId = $request->brief_id;
+            $query = CvAnalysis::with(['candidate', 'brief']);
 
-        $query = CvAnalysis::with(['candidate', 'brief']);
+            // SEARCH CANDIDATE NAME
+            if ($search) {
+                $query->whereHas('candidate', function ($q) use ($search) {
+                    $q->where('full_name', 'like', '%'.$search.'%');
+                });
+            }
 
-        // SEARCH CANDIDATE NAME
-        if ($search) {
-            $query->whereHas('candidate', function ($q) use ($search) {
-                $q->where('full_name', 'like', '%' . $search . '%');
-            });
+            // FILTER BRIEF
+            if ($briefId) {
+                $query->where('brief_id', $briefId);
+            }
+
+            $analyses = $query
+                ->latest()
+                ->get();
+
+            $briefs = Brief::select('id', 'title')
+                ->orderBy('title')
+                ->get();
+
+            $logger->log(
+                'cv_analysis.index',
+                'Consultation des analyses CV.',
+                [],
+                [CvAnalysis::class]
+            );
+
+            return Inertia::render('CVAnalysis/Index', [
+                'analyses' => $analyses,
+                'briefs' => $briefs,
+
+                'filters' => [
+                    'search' => $search,
+                    'brief_id' => $briefId,
+                ],
+            ]);
+
+        } catch (\Throwable $e) {
+
+            $logger->log(
+                'cv_analysis.index.error',
+                $e->getMessage(),
+                ['exception' => $e->getMessage()],
+                [CvAnalysis::class]
+            );
+
+            return Inertia::render('Fallback', [
+                'error' => 'Erreur lors du chargement des analyses.',
+            ]);
         }
-
-        // FILTER BRIEF
-        if ($briefId) {
-            $query->where('brief_id', $briefId);
-        }
-
-        $analyses = $query
-            ->latest()
-            ->get();
-
-        $briefs = Brief::select('id', 'title')
-            ->orderBy('title')
-            ->get();
-
-        $logger->log(
-            'cv_analysis.index',
-            'Consultation des analyses CV.',
-            [],
-            [CvAnalysis::class]
-        );
-
-        return Inertia::render('CVAnalysis/Index', [
-            'analyses' => $analyses,
-            'briefs' => $briefs,
-
-            'filters' => [
-                'search' => $search,
-                'brief_id' => $briefId,
-            ],
-        ]);
-
-    } catch (\Throwable $e) {
-
-        $logger->log(
-            'cv_analysis.index.error',
-            $e->getMessage(),
-            ['exception' => $e->getMessage()],
-            [CvAnalysis::class]
-        );
-
-        return Inertia::render('Fallback', [
-            'error' => 'Erreur lors du chargement des analyses.',
-        ]);
     }
-}
 
     /**
      * Show form for creating CV analysis.
      *
      * @return \Illuminate\Http\Response
      */
-
     public function create(Request $request)
     {
         /** @var ActivityLogger $logger */
@@ -106,7 +105,7 @@ public function index(Request $request): Response
                 'cv_analysis.create',
                 'Affichage du formulaire d’analyse CV.',
                 [
-                    'briefs_count' => $briefs->count()
+                    'briefs_count' => $briefs->count(),
                 ],
                 [Brief::class]
             );
@@ -119,9 +118,9 @@ public function index(Request $request): Response
 
             $logger->log(
                 'cv_analysis.create.error',
-                'Erreur affichage formulaire analyse CV : ' . $e->getMessage(),
+                'Erreur affichage formulaire analyse CV : '.$e->getMessage(),
                 [
-                    'exception' => $e->getMessage()
+                    'exception' => $e->getMessage(),
                 ],
                 [Brief::class]
             );
@@ -135,9 +134,8 @@ public function index(Request $request): Response
     /**
      * Upload and analyze a CV file.
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
-
     public function upload(Request $request)
     {
         /** @var ActivityLogger $logger */
@@ -147,7 +145,7 @@ public function index(Request $request): Response
 
             $validator = Validator::make($request->all(), [
                 'brief_id' => ['required', 'exists:briefs,id'],
-                'cvs' => ['required', 'array' ,'max:10'],
+                'cvs' => ['required', 'array', 'max:10'],
                 'cvs.*' => ['required', 'mimes:pdf', 'max:2048'],
             ]);
 
@@ -181,7 +179,7 @@ public function index(Request $request): Response
                         's3'
                     );
                     $url = Storage::disk('s3')
-                    ->url($path);
+                        ->url($path);
 
                     AnalyseCVJob::dispatchSync(
                         $path,
@@ -203,7 +201,7 @@ public function index(Request $request): Response
                         'Erreur analyse CV fichier.',
                         [
                             'file' => $file->getClientOriginalName(),
-                            'error' => $e->getMessage()
+                            'error' => $e->getMessage(),
                         ],
                         []
                     );
@@ -216,7 +214,7 @@ public function index(Request $request): Response
                 [
                     'success_count' => $success_count,
                     'total' => $total,
-                    'errors' => $errors
+                    'errors' => $errors,
                 ],
                 [CvAnalysis::class]
             );
@@ -240,7 +238,7 @@ public function index(Request $request): Response
             return back()->with([
                 'analysis_errors' => [[
                     'file' => null,
-                    'message' => 'Erreur serveur : ' . $e->getMessage()
+                    'message' => 'Erreur serveur : '.$e->getMessage(),
                 ]],
                 'success_count' => 0,
                 'total' => 0,
