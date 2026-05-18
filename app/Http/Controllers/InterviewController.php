@@ -14,19 +14,6 @@ use Inertia\Response;
 class InterviewController extends Controller
 {
     /**
-     * Activity logger service instance.
-     */
-    protected ActivityLogger $activityLogger;
-
-    /**
-     * Create a new controller instance.
-     */
-    public function __construct(ActivityLogger $activityLogger)
-    {
-        $this->activityLogger = $activityLogger;
-    }
-
-    /**
      * Display the interviews management page.
      *
      * Fetches all available candidates and briefs
@@ -39,7 +26,7 @@ class InterviewController extends Controller
 
             $briefs = Brief::select('id', 'title')->get();
 
-            $this->activityLogger->log(
+            app(ActivityLogger::class)->log(
                 'interview.index',
                 'Accessed interview management page',
                 [
@@ -57,7 +44,7 @@ class InterviewController extends Controller
                 'briefs' => $briefs,
             ]);
         } catch (\Throwable $e) {
-            $this->activityLogger->log(
+            app(ActivityLogger::class)->log(
                 'interview.index.failed',
                 'Failed to load interview management page',
                 [
@@ -95,7 +82,7 @@ class InterviewController extends Controller
                     ];
                 });
 
-            $this->activityLogger->log(
+            app(ActivityLogger::class)->log(
                 'interview.reports',
                 'Accessed interview reports page',
                 [
@@ -110,7 +97,7 @@ class InterviewController extends Controller
                 'interviews' => $interviews,
             ]);
         } catch (\Throwable $e) {
-            $this->activityLogger->log(
+            app(ActivityLogger::class)->log(
                 'interview.reports.failed',
                 'Failed to load interview reports',
                 [
@@ -131,7 +118,7 @@ class InterviewController extends Controller
      * generates a simulated AI report, and creates
      * the interview record in the database.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|Response
     {
         try {
             $validated = $request->validate([
@@ -172,7 +159,7 @@ class InterviewController extends Controller
                     'status' => 'completed',
                 ]);
 
-                $this->activityLogger->log(
+                app(ActivityLogger::class)->log(
                     'interview.store',
                     'Interview uploaded successfully',
                     [
@@ -191,7 +178,7 @@ class InterviewController extends Controller
                     ->with('success', 'Interview uploaded and AI analysis simulated successfully!');
             }
 
-            $this->activityLogger->log(
+            app(ActivityLogger::class)->log(
                 'interview.store.failed',
                 'Interview upload failed - file missing'
             );
@@ -200,7 +187,7 @@ class InterviewController extends Controller
                 ->back()
                 ->with('error', 'Failed to upload the file.');
         } catch (\Throwable $e) {
-            $this->activityLogger->log(
+            app(ActivityLogger::class)->log(
                 'interview.store.failed',
                 'Failed to store interview',
                 [
