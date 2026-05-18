@@ -6,29 +6,42 @@ import { HTMLAttributes } from 'react';
 export default function AppearanceToggleTab({ className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
     const { appearance, updateAppearance } = useAppearance();
 
-    const tabs: { value: Appearance; icon: LucideIcon; label: string }[] = [
-        { value: 'light', icon: Sun, label: 'Light' },
-        { value: 'dark', icon: Moon, label: 'Dark' },
-        { value: 'system', icon: Monitor, label: 'System' },
+    const tabs: { value: Appearance; icon: LucideIcon; label: string; description: string }[] = [
+        { value: 'light', icon: Sun, label: 'Clair', description: 'Interface lumineuse' },
+        { value: 'dark', icon: Moon, label: 'Sombre', description: 'Interface en mode nuit' },
+        { value: 'system', icon: Monitor, label: 'Système', description: 'Suit les préférences OS' },
     ];
 
     return (
-        <div className={cn('inline-flex gap-1 rounded-lg bg-neutral-100 p-1 dark:bg-neutral-800', className)} {...props}>
-            {tabs.map(({ value, icon: Icon, label }) => (
-                <button
-                    key={value}
-                    onClick={() => updateAppearance(value)}
-                    className={cn(
-                        'flex items-center rounded-md px-3.5 py-1.5 transition-colors',
-                        appearance === value
-                            ? 'bg-white shadow-xs dark:bg-neutral-700 dark:text-neutral-100'
-                            : 'text-neutral-500 hover:bg-neutral-200/60 hover:text-black dark:text-neutral-400 dark:hover:bg-neutral-700/60',
-                    )}
-                >
-                    <Icon className="-ml-1 h-4 w-4" />
-                    <span className="ml-1.5 text-sm">{label}</span>
-                </button>
-            ))}
+        <div className={cn('grid gap-3 sm:grid-cols-3', className)} {...props}>
+            {tabs.map(({ value, icon: Icon, label, description }) => {
+                const isActive = appearance === value;
+                return (
+                    <button
+                        key={value}
+                        onClick={() => updateAppearance(value)}
+                        className={cn(
+                            'flex flex-col items-start gap-2.5 rounded-xl border px-4 py-3.5 text-left transition',
+                            isActive
+                                ? 'border-ds-accent bg-ds-accent/5 ring-ds-accent/20 ring-1'
+                                : 'border-ds-border bg-ds-bg3 hover:border-ds-border2 hover:bg-ds-surface',
+                        )}
+                    >
+                        <span
+                            className={cn(
+                                'flex h-8 w-8 items-center justify-center rounded-lg transition',
+                                isActive ? 'bg-ds-accent text-white' : 'bg-ds-surface text-ds-text3',
+                            )}
+                        >
+                            <Icon size={15} />
+                        </span>
+                        <span className="grid gap-0.5">
+                            <span className={cn('text-[13px] font-semibold', isActive ? 'text-ds-accent' : 'text-ds-text')}>{label}</span>
+                            <span className="text-ds-text3 text-[11px]">{description}</span>
+                        </span>
+                    </button>
+                );
+            })}
         </div>
     );
 }

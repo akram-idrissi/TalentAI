@@ -44,10 +44,15 @@ class HandleInertiaRequests extends Middleware
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
                 'user' => $request->user(),
+                'roles' => fn () => $request->user()?->roleNames() ?? [],
+                'permissions' => fn () => $request->user()?->permissionNames() ?? [],
             ],
             'flash' => [
                 'success' => fn () => session('success'),
                 'error' => fn () => session('error'),
+                'analysis_errors' => fn () => session('analysis_errors'),
+                'success_count' => fn () => $request->session()->get('success_count'),
+                'total' => fn () => session('total'),
                 'test_result' => $request->session()->get('test_result'),
             ],
             'locale' => session('locale', config('app.locale')),
@@ -56,6 +61,9 @@ class HandleInertiaRequests extends Middleware
                 'briefs' => __('briefs'),
                 'integrations' => __('integrations'),
                 'candidats' => __('candidats'),
+                'users' => __('users'),
+                'roles' => __('roles'),
+                'errors' => __('errors'),
             ],
         ];
     }
