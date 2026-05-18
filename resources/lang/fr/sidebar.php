@@ -28,4 +28,9 @@ return [
         'title' => 'Paramètres',
         'integrations' => 'Intégrations',
     ],
+    'administration' => [
+        'title' => 'Administration',
+        'users' => 'Utilisateurs',
+        'roles' => 'Rôles',
+    ],
 ];
