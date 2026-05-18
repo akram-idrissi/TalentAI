@@ -7,19 +7,28 @@ interface Candidate {
     full_name: string;
 }
 
-interface Props {
-    candidates: Candidate[];
+// 1. Added Brief interface to handle technical requirements
+interface Brief {
+    id: string;
+    title: string;
 }
 
-const InterviewIndex = ({ candidates }: Props) => {
+interface Props {
+    candidates: Candidate[];
+    briefs: Brief[]; // 2. Added briefs prop expected from backend
+}
+
+const InterviewIndex = ({ candidates, briefs }: Props) => {
     const [selectedCandidate, setSelectedCandidate] = useState<string>('');
+    const [selectedBrief, setSelectedBrief] = useState<string>(''); // 3. State for selected brief
     const [platform, setPlatform] = useState<string>('zoom');
     const [file, setFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState<boolean>(false);
 
     const handleUpload = () => {
-        if (!selectedCandidate || !file) {
-            alert('Please select a candidate and a recording file.');
+        // 4. Checking if both candidate, brief, and file are filled
+        if (!selectedCandidate || !selectedBrief || !file) {
+            alert('Please select a candidate, a job brief, and a recording file.');
             return;
         }
 
@@ -29,6 +38,7 @@ const InterviewIndex = ({ candidates }: Props) => {
             '/dashboard/interviews',
             {
                 candidate_id: selectedCandidate,
+                brief_id: selectedBrief, // 5. Added brief_id to the request payload
                 platform: platform,
                 file: file,
             },
@@ -54,7 +64,6 @@ const InterviewIndex = ({ candidates }: Props) => {
             <div className="animate-fadeIn min-h-screen bg-[#0f172a] p-6 text-white">
                 <div className="mb-8">
                     <h1 className="font-syne text-2xl font-bold text-white">🎙️ Interview Intelligence</h1>
-
                     <p className="text-sm text-gray-400">Upload recordings to generate Whisper transcriptions and AI reports.</p>
                 </div>
 
@@ -63,17 +72,15 @@ const InterviewIndex = ({ candidates }: Props) => {
                         <h3 className="font-syne mb-6 text-lg font-semibold text-purple-400">Import Interview Recording</h3>
 
                         <div className="space-y-6">
-                            {/* Candidate */}
+                            {/* Candidate Select Dropdown */}
                             <div className="flex flex-col gap-2">
-                                <label className="text-xs font-medium tracking-wider text-white uppercase">Candidate Name</label>
-
+                                <label className="text-xs font-medium tracking-wider text-gray-500 text-white uppercase">Candidate Name</label>
                                 <select
                                     className="w-full rounded-lg border border-slate-700 bg-[#0f172a] p-3 text-white transition-all outline-none focus:border-purple-500"
                                     value={selectedCandidate}
                                     onChange={(e) => setSelectedCandidate(e.target.value)}
                                 >
                                     <option value="">Select a profile...</option>
-
                                     {candidates?.map((c) => (
                                         <option key={c.id} value={c.id}>
                                             {c.full_name}
@@ -82,10 +89,25 @@ const InterviewIndex = ({ candidates }: Props) => {
                                 </select>
                             </div>
 
-                            {/* Platform */}
+                            {/* 6. NEW FIELD: Job Brief Select Dropdown */}
                             <div className="flex flex-col gap-2">
-                                <label className="text-xs font-medium tracking-wider text-white uppercase">Interview Platform</label>
+                                <label className="text-xs font-medium tracking-wider text-gray-500 text-white uppercase">Associated Job Brief</label>
+                                <select
+                                    className="w-full rounded-lg border border-slate-700 bg-[#0f172a] p-3 text-white transition-all outline-none focus:border-purple-500"
+                                    value={selectedBrief}
+                                    onChange={(e) => setSelectedBrief(e.target.value)}
+                                >
+                                    <option value="">Select a brief...</option>
+                                    {briefs?.map((b) => (
+                                        <option key={b.id} value={b.id}>
+                                            {b.title}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
 
+                            <div className="flex flex-col gap-2 text-white">
+                                <label className="text-xs font-medium tracking-wider text-gray-500 uppercase">Interview Platform</label>
                                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                                     {['zoom', 'meet', 'teams', 'presentiel'].map((p) => (
                                         <button
@@ -104,30 +126,31 @@ const InterviewIndex = ({ candidates }: Props) => {
                                 </div>
                             </div>
 
-                            {/* Upload */}
                             <div className="group relative cursor-pointer rounded-xl border-2 border-dashed border-slate-700 bg-[#0f172a] p-8 text-center transition-all hover:border-purple-500">
                                 <div className="mb-2 text-3xl">📥</div>
-
                                 <p className="text-sm font-medium text-gray-300">Click or drag recording here</p>
-
-                                <p className="mt-2 font-mono text-[10px] text-gray-500 italic">MP4, M4A, WAV, MP3 · Max 500 MB</p>
+                                <p className="mt-2 font-mono text-[10px] text-gray-500 text-white italic">MP4, M4A, WAV, MP3 · Max 500 MB</p>
 
                                 <input
                                     type="file"
                                     className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                                    id="file-upload"
                                     accept="audio/*,video/*"
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                        const selectedFile = e.target.files?.[0] || null;
-                                        setFile(selectedFile);
+                                        const fileList = e.target.files;
+
+                                        if (fileList && fileList.length > 0) {
+                                            setFile(fileList[0]);
+                                        } else {
+                                            setFile(null);
+                                        }
                                     }}
                                 />
-
                                 <label className="pointer-events-none mt-4 inline-block rounded-lg border border-slate-700 bg-slate-800 px-6 py-2 text-xs text-gray-300">
                                     {file ? `Selected: ${file.name}` : 'Browse Local Files'}
                                 </label>
                             </div>
 
-                            {/* Button */}
                             <button
                                 onClick={handleUpload}
                                 disabled={isUploading}
@@ -140,27 +163,22 @@ const InterviewIndex = ({ candidates }: Props) => {
                         </div>
                     </div>
 
-                    {/* Processing */}
                     <div className="space-y-4">
                         <h3 className="font-syne mb-2 text-sm font-semibold tracking-wider text-gray-400 text-white uppercase">Current Processing</h3>
-
                         <div className="flex items-center gap-4 rounded-xl border border-slate-700 bg-[#1e293b] p-5">
-                            <div className="animate-spin-slow flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 text-xl text-amber-500">
+                            <div className="animate-spin-slow flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 text-xl text-amber-500 text-white">
                                 ⚙️
                             </div>
-
                             <div className="flex-1">
-                                <div className="mb-2 flex justify-between">
-                                    <span className="text-sm font-bold text-white italic">Transcription (Whisper API)...</span>
-
+                                <div className="mb-2 flex justify-between text-white">
+                                    <span className="text-sm font-bold italic">Transcription (Whisper API)...</span>
                                     <span className="font-mono text-xs text-amber-500">65%</span>
                                 </div>
-
-                                <div className="h-2 w-full overflow-hidden rounded-full border border-slate-700 bg-[#0f172a]">
+                                <div className="h-2 w-full overflow-hidden rounded-full border border-slate-800 bg-[#0f172a]">
                                     <div
                                         className="h-full rounded-full bg-amber-500 transition-all duration-1000 ease-in-out"
                                         style={{ width: '65%' }}
-                                    />
+                                    ></div>
                                 </div>
                             </div>
                         </div>
