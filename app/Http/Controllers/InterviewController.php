@@ -4,93 +4,213 @@ namespace App\Http\Controllers;
 
 use App\Models\Brief;
 use App\Models\Candidat;
-use App\Models\Interview; // 1. Imported the Brief Model
+use App\Models\Interview;
+use App\Services\ActivityLogger;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class InterviewController extends Controller
 {
     /**
-     * Display the interviews management page (Module 4 Index)
-     * Fetches candidates and briefs from the database for dropdown selection.
+     * Activity logger service instance.
      */
-    public function index()
+    protected ActivityLogger $activityLogger;
+
+    /**
+     * Create a new controller instance.
+     */
+    public function __construct(ActivityLogger $activityLogger)
     {
-        return Inertia::render('Interviews/Index', [
-            'candidates' => Candidat::select('id', 'full_name')->get(),
-            'briefs' => Brief::select('id', 'title')->get(), // 2. Passing briefs list to Inertia frontend
-        ]);
+        $this->activityLogger = $activityLogger;
     }
 
     /**
-     * Display the AI Reports and Comparative Ranking (Module 3.4)
-     * Fetches all completed interviews with their associated candidate.
+     * Display the interviews management page.
+     *
+     * Fetches all available candidates and briefs
+     * required for interview creation.
      */
-    public function reports()
+    public function index(): Response|RedirectResponse
     {
-        $interviews = Interview::with('candidate')
-            ->orderByDesc('created_at')
-            ->get()
-            ->map(function ($interview) {
-                return [
-                    'id' => $interview->id,
-                    'candidate_name' => $interview->candidate->full_name ?? 'Unknown',
-                    'platform' => $interview->platform,
-                    'verdict' => $interview->verdict,
-                    'status' => $interview->status,
-                    'ai_report' => json_decode($interview->ai_report),
-                    'date' => $interview->created_at->format('d M. Y'),
-                ];
-            });
+        try {
+            $candidates = Candidat::select('id', 'full_name')->get();
 
-        return Inertia::render('Interviews/Reports', [
-            'interviews' => $interviews,
-        ]);
+            $briefs = Brief::select('id', 'title')->get();
+
+            $this->activityLogger->log(
+                'interview.index',
+                'Accessed interview management page',
+                [
+                    'candidate_count' => $candidates->count(),
+                    'brief_count' => $briefs->count(),
+                ],
+                [
+                    Candidat::class,
+                    Brief::class,
+                ]
+            );
+
+            return Inertia::render('Interviews/Index', [
+                'candidates' => $candidates,
+                'briefs' => $briefs,
+            ]);
+        } catch (\Throwable $e) {
+            $this->activityLogger->log(
+                'interview.index.failed',
+                'Failed to load interview management page',
+                [
+                    'error' => $e->getMessage(),
+                ]
+            );
+
+            return Inertia::render('Fallback', [
+                'error' => 'Failed to load interview management page.',
+            ]);
+        }
     }
 
     /**
-     * Handle the recording upload and simulate AI processing (Step 4.1 & 4.2)
-     * Validates file type, size, and now binds the interview to an associated job brief.
+     * Display interview reports and AI analysis results.
+     *
+     * Retrieves completed interviews with candidate data
+     * and formats them for the reports interface.
      */
-    public function store(Request $request)
+    public function reports(): Response|RedirectResponse
     {
-        // 3. Added 'brief_id' validation as per structural requirements
-        $request->validate([
-            'candidate_id' => 'required|exists:candidats,id',
-            'brief_id' => 'required|exists:briefs,id', // Validating that the job brief exists
-            'platform' => 'required|string',
-            'file' => 'required|file|mimes:mp4,m4a,wav,mp3|max:512000',
-        ]);
+        try {
+            $interviews = Interview::with('candidate')
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(function ($interview) {
+                    return [
+                        'id' => $interview->id,
+                        'candidate_name' => $interview->candidate->full_name ?? 'Unknown',
+                        'platform' => $interview->platform,
+                        'verdict' => $interview->verdict,
+                        'status' => $interview->status,
+                        'ai_report' => json_decode($interview->ai_report),
+                        'date' => $interview->created_at->format('d M. Y'),
+                    ];
+                });
 
-        if ($request->hasFile('file')) {
-            $filePath = $request->file('file')->store('interviews', 'public');
+            $this->activityLogger->log(
+                'interview.reports',
+                'Accessed interview reports page',
+                [
+                    'interview_count' => $interviews->count(),
+                ],
+                [
+                    Interview::class,
+                ]
+            );
 
-            // Mock Transcription text
-            $mockTranscription = "Bonjour, je suis Karim Benali. J'ai une solide expérience en développement Fullstack Laravel et React. Je suis passionné par l'IA et je cherche à intégrer TalentAI pour relever de nouveaux défis techniques.";
+            return Inertia::render('Interviews/Reports', [
+                'interviews' => $interviews,
+            ]);
+        } catch (\Throwable $e) {
+            $this->activityLogger->log(
+                'interview.reports.failed',
+                'Failed to load interview reports',
+                [
+                    'error' => $e->getMessage(),
+                ]
+            );
 
-            // Mock AI Report (JSON format consistent with functional specs)
-            $mockAiReport = [
-                'score' => 85,
-                'summary' => 'Excellent profile with strong technical background.',
-                'strengths' => ['Communication', 'Technical Depth', 'Vision'],
-                'warnings' => ['Salary expectations slightly above budget'],
-            ];
+            return Inertia::render('Fallback', [
+                'error' => 'Failed to load interview reports.',
+            ]);
+        }
+    }
 
-            // 4. Create the interview record with complete data, including brief_id
-            $interview = Interview::create([
-                'candidate_id' => $request->candidate_id,
-                'brief_id' => $request->brief_id, // Saving the brief relation in database
-                'platform' => $request->platform,
-                'video_path' => $filePath,
-                'transcription' => $mockTranscription,
-                'ai_report' => json_encode($mockAiReport),
-                'verdict' => 'recommended',
-                'status' => 'completed',
+    /**
+     * Store a newly uploaded interview recording.
+     *
+     * Validates the uploaded file, stores the recording,
+     * generates a simulated AI report, and creates
+     * the interview record in the database.
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        try {
+            $validated = $request->validate([
+                'candidate_id' => 'required|exists:candidats,id',
+                'brief_id' => 'required|exists:briefs,id',
+                'platform' => 'required|string',
+                'file' => 'required|file|mimes:mp4,m4a,wav,mp3|max:512000',
             ]);
 
-            return redirect()->back()->with('success', 'Interview uploaded and AI analysis simulated successfully!');
-        }
+            if ($request->hasFile('file')) {
+                $filePath = $request->file('file')->store('interviews', 'public');
 
-        return redirect()->back()->with('error', 'Failed to upload the file.');
+                // Mock transcription
+                $mockTranscription = "Bonjour, je suis Karim Benali. J'ai une solide expérience en développement Fullstack Laravel et React. Je suis passionné par l'IA et je cherche à intégrer TalentAI pour relever de nouveaux défis techniques.";
+
+                // Mock AI analysis report
+                $mockAiReport = [
+                    'score' => 85,
+                    'summary' => 'Excellent profile with strong technical background.',
+                    'strengths' => [
+                        'Communication',
+                        'Technical Depth',
+                        'Vision',
+                    ],
+                    'warnings' => [
+                        'Salary expectations slightly above budget',
+                    ],
+                ];
+
+                $interview = Interview::create([
+                    'candidate_id' => $validated['candidate_id'],
+                    'brief_id' => $validated['brief_id'],
+                    'platform' => $validated['platform'],
+                    'video_path' => $filePath,
+                    'transcription' => $mockTranscription,
+                    'ai_report' => json_encode($mockAiReport),
+                    'verdict' => 'recommended',
+                    'status' => 'completed',
+                ]);
+
+                $this->activityLogger->log(
+                    'interview.store',
+                    'Interview uploaded successfully',
+                    [
+                        'interview_id' => $interview->id,
+                        'platform' => $interview->platform,
+                    ],
+                    [
+                        Interview::class,
+                        Candidat::class,
+                        Brief::class,
+                    ]
+                );
+
+                return redirect()
+                    ->back()
+                    ->with('success', 'Interview uploaded and AI analysis simulated successfully!');
+            }
+
+            $this->activityLogger->log(
+                'interview.store.failed',
+                'Interview upload failed - file missing'
+            );
+
+            return redirect()
+                ->back()
+                ->with('error', 'Failed to upload the file.');
+        } catch (\Throwable $e) {
+            $this->activityLogger->log(
+                'interview.store.failed',
+                'Failed to store interview',
+                [
+                    'error' => $e->getMessage(),
+                ]
+            );
+
+            return Inertia::render('Fallback', [
+                'error' => 'Failed to store interview.',
+            ]);
+        }
     }
 }
