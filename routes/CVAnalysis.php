@@ -1,4 +1,5 @@
 <?php
+
 use App\Http\Controllers\CVAnalysis\CVAnalysisController;
 
 Route::prefix('cv-analysis')->group(function () {

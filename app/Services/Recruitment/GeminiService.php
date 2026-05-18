@@ -3,27 +3,26 @@
 namespace App\Services\Recruitment;
 
 use App\Models\Brief;
+use App\Services\ActivityLogger;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use App\Services\ActivityLogger;
 
 class GeminiService
 {
     public function analyseCV(string $cvText, Brief $brief): array
     {
-            /** @var ActivityLogger $logger */
-    $logger = app(ActivityLogger::class);
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
 
         try {
 
             Log::info('GEMINI START');
-                    $logger->log(
-            'gemini.request',
-            'Appel Gemini API',
-            [],
-            []
-        );
+            $logger->log(
+                'gemini.request',
+                'Appel Gemini API',
+                [],
+                []
+            );
 
             $cvText = substr($cvText, 0, 12000);
 
@@ -126,34 +125,34 @@ class GeminiService
                         [
                             'parts' => [
                                 [
-                                    'text' => $prompt
-                                ]
-                            ]
-                        ]
-                    ]
+                                    'text' => $prompt,
+                                ],
+                            ],
+                        ],
+                    ],
                 ]
             );
 
             Log::info('GEMINI STATUS', [
-                'status' => $response->status()
+                'status' => $response->status(),
             ]);
 
             Log::info('GEMINI RAW RESPONSE', [
-                'body' => $response->body()
+                'body' => $response->body(),
             ]);
 
-            if (!$response->successful()) {
-                            $logger->log(
-                'gemini.error',
-                'API Gemini failed',
-                ['status' => $response->status()],
-                []
-            );
+            if (! $response->successful()) {
+                $logger->log(
+                    'gemini.error',
+                    'API Gemini failed',
+                    ['status' => $response->status()],
+                    []
+                );
 
                 Log::error('Gemini request failed');
 
                 throw new \Exception(
-                    'Gemini API error: ' . $response->status()
+                    'Gemini API error: '.$response->status()
                 );
             }
 
@@ -163,10 +162,10 @@ class GeminiService
             );
 
             Log::info('GEMINI TEXT', [
-                'text' => $text
+                'text' => $text,
             ]);
 
-            if (!$text) {
+            if (! $text) {
 
                 Log::error('Gemini returned empty text');
 
@@ -178,7 +177,7 @@ class GeminiService
 
             preg_match('/\{.*\}/s', $text, $matches);
 
-            if (!isset($matches[0])) {
+            if (! isset($matches[0])) {
 
                 Log::error('No JSON found');
 
@@ -188,10 +187,10 @@ class GeminiService
             $decoded = json_decode($matches[0], true);
 
             Log::info('JSON DECODED', [
-                'decoded' => $decoded
+                'decoded' => $decoded,
             ]);
 
-            if (!is_array($decoded)) {
+            if (! is_array($decoded)) {
 
                 Log::error('JSON decode failed');
 
@@ -203,18 +202,16 @@ class GeminiService
         } catch (\Throwable $e) {
 
             Log::error('GEMINI EXCEPTION', [
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ]);
-                    $logger->log(
-            'gemini.exception',
-            $e->getMessage(),
-            ['exception' => $e->getMessage()],
-            []
-        );
+            $logger->log(
+                'gemini.exception',
+                $e->getMessage(),
+                ['exception' => $e->getMessage()],
+                []
+            );
 
             throw new \Exception($e->getMessage());
         }
     }
-
-
 }
