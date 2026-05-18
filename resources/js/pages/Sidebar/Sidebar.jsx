@@ -1,6 +1,7 @@
 import { useI18n } from '@/hooks/useI18n';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
+    Activity,
     BarChart3,
     ChevronUp,
     FileText,
@@ -201,6 +202,12 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                             label: t('sidebar.administration.roles'),
                             icon: Shield,
                             route: 'dashboard.roles.index',
+                        },
+                        (can('activity_logs.view') || hasRole('super_admin')) && {
+                            id: 'activity-logs',
+                            label: t('sidebar.administration.activity_logs'),
+                            icon: Activity,
+                            route: 'dashboard.activity-logs.index',
                         },
                     ],
                 },

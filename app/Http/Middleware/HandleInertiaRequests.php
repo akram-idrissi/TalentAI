@@ -60,6 +60,7 @@ class HandleInertiaRequests extends Middleware
                 'candidats' => __('candidats'),
                 'users' => __('users'),
                 'roles' => __('roles'),
+                'activity_logs' => __('activity_logs'),
                 'errors' => __('errors'),
             ],
         ];

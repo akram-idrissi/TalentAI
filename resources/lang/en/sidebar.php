@@ -32,5 +32,6 @@ return [
         'title' => 'Administration',
         'users' => 'Users',
         'roles' => 'Roles',
+        'activity_logs' => 'Activity Log',
     ],
 ];

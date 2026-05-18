@@ -62,6 +62,7 @@ return [
         'reports' => 'Reports',
         'settings' => 'Settings',
         'classement' => 'Ranking',
+        'activity_logs' => 'Activity Logs',
     ],
 
     'actions' => [
