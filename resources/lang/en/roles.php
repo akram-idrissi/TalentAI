@@ -60,14 +60,18 @@ return [
         'sourcing' => 'Sourcing',
         'interviews' => 'Interviews',
         'reports' => 'Reports',
+        'cv-analysis' => 'CV Analysis',
+        'integrations' => 'Integrations',
         'settings' => 'Settings',
         'classement' => 'Ranking',
+        'activity_logs' => 'Activity Logs',
     ],
 
     'actions' => [
         'view' => 'View',
         'create' => 'Create',
         'edit' => 'Edit',
+        'upload' => 'Upload',
         'delete' => 'Delete',
         'approve' => 'Approve',
         'export' => 'Export',

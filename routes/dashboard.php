@@ -18,6 +18,7 @@ Route::middleware(['auth'])->group(function () {
         require __DIR__.'/CVAnalysis.php';
         require __DIR__.'/roles.php';
         require __DIR__.'/users.php';
+        require __DIR__.'/activitylogs.php';
 
     });
 });

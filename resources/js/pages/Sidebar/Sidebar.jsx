@@ -1,6 +1,7 @@
 import { useI18n } from '@/hooks/useI18n';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
+    Activity,
     BarChart3,
     ChevronUp,
     FileText,
@@ -123,52 +124,28 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
     };
 
     const sections = useMemo(
-        () => [
-            {
-                title: t('sidebar.dashboard.title'),
-                items: [{ id: 'dashboard', label: t('sidebar.dashboard.overview'), icon: LayoutDashboard, route: 'dashboard' }],
-            },
-            {
-                title: t('sidebar.sourcing.title'),
-                items: [
-                    { id: 'briefs', label: t('sidebar.sourcing.brief'), icon: FileText, route: 'dashboard.briefs.index' },
-                    { id: 'sourcing', label: t('sidebar.sourcing.auto'), icon: Search, route: 'dashboard.sourcing.index', dot: true },
-                ],
-            },
-            {
-                title: t('sidebar.candidats.title'),
-                items: [
-                    { id: 'candidates', label: t('sidebar.candidats.base'), icon: Users, route: 'dashboard.candidats.index', badge: 24 },
-                    { id: 'classement', label: t('sidebar.candidats.rankings'), icon: Trophy, route: 'dashboard.classement' },
-                ],
-            },
-            {
-                title: t('sidebar.interviews.title'),
-                items: [
-                    { id: 'interviews', label: t('sidebar.interviews.list'), icon: Mic, route: 'dashboard.interviews', badge: 3 },
-                    { id: 'reports', label: t('sidebar.interviews.reports'), icon: BarChart3, route: 'dashboard.reports' },
-                    { id: 'cv-analysis', label: 'CV Analysis', icon: FileText, route: 'dashboard.cv-analysis.index' },
-                ],
-            },
-            {
-                title: t('sidebar.settings.title'),
-                items: [{ id: 'settings', label: t('sidebar.settings.integrations'), icon: Settings, route: 'dashboard.integrations.index' }],
-            },
-        ],
-        [t],
         () =>
             [
                 {
                     title: t('sidebar.dashboard.title'),
                     items: [
-                        // Dashboard is visible to everyone
-                        { id: 'dashboard', label: t('sidebar.dashboard.overview'), icon: LayoutDashboard, route: 'dashboard' },
+                        {
+                            id: 'dashboard',
+                            label: t('sidebar.dashboard.overview'),
+                            icon: LayoutDashboard,
+                            route: 'dashboard',
+                        },
                     ],
                 },
                 {
                     title: t('sidebar.sourcing.title'),
                     items: [
-                        can('briefs.view') && { id: 'briefs', label: t('sidebar.sourcing.brief'), icon: FileText, route: 'dashboard.briefs.index' },
+                        can('briefs.view') && {
+                            id: 'briefs',
+                            label: t('sidebar.sourcing.brief'),
+                            icon: FileText,
+                            route: 'dashboard.briefs.index',
+                        },
                         can('sourcing.view') && {
                             id: 'sourcing',
                             label: t('sidebar.sourcing.auto'),
@@ -206,7 +183,18 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                             route: 'dashboard.interviews',
                             badge: 3,
                         },
-                        can('reports.view') && { id: 'reports', label: t('sidebar.interviews.reports'), icon: BarChart3, route: 'dashboard.reports' },
+                        can('reports.view') && {
+                            id: 'reports',
+                            label: t('sidebar.interviews.reports'),
+                            icon: BarChart3,
+                            route: 'dashboard.reports',
+                        },
+                        can('cv-analysis.view') && {
+                            id: 'cv-analysis',
+                            label: t('sidebar.interviews.cv-analysis'),
+                            icon: FileText,
+                            route: 'dashboard.cv-analysis.index',
+                        },
                     ],
                 },
                 {
@@ -235,15 +223,19 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                             icon: Shield,
                             route: 'dashboard.roles.index',
                         },
+                        (can('activity_logs.view') || hasRole('super_admin')) && {
+                            id: 'activity-logs',
+                            label: t('sidebar.administration.activity_logs'),
+                            icon: Activity,
+                            route: 'dashboard.activity-logs.index',
+                        },
                     ],
                 },
             ]
-                // Remove falsy items from each section's items array
                 .map((section) => ({
                     ...section,
                     items: section.items.filter(Boolean),
                 }))
-                // Drop sections that have no visible items
                 .filter((section) => section.items.length > 0),
         [t, can, hasRole],
     );
