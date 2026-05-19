@@ -22,6 +22,8 @@ class CvAnalysis extends Model
         'score_softskills',
         'score_location',
         'ai_summary',
+        'ai_summary_en',
+        'cv_file_path',
         'ai_tags',
         'analyzed_at',
     ];
@@ -34,6 +36,7 @@ class CvAnalysis extends Model
     protected function casts(): array
     {
         return [
+            'extracted_text' => 'array',
             'ai_tags' => 'array',
             'analyzed_at' => 'datetime',
         ];

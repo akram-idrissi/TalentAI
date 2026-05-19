@@ -43,5 +43,8 @@ return [
     'openrouter' => [
         'key' => env('OPEN_ROUTER_KEY'),
     ],
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+    ],
 
 ];
