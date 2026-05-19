@@ -19,7 +19,7 @@ Route::middleware('can:briefs.edit')->group(function () {
 });
 
 Route::delete('/briefs/{brief}', [BriefController::class, 'destroy'])
-     ->name('briefs.destroy')
-     ->middleware('can:briefs.delete');
+    ->name('briefs.destroy')
+    ->middleware('can:briefs.delete');
 
 Route::post('/briefs/{brief}/activate', [BriefController::class, 'activate'])->name('briefs.activate')->middleware('can:briefs.approve');

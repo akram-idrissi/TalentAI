@@ -22,6 +22,7 @@ return [
             'last_login' => 'Dernière connexion',
             'joined' => 'Inscrit le',
             'no_roles' => 'Aucun rôle',
+            'inactive' => 'Inactif',
             'actions' => [
                 'edit' => 'Modifier les rôles',
                 'delete' => 'Supprimer l’utilisateur',
@@ -33,10 +34,35 @@ return [
             'summary' => 'Page {{current}} sur {{last}} · {{total}} utilisateurs',
         ],
         'flash' => [
-            'success' => 'Succès',
-            'error' => 'Erreur',
+            // Succès
+            'created' => 'Utilisateur :name créé avec succès.',
+            'deleted' => 'Utilisateur :name supprimé.',
+            'roles_updated' => 'Rôles de :name mis à jour.',
+            'activated' => 'Utilisateur :name activé.',
+            'deactivated' => 'Utilisateur :name désactivé.',
+
+            // Erreurs
+            'index_error' => 'Impossible de charger la liste des utilisateurs.',
+            'create_error' => "Impossible de créer l'utilisateur.",
+            'delete_error' => "Impossible de supprimer l'utilisateur.",
+            'roles_update_error' => 'Impossible de mettre à jour les rôles.',
+            'activate_error' => "Impossible d'activer l'utilisateur.",
+            'deactivate_error' => "Impossible de désactiver l'utilisateur.",
         ],
         'delete_confirm' => 'Supprimer {{name}} ? Cette action est irréversible.',
+        'delete_modal' => [
+            'title' => 'Supprimer l\'utilisateur',
+            'description' => 'Cette action est irréversible. L\'utilisateur perdra immédiatement l\'accès.',
+            'cancel' => 'Annuler',
+            'confirm' => 'Supprimer',
+        ],
+        'search' => [
+            'all_roles' => 'Tous les rôles',
+            'placeholder' => 'Rechercher par nom ou e-mail…',
+            'clear' => 'Effacer la recherche',
+            'no_results' => 'Aucun résultat',
+            'no_results_hint' => 'Essayez de ajuster vos critères de recherche.',
+        ],
     ],
     'create_modal' => [
         'title' => 'Créer un utilisateur',

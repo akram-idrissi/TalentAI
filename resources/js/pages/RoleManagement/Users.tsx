@@ -1,39 +1,78 @@
+import DeleteModal from '@/components/ui/DeleteModal';
 import { useI18n } from '@/hooks/useI18n';
 import { usePermission } from '@/hooks/usePermission';
 import AppLayout from '@/layouts/app-layout';
 import { PageProps, User } from '@/types/users';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Edit2, Plus, Shield, Trash2, UserCheck, UserX } from 'lucide-react';
-import { useState } from 'react';
+import { Edit2, Plus, Search, Shield, Trash2, UserCheck, Users, UserX, X } from 'lucide-react';
+import { useCallback, useRef, useState } from 'react';
 import { CreateUserModal } from './components/CreateUserModal';
 import { EditRolesModal } from './components/EditRolesModal';
-import { FlashMessage } from './components/FlashMessage';
 import { UserAvatar } from './components/UserAvatar';
 import { ROLE_COLORS } from './constants';
+
 function formatDate(iso: string | null) {
     if (!iso) return '—';
     return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export default function UsersIndex() {
-    const { users, roles, flash, auth } = usePage<PageProps>().props;
+    const { users, roles, auth, filters } = usePage<PageProps>().props;
     const { t } = useI18n();
     const { can } = usePermission();
 
     const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [deletingUser, setDeletingUser] = useState<User | null>(null);
     const [showCreate, setShowCreate] = useState(false);
-    const [visibleFlash, setVisibleFlash] = useState({
-        success: Boolean(flash.success),
-        error: Boolean(flash.error),
-    });
-    const toggleUserStatus = (user: User) => {
-        const routeName = user.is_active ? 'roles.users.deactivate' : 'roles.users.activate';
 
+    const [search, setSearch] = useState(filters?.search ?? '');
+    const [roleFilter, setRoleFilter] = useState(filters?.role ?? '');
+    const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const applyFilters = useCallback((newSearch: string, newRole: string) => {
+        if (debounceTimer.current) clearTimeout(debounceTimer.current);
+
+        debounceTimer.current = setTimeout(() => {
+            router.get(
+                route('dashboard.users.index'),
+                {
+                    ...(newSearch ? { search: newSearch } : {}),
+                    ...(newRole ? { role: newRole } : {}),
+                },
+                { preserveState: true, preserveScroll: true, replace: true },
+            );
+        }, 350);
+    }, []);
+
+    const handleSearchChange = (value: string) => {
+        setSearch(value);
+        applyFilters(value, roleFilter);
+    };
+
+    const handleRoleChange = (value: string) => {
+        setRoleFilter(value);
+        applyFilters(search, value);
+    };
+
+    const clearFilters = () => {
+        setSearch('');
+        setRoleFilter('');
+        applyFilters('', '');
+    };
+
+    const hasActiveFilters = search !== '' || roleFilter !== '';
+
+    const toggleUserStatus = (user: User) => {
+        const routeName = user.is_active ? 'dashboard.users.deactivate' : 'dashboard.users.activate';
         router.patch(route(routeName, user.id), {}, { preserveScroll: true });
     };
-    const deleteUser = (user: User) => {
-        if (!confirm(t('users.index.delete_confirm', { name: user.full_name ?? user.name }))) return;
-        router.delete(route('roles.users.delete', user.id), { preserveScroll: true });
+
+    const deleteUser = () => {
+        if (!deletingUser) return;
+        router.delete(route('dashboard.users.delete', deletingUser.id), {
+            preserveScroll: true,
+            onFinish: () => setDeletingUser(null),
+        });
     };
 
     const subtitle = users.total === 1 ? t('users.index.subtitle_one') : t('users.index.subtitle_other', { count: users.total });
@@ -51,14 +90,6 @@ export default function UsersIndex() {
             <Head title={t('users.index.title')} />
             <AppLayout>
                 <div className="bg-ds-bg min-h-full px-6 py-8">
-                    {/* Flash */}
-                    {flash.success && visibleFlash.success && (
-                        <FlashMessage type="success" message={flash.success} onClose={() => setVisibleFlash((p) => ({ ...p, success: false }))} />
-                    )}
-                    {flash.error && visibleFlash.error && (
-                        <FlashMessage type="error" message={flash.error} onClose={() => setVisibleFlash((p) => ({ ...p, error: false }))} />
-                    )}
-
                     {/* Header */}
                     <div className="mb-6 flex items-start justify-between">
                         <div>
@@ -67,7 +98,7 @@ export default function UsersIndex() {
                         </div>
                         <div className="flex items-center gap-2">
                             <a
-                                href={route('roles.index')}
+                                href={route('dashboard.roles.index')}
                                 className="border-ds-border text-ds-text2 hover:bg-ds-surface hover:text-ds-text flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-[13px] font-medium transition"
                             >
                                 <Shield size={14} />
@@ -85,11 +116,51 @@ export default function UsersIndex() {
                         </div>
                     </div>
 
-                    {/* Empty state */}
-                    {users.data.length === 0 && (
+                    {/* ── Search & filter bar ─────────────────────────────── */}
+                    <div className="mb-4 flex flex-wrap items-center gap-2">
+                        {/* Search input */}
+                        <div className="relative max-w-sm min-w-[200px] flex-1">
+                            <Search size={14} className="text-ds-text3 pointer-events-none absolute top-1/2 left-3 -translate-y-1/2" />
+                            <input
+                                type="text"
+                                value={search}
+                                onChange={(e) => handleSearchChange(e.target.value)}
+                                placeholder={t('users.index.search.placeholder')}
+                                className="border-ds-border bg-ds-surface text-ds-text placeholder:text-ds-text3 focus:border-ds-accent focus:ring-ds-accent/30 w-full rounded-lg border py-2 pr-3 pl-8 text-[13px] transition outline-none focus:ring-1"
+                            />
+                        </div>
+
+                        {/* Role filter */}
+                        <select
+                            value={roleFilter}
+                            onChange={(e) => handleRoleChange(e.target.value)}
+                            className="border-ds-border bg-ds-surface text-ds-text focus:border-ds-accent focus:ring-ds-accent/30 rounded-lg border px-3 py-2 text-[13px] transition outline-none focus:ring-1"
+                        >
+                            <option value="">{t('users.index.search.all_roles')}</option>
+                            {roles.map((role) => (
+                                <option key={role.id} value={role.name}>
+                                    {t(`users.roles.${role.name}`, { fallback: role.name })}
+                                </option>
+                            ))}
+                        </select>
+
+                        {/* Clear filters */}
+                        {hasActiveFilters && (
+                            <button
+                                onClick={clearFilters}
+                                className="border-ds-border text-ds-text3 hover:text-ds-text flex items-center gap-1 rounded-lg border px-3 py-2 text-[13px] transition"
+                            >
+                                <X size={13} />
+                                {t('users.index.search.clear')}
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Empty state — no users exist at all */}
+                    {users.data.length === 0 && !hasActiveFilters && (
                         <div className="border-ds-border bg-ds-surface flex flex-col items-center justify-center rounded-xl border py-24 text-center">
                             <div className="bg-ds-accent/10 mb-4 flex h-14 w-14 items-center justify-center rounded-2xl">
-                                <span className="text-2xl">👤</span>
+                                <Users className="text-ds-text2 h-8 w-8" />
                             </div>
                             <p className="font-heading text-ds-text text-[15px] font-semibold">{t('users.index.empty.title')}</p>
                             <p className="text-ds-text2 mt-1 text-[13px]">{t('users.index.empty.description')}</p>
@@ -102,6 +173,18 @@ export default function UsersIndex() {
                                     {t('users.index.actions.create')}
                                 </button>
                             )}
+                        </div>
+                    )}
+
+                    {/* Empty state — filters returned no results */}
+                    {users.data.length === 0 && hasActiveFilters && (
+                        <div className="border-ds-border bg-ds-surface flex flex-col items-center justify-center rounded-xl border py-16 text-center">
+                            <Search size={28} className="text-ds-text3 mb-3" />
+                            <p className="font-heading text-ds-text text-[15px] font-semibold">{t('users.index.search.no_results')}</p>
+                            <p className="text-ds-text2 mt-1 text-[13px]">{t('users.index.search.no_results_hint')}</p>
+                            <button onClick={clearFilters} className="text-ds-accent mt-4 text-[13px] font-medium hover:underline">
+                                {t('users.index.search.clear')}
+                            </button>
                         </div>
                     )}
 
@@ -126,15 +209,22 @@ export default function UsersIndex() {
                                         {users.data.map((user, index) => (
                                             <tr
                                                 key={user.id}
-                                                className="border-ds-border hover:bg-ds-bg3/40 border-b transition-colors last:border-0"
+                                                className={`border-ds-border hover:bg-ds-bg3/40 border-b transition-colors last:border-0 ${
+                                                    !user.is_active ? 'opacity-50' : ''
+                                                }`}
                                             >
                                                 {/* User */}
                                                 <td className="px-4 py-3.5">
                                                     <div className="flex items-center gap-3">
                                                         <UserAvatar name={user.full_name ?? user.name} index={index} />
                                                         <div className="min-w-0">
-                                                            <p className="font-heading text-ds-text truncate font-semibold">
+                                                            <p className="font-heading text-ds-text flex items-center gap-2 truncate font-semibold">
                                                                 {user.full_name ?? user.name}
+                                                                {!user.is_active && (
+                                                                    <span className="bg-ds-red/10 text-ds-red rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+                                                                        {t('users.index.table.inactive')}
+                                                                    </span>
+                                                                )}
                                                             </p>
                                                             <p className="text-ds-text3 truncate text-[11px]">{user.email}</p>
                                                         </div>
@@ -198,7 +288,7 @@ export default function UsersIndex() {
 
                                                         {can('users.delete') && user.id !== auth.user.id && (
                                                             <button
-                                                                onClick={() => deleteUser(user)}
+                                                                onClick={() => setDeletingUser(user)}
                                                                 className="border-ds-border text-ds-text3 hover:border-ds-red/40 hover:text-ds-red flex h-7 w-7 items-center justify-center rounded-lg border transition"
                                                                 title={t('users.index.table.actions.delete')}
                                                             >
@@ -247,6 +337,14 @@ export default function UsersIndex() {
                 {/* Modals */}
                 {editingUser && <EditRolesModal user={editingUser} roles={roles} onClose={() => setEditingUser(null)} />}
                 {showCreate && <CreateUserModal roles={roles} onClose={() => setShowCreate(false)} />}
+                {deletingUser && (
+                    <DeleteModal
+                        label={deletingUser.full_name ?? deletingUser.name}
+                        i18nPrefix="users.index.delete_modal"
+                        onConfirm={deleteUser}
+                        onCancel={() => setDeletingUser(null)}
+                    />
+                )}
             </AppLayout>
         </>
     );

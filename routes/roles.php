@@ -1,42 +1,24 @@
 <?php
 
 use App\Http\Controllers\RoleManagementController;
+use Illuminate\Support\Facades\Route;
 
-Route::prefix('roles')->name('roles.')->group(function () {
-    // Roles list + permission editing
-    Route::get('/', [RoleManagementController::class, 'rolesIndex'])
-        ->name('index')
-        ->middleware('can:roles.view');
+Route::get('/roles', [RoleManagementController::class, 'rolesIndex'])
+    ->name('roles.index')
+    ->middleware('can:roles.view');
 
-    Route::put('/{role}/permissions', [RoleManagementController::class, 'rolesUpdate'])
-        ->name('update')
-        ->middleware('can:roles.manage');
+Route::post('/roles', [RoleManagementController::class, 'rolesStore'])
+    ->name('roles.store')
+    ->middleware('can:roles.manage');
 
-    // Users list + role assignment
-    Route::get('/users', [RoleManagementController::class, 'usersIndex'])
-        ->name('users.index')
-        ->middleware('can:users.view');
+Route::get('/roles/{role}/edit', [RoleManagementController::class, 'rolesEdit'])
+    ->name('roles.edit')
+    ->middleware('can:roles.manage');
 
-    Route::post('/users', [RoleManagementController::class, 'usersCreate'])
-        ->name('users.create')
-        ->middleware('can:users.create');
+Route::put('/roles/{role}/permissions', [RoleManagementController::class, 'rolesUpdate'])
+    ->name('roles.update')
+    ->middleware('can:roles.manage');
 
-    Route::put('/users/{user}/roles', [RoleManagementController::class, 'usersUpdateRole'])
-        ->name('users.update-role')
-        ->middleware('can:users.edit')
-        ->withTrashed();
-
-    Route::delete('/users/{user}', [RoleManagementController::class, 'usersDelete'])
-        ->name('users.delete')
-        ->middleware('can:users.delete');
-
-    Route::patch('/users/{user}/deactivate', [RoleManagementController::class, 'usersDeactivate'])
-        ->name('users.deactivate')
-        ->middleware('can:users.edit');
-
-    Route::patch('/users/{user}/activate', [RoleManagementController::class, 'usersActivate'])
-        ->name('users.activate')
-        ->middleware('can:users.edit')
-        ->withTrashed();
-
-            });
+Route::delete('/roles/{role}/users/{user}', [RoleManagementController::class, 'rolesRemoveUser'])
+    ->name('roles.users.remove')
+    ->middleware('can:roles.manage');

@@ -14,8 +14,6 @@ use Spatie\Permission\Models\Role;
 
 class RoleManagementController extends Controller
 {
-    // ─── Roles ──────────────────────────────────────────────────────────────
-
     /**
      * Display all roles with their permissions and user counts.
      *
@@ -30,12 +28,18 @@ class RoleManagementController extends Controller
 
         try {
             $roles = Role::withCount('users')
-                ->with('permissions:name')
+                ->with(['permissions:name', 'users' => fn ($q) => $q->select('users.id', 'name', 'email', 'deactivated_at')])
                 ->get()
                 ->map(fn ($role) => [
                     'id' => $role->id,
                     'name' => $role->name,
                     'users_count' => $role->users_count,
+                    'users' => $role->users->map(fn ($u) => [
+                        'id' => $u->id,
+                        'name' => $u->name,
+                        'email' => $u->email,
+                        'is_active' => ! $u->isDeactivated(),
+                    ]),
                     'permissions' => $role->permissions->pluck('name'),
                 ]);
 
@@ -118,14 +122,105 @@ class RoleManagementController extends Controller
         }
     }
 
-    // ─── Users ──────────────────────────────────────────────────────────────
+    /**
+     * Render the edit-role page for a given role.
+     *
+     * @return Response Inertia page — RoleManagement/EditRole
+     */
+    public function rolesEdit(Role $role): Response
+    {
+        $this->authorize('roles.manage');
+        abort_if($role->name === 'super_admin', 403);
+
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $logger->log('roles.edit.view', "Consultation de la page d'édition du rôle « {$role->name} ».", ['role' => $role->name], [Role::class]);
+
+            return Inertia::render('RoleManagement/EditRole', [
+                'role' => [
+                    'id' => $role->id,
+                    'name' => $role->name,
+                    'users_count' => $role->users()->count(),
+                    'permissions' => $role->permissions->pluck('name'),
+                ],
+                'allPermissions' => Permission::all()->pluck('name')->groupBy(
+                    fn ($perm) => explode('.', $perm)[0]
+                ),
+            ]);
+        } catch (\Throwable $e) {
+            $logger->log('roles.edit.error', "Erreur lors du chargement de l'édition du rôle : ".$e->getMessage(), ['exception' => $e->getMessage()], [Role::class]);
+
+            return Inertia::render('RoleManagement/EditRole', ['error' => 'Unable to load role.']);
+        }
+    }
 
     /**
-     * Display a paginated list of all users (including soft-deleted) with their roles.
+     * Create a new role with optional initial permissions.
      *
+     * @return RedirectResponse Back with success or error flash
+     */
+    public function rolesStore(Request $request): RedirectResponse
+    {
+        $this->authorize('roles.manage');
+
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $data = $request->validate([
+                'name' => ['required', 'string', 'max:255', Rule::unique('roles', 'name')],
+                'permissions' => ['array'],
+                'permissions.*' => ['string', Rule::exists('permissions', 'name')],
+            ]);
+
+            $role = Role::create(['name' => $data['name'], 'guard_name' => 'web']);
+            $role->syncPermissions($data['permissions'] ?? []);
+
+            $logger->log('roles.store', "Création du rôle « {$role->name} ».", ['role' => $role->name], [Role::class]);
+
+            return back()->with('success', "Role \"{$role->name}\" created.");
+        } catch (\Throwable $e) {
+            $logger->log('roles.store.error', 'Erreur lors de la création du rôle : '.$e->getMessage(), ['exception' => $e->getMessage()], [Role::class]);
+
+            return back()->with('error', 'Unable to create role.');
+        }
+    }
+
+    /**
+     * Remove a user from a role.
+     *
+     * @return RedirectResponse Back with success or error flash
+     */
+    public function rolesRemoveUser(Role $role, User $user): RedirectResponse
+    {
+        $this->authorize('roles.manage');
+        abort_if($role->name === 'super_admin', 403);
+
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $user->removeRole($role);
+
+            $logger->log('roles.remove-user', "Retrait du rôle « {$role->name} » de l'utilisateur « {$user->name} ».", ['role' => $role->name, 'user_id' => $user->id], [Role::class]);
+
+            return back()->with('success', "Role removed from {$user->name}.");
+        } catch (\Throwable $e) {
+            $logger->log('roles.remove-user.error', 'Erreur lors du retrait du rôle : '.$e->getMessage(), ['exception' => $e->getMessage()], [Role::class]);
+
+            return back()->with('error', 'Unable to remove role from user.');
+        }
+    }
+
+    /**
+     * Display a paginated list of all users along with their roles.
+     *
+     * @param  Request  $request  Supports query params: `search` (string), `email` (string)
      * @return Response Inertia page — RoleManagement/Users — or Fallback on failure
      */
-    public function usersIndex(): Response
+    public function usersIndex(Request $request): Response
     {
         $this->authorize('users.view');
 
@@ -133,11 +228,23 @@ class RoleManagementController extends Controller
         $logger = app(ActivityLogger::class);
 
         try {
-            $users = User::withTrashed()
-                ->with('roles:name')
-                ->select(['id', 'name', 'email', 'last_login_at', 'created_at', 'deleted_at'])
+            $search = $request->string('search')->trim()->toString();
+            $role = $request->string('role')->trim()->toString();
+
+            $users = User::with('roles:name')
+                ->select(['id', 'name',  'email', 'last_login_at', 'created_at', 'deleted_at', 'deactivated_at'])
+                ->when($search, function ($query, string $search) {
+                    $query->where(function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
+                })
+                ->when($role, function ($query, string $role) {
+                    $query->whereHas('roles', fn ($q) => $q->where('name', $role));
+                })
                 ->latest()
                 ->paginate(20)
+                ->withQueryString()
                 ->through(fn ($user) => [
                     'id' => $user->id,
                     'name' => $user->name,
@@ -145,19 +252,18 @@ class RoleManagementController extends Controller
                     'roles' => $user->roles->pluck('name'),
                     'last_login_at' => $user->last_login_at,
                     'created_at' => $user->created_at,
-                    'is_active' => ! $user->trashed(),
+                    'is_active' => ! $user->isDeactivated(),
                 ]);
 
-            $logger->log(
-                'users.index',
-                'Consultation de la liste des utilisateurs.',
-                [],
-                [User::class]
-            );
+            $logger->log('users.index', 'Consultation de la liste des utilisateurs.', [], [User::class]);
 
             return Inertia::render('RoleManagement/Users', [
                 'users' => $users,
                 'roles' => Role::all(['id', 'name']),
+                'filters' => [
+                    'search' => $search,
+                    'role' => $role,
+                ],
             ]);
         } catch (\Throwable $e) {
             $logger->log(
@@ -341,7 +447,7 @@ class RoleManagementController extends Controller
         $logger = app(ActivityLogger::class);
 
         try {
-            $user->delete();
+            $user->deactivate();
 
             $logger->log(
                 'users.deactivate',
@@ -379,7 +485,7 @@ class RoleManagementController extends Controller
         try {
             $userModel = User::withTrashed()->findOrFail($user);
 
-            $userModel->restore();
+            $userModel->activate();
 
             $logger->log(
                 'users.activate',

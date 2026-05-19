@@ -13,7 +13,6 @@ import { useState } from 'react';
 dayjs.extend(relativeTime);
 dayjs.locale('fr');
 
-// ── Status badge ────────────────────────────────────────────
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
     active: { label: 'Actif', className: 'bg-badge-active-bg text-badge-active-text border border-badge-active-text/20' },
     draft: { label: 'Brouillon', className: 'bg-ds-accent/10 text-ds-accent2 border border-ds-accent/20' },
@@ -26,7 +25,6 @@ function BriefStatusBadge({ status }: { status: string }) {
     return <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${cfg.className}`}>{cfg.label}</span>;
 }
 
-// ── Avatar initials ─────────────────────────────────────────
 const AVATAR_COLORS = [
     'from-[#6C63FF] to-[#38BDF8]',
     'from-[#34D399] to-[#38BDF8]',
@@ -51,7 +49,6 @@ function BriefAvatar({ title, index }: { title: string; index: number }) {
     );
 }
 
-// ── Contract badge ──────────────────────────────────────────
 function ContractBadge({ type }: { type: string }) {
     return (
         <span className="border-ds-accent/20 bg-ds-accent/10 text-ds-accent2 inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold">
@@ -60,7 +57,6 @@ function ContractBadge({ type }: { type: string }) {
     );
 }
 
-// ── Pagination ──────────────────────────────────────────────
 interface PaginationMeta {
     current_page: number;
     last_page: number;

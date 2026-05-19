@@ -6,7 +6,7 @@ return [
         'title' => 'Roles',
         'subtitle' => 'Manage role permissions for your organisation.',
         'nav' => [
-            'users' => 'Manage users →',
+            'users' => 'Users',
         ],
         'table' => [
             'role' => 'Role',
@@ -25,9 +25,14 @@ return [
             ],
         ],
         'flash' => [
-            'success' => 'Success',
-            'error' => 'Error',
+            // Success
+            'updated' => 'Permissions for ":role" updated.',
+
+            // Errors
+            'index_error' => 'Unable to load the roles list.',
+            'update_error' => 'Unable to update permissions.',
         ],
+
     ],
 
     'edit_modal' => [
@@ -56,6 +61,43 @@ return [
         'interviews' => 'Interviews',
         'reports' => 'Reports',
         'settings' => 'Settings',
+        'classement' => 'Ranking',
+    ],
+
+    'actions' => [
+        'view' => 'View',
+        'create' => 'Create',
+        'edit' => 'Edit',
+        'delete' => 'Delete',
+        'approve' => 'Approve',
+        'export' => 'Export',
+        'manage' => 'Manage',
+    ],
+
+    'create_modal' => [
+        'title' => 'New role',
+        'fields' => [
+            'name' => 'Role name',
+            'name_placeholder' => 'e.g. hr_manager',
+        ],
+        'actions' => [
+            'cancel' => 'Cancel',
+            'submit' => 'Create role',
+            'submitting' => 'Creating…',
+        ],
+        'flash' => [
+            'created' => 'Role ":name" created.',
+            'create_error' => 'Unable to create role.',
+        ],
+    ],
+
+    'role_users_modal' => [
+        'title' => 'Users with role',
+        'empty' => 'No users assigned to this role.',
+        'actions' => [
+            'remove' => 'Remove from role',
+            'removing' => 'Removing…',
+        ],
     ],
 
 ];

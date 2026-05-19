@@ -14,8 +14,6 @@ class RolesAndPermissionsSeeder extends Seeder
         // Reset cached roles and permissions
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // ─── Permissions ────────────────────────────────────────────────────
-
         $permissions = [
             // Briefs
             'briefs.view',
@@ -76,14 +74,13 @@ class RolesAndPermissionsSeeder extends Seeder
             ]);
         }
 
-        // ─── Roles ──────────────────────────────────────────────────────────
-
         // Super Admin — gets all permissions via gate bypass (HasRoles trait)
         $superAdmin = Role::firstOrCreate([
             'name' => 'super_admin',
             'guard_name' => 'web',
         ]);
         $superAdmin->syncPermissions(Permission::where('guard_name', 'web')->get());
+
         // Admin — manages users, settings, all content
         $admin = Role::firstOrCreate(['name' => 'admin',
             'guard_name' => 'web']);
