@@ -1,51 +1,43 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Briefcase, FileSearch, Plus, Search, Sparkles } from 'lucide-react';
+
+import { Brain, Briefcase, FileSearch, Plus, Search, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import ReactSelect, { SingleValue } from 'react-select';
+import ReactSelect from 'react-select';
 
-type Brief = {
-    id: number | string;
+interface Brief {
+    id: number;
     title: string;
-    required_skills?: string;
-};
+    required_skills: string;
+}
 
-type Candidate = {
-    full_name?: string;
-};
+interface Analysis {
+    id: number;
+    score_global: number | null;
+    ai_summary: string | null;
+    ai_summary_en: string | null;
+    ai_tags: string[] | null;
+    cv_file_path: string;
+    candidate: { full_name: string } | null;
+    brief: Brief | null;
+    extracted_text: { technical_skills: string[] };
+}
 
-type ExtractedText = {
-    technical_skills?: string[];
-};
-
-type Analysis = {
-    id: number | string;
-    score_global?: number;
-    ai_summary?: string;
-    ai_summary_en?: string;
-    ai_tags?: string[];
-    cv_file_path?: string;
-
-    candidate?: Candidate;
-    brief?: Brief;
-    extracted_text?: ExtractedText;
-};
-
-type Filters = {
+interface PageFilters {
     search?: string;
     brief_id?: string;
-};
+}
 
-type PageProps = {
+interface PageProps {
     analyses: Analysis[];
     briefs: Brief[];
-    filters: Filters;
-};
+    filters: PageFilters;
+}
 
-type SelectOption = {
-    value: string | number;
-    label: string;
-};
+// type SelectOption = {
+//     value: string | number;
+//     label: string;
+// };
 
 const SCORE_COLORS = [
     'from-[#6C63FF] to-[#8B5CF6]',
@@ -58,7 +50,6 @@ const SCORE_COLORS = [
 function getScoreColor(score: number) {
     if (score >= 80) return 'text-[#34D399]';
     if (score >= 60) return 'text-[#F59E0B]';
-
     return 'text-[#F87171]';
 }
 
@@ -66,27 +57,23 @@ function initials(name?: string) {
     if (!name) return 'U';
 
     return name
-        .split(' ')
-        .slice(0, 2)
-        .map((w: string) => w ?? '') // FIXED: Safely extracting the first letter to resolve ESLint issues
-        .join('')
-        .toUpperCase();
+        ?.split(' ')
+        ?.slice(0, 2)
+        ?.map((w: string) => w[0])
+        ?.join('')
+        ?.toUpperCase();
 }
 
 export default function Index() {
-    // FIXED: Safely extracting parameters to bypass parsing errors
-    const pageData = usePage<PageProps>().props;
-    const analyses = pageData.analyses ?? [];
-    const briefs = pageData.briefs ?? [];
-    const filters = pageData.filters ?? {};
+    const { analyses, briefs, filters } = usePage().props as unknown as PageProps;
 
-    const [selected, setSelected] = useState<Analysis | null>(analyses[0] ?? null);
+    const [selected, setSelected] = useState<Analysis | null>(analyses?.[0] ?? null);
 
-    const [search, setSearch] = useState<string>(filters?.search ?? '');
+    const [search, setSearch] = useState(filters?.search ?? '');
 
-    const [briefId, setBriefId] = useState<string | number>(filters?.brief_id ?? '');
+    const [briefId, setBriefId] = useState(filters?.brief_id ?? '');
 
-    const [lang, setLang] = useState<'fr' | 'en'>('fr');
+    const [lang, setLang] = useState('fr');
 
     useEffect(() => {
         const timeout = setTimeout(() => {
@@ -107,7 +94,7 @@ export default function Index() {
         return () => clearTimeout(timeout);
     }, [search, briefId]);
 
-    const parsedTags = useMemo<string[]>(() => {
+    const parsedTags = useMemo(() => {
         if (!selected?.ai_tags) return [];
 
         if (Array.isArray(selected.ai_tags)) {
@@ -117,17 +104,17 @@ export default function Index() {
         return [];
     }, [selected]);
 
-    const briefOptions: SelectOption[] = briefs.map((brief: Brief) => ({
-        value: brief.id,
-        label: brief.title,
-    }));
+    // const briefOptions: SelectOption[] = briefs.map((brief: Brief) => ({
+    //     value: brief.id,
+    //     label: brief.title,
+    // }));
 
     return (
         <>
             <Head title="CV Analyses" />
 
             <AppLayout>
-                <div className="bg-ds-bg text-ds-text min-h-screen p-6 font-sans">
+                <div className="bg-ds-bg text-ds-text min-h-screen p-6">
                     {/* HEADER */}
                     <div className="mb-6 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                         <div>
@@ -163,17 +150,48 @@ export default function Index() {
                         </div>
 
                         {/* FILTER BRIEF */}
-                        <ReactSelect<SelectOption>
+                        {/* <select
+                            value={briefId}
+                            onChange={(e) =>
+                                setBriefId(e.target.value)
+                            }
+                            className="border-ds-border bg-ds-surface text-ds-text focus:border-[#6C63FF] rounded-2xl border px-4 py-3 text-sm outline-none transition"
+                        >
+                            <option value="">
+                                Tous les briefs
+                            </option>
+
+                            {briefs?.map((brief: any) => (
+                                <option
+                                    key={brief.id}
+                                    value={brief.id}
+                                >
+                                    {brief.title}
+                                </option>
+                            ))}
+
+                        </select> */}
+                        <ReactSelect
                             classNamePrefix="rs"
-                            options={briefOptions}
-                            value={briefOptions.find((option: SelectOption) => option.value === briefId) ?? null}
-                            onChange={(option: SingleValue<SelectOption>) => setBriefId(option?.value ?? '')}
-                            placeholder="Choose brief"
+                            options={briefs.map((brief) => ({
+                                value: String(brief.id),
+                                label: brief.title,
+                            }))}
+                            value={
+                                briefs
+                                    .map((brief) => ({
+                                        value: String(brief.id),
+                                        label: brief.title,
+                                    }))
+                                    .find((option) => option.value === briefId) ?? null
+                            }
+                            onChange={(option) => setBriefId(option?.value ?? '')}
+                            placeholder={'Choose brief'}
                         />
                     </div>
 
                     {/* EMPTY */}
-                    {analyses.length === 0 && (
+                    {(!analyses || analyses.length === 0) && (
                         <div className="border-ds-border bg-ds-surface flex flex-col items-center justify-center rounded-3xl border py-28 text-center">
                             <FileSearch size={60} className="text-ds-text3 mb-4" />
 
@@ -184,9 +202,9 @@ export default function Index() {
                     )}
 
                     {/* CONTENT */}
-                    {analyses.length > 0 && (
+                    {analyses?.length > 0 && (
                         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                            {/* LEFT LIST */}
+                            {/* LEFT */}
                             <div className="space-y-4 lg:col-span-2">
                                 {analyses.map((item: Analysis, index: number) => (
                                     <div
@@ -205,7 +223,7 @@ export default function Index() {
                                                     SCORE_COLORS[index % SCORE_COLORS.length]
                                                 }`}
                                             >
-                                                {initials(item.candidate?.full_name)}
+                                                {initials(item.candidate?.full_name ?? 'U')}
                                             </div>
 
                                             {/* INFO */}
@@ -245,11 +263,11 @@ export default function Index() {
                             {/* RIGHT DETAILS SIDEBAR */}
                             {selected && (
                                 <div className="space-y-5">
-                                    {/* PRINCIPAL PROFILE CARD */}
+                                    {/* CARD */}
                                     <div className="border-ds-border bg-ds-surface rounded-3xl border p-6">
                                         <div className="border-ds-border border-b pb-5 text-center">
                                             <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-[#6C63FF] to-[#38BDF8] text-2xl font-bold text-white">
-                                                {initials(selected.candidate?.full_name)}
+                                                {initials(selected.candidate?.full_name ?? '')}
                                             </div>
 
                                             <h2 className="mt-4 text-xl font-bold">{selected.candidate?.full_name}</h2>
@@ -265,10 +283,14 @@ export default function Index() {
 
                                         {/* AI PARSED TEXT AND CV ACTION */}
                                         <div className="mt-5">
+                                            <div className="mb-3 flex items-center gap-2">
+                                                <Brain size={18} className="text-[#6C63FF]" />
+
+                                                <h3 className="font-bold">Analyse IA</h3>
+                                            </div>
                                             <a
-                                                href={selected.cv_file_path}
+                                                href={`${selected.cv_file_path}`}
                                                 target="_blank"
-                                                rel="noreferrer"
                                                 className="bg-ds-accent border-ds-border hover:bg-ds-accent2 flex w-full items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-semibold text-white transition"
                                             >
                                                 Voir CV
@@ -277,20 +299,17 @@ export default function Index() {
                                             <p className="text-ds-text2 py-4 text-sm leading-relaxed">
                                                 {lang === 'fr' ? selected.ai_summary : selected.ai_summary_en}
                                             </p>
-
-                                            <button
-                                                onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
-                                                className="mt-4 text-xs font-semibold text-indigo-500"
-                                            >
+                                            <button onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')} className="mt-4 text-xs text-indigo-500">
                                                 {lang === 'fr' ? 'Switch to English' : 'Passer en Français'}
                                             </button>
                                         </div>
                                     </div>
 
-                                    {/* DETECTED AI TAGS */}
+                                    {/* TAGS */}
                                     <div className="border-ds-border bg-ds-surface rounded-3xl border p-6">
                                         <div className="mb-4 flex items-center gap-2">
                                             <Sparkles size={18} className="text-[#F59E0B]" />
+
                                             <h3 className="font-bold">Skills détectés</h3>
                                         </div>
 
@@ -299,7 +318,7 @@ export default function Index() {
                                                 {parsedTags.map((tag: string, index: number) => (
                                                     <span
                                                         key={index}
-                                                        className="border-ds-border bg-ds-bg3 text-ds-text2 rounded-xl border px-3 py-1.5 text-xs font-medium"
+                                                        className="border-ds-border bg-ds-bg3 text-ds-text2 rounded-xl border px-3 py-1.5 text-xs"
                                                     >
                                                         {tag}
                                                     </span>
@@ -310,19 +329,19 @@ export default function Index() {
                                         )}
                                     </div>
 
-                                    {/* TECHNICAL SKILLS EXTRACTED FROM CV */}
                                     <div className="border-ds-border bg-ds-surface rounded-3xl border p-6">
                                         <div className="mb-4 flex items-center gap-2">
                                             <Sparkles size={18} className="text-[#F59E0B]" />
+
                                             <h3 className="font-bold">Skills CV</h3>
                                         </div>
 
-                                        {selected.extracted_text?.technical_skills?.length ? (
+                                        {selected.extracted_text.technical_skills.length > 0 ? (
                                             <div className="flex flex-wrap gap-2">
                                                 {selected.extracted_text.technical_skills.map((tag: string, index: number) => (
                                                     <span
                                                         key={index}
-                                                        className="border-ds-border bg-ds-bg3 text-ds-text2 rounded-xl border px-3 py-1.5 text-xs font-medium"
+                                                        className="border-ds-border bg-ds-bg3 text-ds-text2 rounded-xl border px-3 py-1.5 text-xs"
                                                     >
                                                         {tag}
                                                     </span>
@@ -333,16 +352,16 @@ export default function Index() {
                                         )}
                                     </div>
 
-                                    {/* REQUIRED SKILLS FROM BRIEF MODEL */}
                                     <div className="border-ds-border bg-ds-surface rounded-3xl border p-6">
                                         <div className="mb-4 flex items-center gap-2">
                                             <Sparkles size={18} className="text-[#F59E0B]" />
-                                            <h3 className="font-bold">Skills Brief</h3>
+
+                                            <h3 className="font-bold">Skills Brif</h3>
                                         </div>
 
-                                        {selected.brief?.required_skills ? (
+                                        {(selected.brief?.required_skills?.length ?? 0) > 0 ? (
                                             <div className="flex flex-wrap gap-2">
-                                                <p className="text-ds-text2 text-sm leading-relaxed">{selected.brief.required_skills}</p>
+                                                <p className="text-ds-text2">{selected.brief?.required_skills}</p>
                                             </div>
                                         ) : (
                                             <p className="text-ds-text3 text-sm">Aucun skill détecté.</p>
