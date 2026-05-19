@@ -4,6 +4,7 @@ namespace App\Http\Controllers\ActivityLog;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -19,6 +20,9 @@ class ActivityLogController extends Controller
     public function index(Request $request): Response
     {
         $this->authorize('activity_logs.view');
+
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
 
         try {
             $search = $request->string('search')->trim()->toString();
@@ -65,11 +69,18 @@ class ActivityLogController extends Controller
                     'logged_at' => $log->logged_at,
                 ]);
 
-            // Distinct action prefixes for the filter dropdown  (e.g. "brief", "users", "roles")
+            // Distinct action prefixes for the filter dropdown (e.g. "brief", "users", "roles")
             $actionGroups = ActivityLog::query()
                 ->selectRaw('DISTINCT SUBSTRING_INDEX(action, ".", 1) as prefix')
                 ->orderBy('prefix')
                 ->pluck('prefix');
+
+            $logger->log(
+                'activity_log.index',
+                'Consultation de la liste des journaux d\'activité.',
+                ['filters' => compact('search', 'action', 'user', 'dateFrom', 'dateTo')],
+                [ActivityLog::class]
+            );
 
             return Inertia::render('ActivityLogs/Index', [
                 'logs' => $logs,
@@ -77,6 +88,13 @@ class ActivityLogController extends Controller
                 'filters' => compact('search', 'action', 'user', 'dateFrom', 'dateTo'),
             ]);
         } catch (\Throwable $e) {
+            $logger->log(
+                'activity_log.index.error',
+                'Erreur lors du chargement des journaux d\'activité : '.$e->getMessage(),
+                ['exception' => $e->getMessage()],
+                [ActivityLog::class]
+            );
+
             return Inertia::render('Fallback', [
                 'error' => 'Impossible de charger les journaux d\'activité.',
             ]);
@@ -93,11 +111,28 @@ class ActivityLogController extends Controller
     {
         $this->authorize('activity_logs.view');
 
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
         try {
+            $logger->log(
+                'activity_log.show',
+                "Consultation du journal d'activité (ID : {$activityLog->id}).",
+                ['activity_log_id' => $activityLog->id],
+                [ActivityLog::class]
+            );
+
             return Inertia::render('ActivityLogs/Show', [
                 'log' => $activityLog,
             ]);
         } catch (\Throwable $e) {
+            $logger->log(
+                'activity_log.show.error',
+                "Erreur lors de la consultation du journal (ID : {$activityLog->id}) : ".$e->getMessage(),
+                ['activity_log_id' => $activityLog->id, 'exception' => $e->getMessage()],
+                [ActivityLog::class]
+            );
+
             return Inertia::render('Fallback', [
                 'error' => 'Impossible d\'afficher ce journal.',
             ]);
