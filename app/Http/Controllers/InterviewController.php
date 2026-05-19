@@ -22,8 +22,8 @@ class InterviewController extends Controller
     public function index(): Response|RedirectResponse
     {
         try {
+            // Fetching available real data for dynamic frontend loops
             $candidates = Candidat::select('id', 'full_name')->get();
-
             $briefs = Brief::select('id', 'title')->get();
 
             app(ActivityLogger::class)->log(
@@ -131,10 +131,10 @@ class InterviewController extends Controller
             if ($request->hasFile('file')) {
                 $filePath = $request->file('file')->store('interviews', 'public');
 
-                // Mock transcription
+                // Mock transcription data for processing simulation
                 $mockTranscription = "Bonjour, je suis Karim Benali. J'ai une solide expérience en développement Fullstack Laravel et React. Je suis passionné par l'IA et je cherche à intégrer TalentAI pour relever de nouveaux défis techniques.";
 
-                // Mock AI analysis report
+                // Mock AI analysis report structure
                 $mockAiReport = [
                     'score' => 85,
                     'summary' => 'Excellent profile with strong technical background.',

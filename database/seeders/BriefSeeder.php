@@ -16,74 +16,43 @@ class BriefSeeder extends Seeder
         DB::table('briefs')->insert([
             [
                 'id' => (string) Str::uuid(),
-                'created_by' => 1,
-
                 'title' => 'React Developer',
+                'mission_description' => 'Développement et maintenance des applications React.',
+                'required_skills' => 'React, TypeScript, API REST',
+                'scoring_weights' => json_encode([
+                    'skills' => 40,
+                    'experience' => 30,
+                    'education' => 20,
+                    'communication' => 10,
+                ]),
                 'sector' => 'Informatique / Tech',
                 'contract_type' => 'CDI',
                 'location' => 'Remote',
-                'salary_range' => '15000 - 22000 MAD',
                 'min_experience_years' => 2,
                 'education_level' => 'Bac+3 / Bac+5',
-
-                'languages' => 'Français, Anglais',
-                'seniority_level' => 'Junior',
-                'target_companies' => 'ESN, Startups',
-                'gender_pref' => 'any',
-                'age_range' => '22-30',
-
-                'mission_description' => 'Développement et maintenance des applications React.',
-
-                'required_skills' => 'React, TypeScript, API REST',
-
-                'soft_skills' => 'Communication, Travail en équipe, Autonomie',
-
-                'scoring_weights' => json_encode([
-                    'skills' => 40,
-                    'experience' => 30,
-                    'education' => 20,
-                    'communication' => 10,
-                ]),
-
                 'status' => 'active',
-
+                'created_by' => 1,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
-
             [
                 'id' => (string) Str::uuid(),
-                'created_by' => 1,
-
                 'title' => 'Fullstack Developer',
-                'sector' => 'Informatique / Tech',
-                'contract_type' => 'CDI',
-                'location' => 'Hybride (Casablanca)',
-                'salary_range' => '22000 - 30000 MAD',
-                'min_experience_years' => 4,
-                'education_level' => 'Bac+5',
-
-                'languages' => 'Français, Anglais',
-                'seniority_level' => 'Senior',
-                'target_companies' => 'Grandes entreprises Tech',
-                'gender_pref' => 'any',
-                'age_range' => '25-35',
-
                 'mission_description' => 'Création d’applications web Laravel et React.',
-
                 'required_skills' => 'Laravel, React, MySQL, TypeScript',
-
-                'soft_skills' => 'Leadership, Résolution de problèmes, Collaboration',
-
                 'scoring_weights' => json_encode([
                     'skills' => 40,
                     'experience' => 30,
                     'education' => 20,
                     'communication' => 10,
                 ]),
-
+                'sector' => 'Informatique / Tech',
+                'contract_type' => 'CDI',
+                'location' => 'Hybride (Casablanca)',
+                'min_experience_years' => 4,
+                'education_level' => 'Bac+5',
                 'status' => 'active',
-
+                'created_by' => 1,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],

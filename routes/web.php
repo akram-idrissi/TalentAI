@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\InterviewController;
+use App\Models\Brief;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -39,18 +40,22 @@ Route::middleware(['auth'])->group(function () {
     |--------------------------------------------------------------------------
     | Module 4: Intelligence Entretiens (Functional Specs 3.1 - 3.4)
     |--------------------------------------------------------------------------
+    |
     */
 
-    // 4.1 Interview Index: Main Dashboard for uploads [cite: 68, 71]
+    // 4.1 Interview Index: Main Dashboard for uploads
     Route::get('/dashboard/interviews', [InterviewController::class, 'index'])->name('interviews.index');
 
-    // 4.2 Interview Storage & AI Analysis Trigger [cite: 70, 77]
-    // Note: Matches the 'router.post' link from your React Index.tsx component
+    // 4.2 Interview Storage & AI Analysis Trigger
     Route::post('/dashboard/interviews', [InterviewController::class, 'store'])->name('interviews.store');
 
-    // 4.3 AI Reports & Comparative Ranking [cite: 108, 109]
-    // This displays the final evaluation and scores per candidate
+    // 4.3 AI Reports & Comparative Ranking
     Route::get('/dashboard/reports', [InterviewController::class, 'reports'])->name('interviews.reports');
+
+    // 🌟 HAD S-STER HUWA LI GHADI I-SL7 L-ERROR 403 FORBIDDEN NICHENE:
+    Route::get('/briefs', function () {
+        return response()->json(Brief::all());
+    })->name('web.briefs.json');
 
 });
 

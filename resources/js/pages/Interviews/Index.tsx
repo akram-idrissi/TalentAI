@@ -170,15 +170,48 @@ const InterviewIndex = ({ candidates, briefs }: Props) => {
                                 ⚙️
                             </div>
                             <div className="flex-1">
-                                <div className="mb-2 flex justify-between text-white">
-                                    <span className="text-sm font-bold italic">Transcription (Whisper API)...</span>
-                                    <span className="font-mono text-xs text-amber-500">65%</span>
-                                </div>
-                                <div className="h-2 w-full overflow-hidden rounded-full border border-slate-800 bg-[#0f172a]">
-                                    <div
-                                        className="h-full rounded-full bg-amber-500 transition-all duration-1000 ease-in-out"
-                                        style={{ width: '65%' }}
-                                    ></div>
+                                {/* RIGHT COLUMN: CURRENT PROCESSING & LIVE MONITORING */}
+                                <div className="space-y-6">
+                                    <h3 className="font-syne text-xs font-bold tracking-[0.2em] text-slate-400 uppercase">Current Processing</h3>
+
+                                    <div className="relative overflow-hidden rounded-2xl border border-slate-800/60 bg-[#1e293b] p-6 shadow-xl transition-all duration-300 hover:border-slate-700/80">
+                                        {/* Top Header Row within the processing card */}
+                                        <div className="mb-4 flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="animate-spin-slow flex h-10 w-10 items-center justify-center rounded-full border border-amber-500/20 bg-amber-500/10 text-base text-amber-500">
+                                                    ⏳
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-syne text-sm font-bold tracking-wide text-white">
+                                                        Transcription (Whisper API)...
+                                                    </h4>
+                                                    <p className="mt-0.5 font-mono text-[11px] text-slate-400">
+                                                        Processing Amine Alami · Zoom interview
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <span className="rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-1 font-mono text-xs font-bold text-amber-500">
+                                                65%
+                                            </span>
+                                        </div>
+
+                                        {/* Progress Bar Container */}
+                                        <div className="h-2 w-full overflow-hidden rounded-full border border-slate-800/80 bg-[#0f172a] p-[1px]">
+                                            <div
+                                                className="h-full animate-pulse rounded-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-1000"
+                                                style={{ width: '65%' }}
+                                            ></div>
+                                        </div>
+
+                                        {/* Live Status Indicators Footer */}
+                                        <div className="mt-4 flex items-center justify-between border-t border-slate-800/40 pt-3 font-mono text-[10px] text-slate-400">
+                                            <span className="flex items-center gap-1.5">
+                                                <span className="h-1.5 w-1.5 animate-ping rounded-full bg-amber-500"></span>
+                                                Extracting audio waveform...
+                                            </span>
+                                            <span>Est. time remaining: ~2 min</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
