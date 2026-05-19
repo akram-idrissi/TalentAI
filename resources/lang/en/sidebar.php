@@ -22,6 +22,7 @@ return [
         'title' => 'Interviews',
         'list' => 'Interviews',
         'reports' => 'AI Reports',
+        'cv-analysis' => 'CV Analysis',
     ],
 
     'settings' => [

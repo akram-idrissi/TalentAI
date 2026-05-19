@@ -22,6 +22,7 @@ return [
         'title' => 'Entretiens',
         'list' => 'Entretiens',
         'reports' => 'Rapports IA',
+        'cv-analysis' => 'Analyse CV',
     ],
 
     'settings' => [

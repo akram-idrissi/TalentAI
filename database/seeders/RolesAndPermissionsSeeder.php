@@ -45,6 +45,10 @@ class RolesAndPermissionsSeeder extends Seeder
             // Reports
             'reports.view',
             'reports.export',
+            // CV Analysis
+            'cv-analysis.view',
+            'cv-analysis.upload',
+            'cv-analysis.create',
 
             // Integrations
             'integrations.view',
