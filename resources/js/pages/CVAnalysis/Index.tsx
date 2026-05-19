@@ -7,6 +7,7 @@ import {
     FileSearch,
     MapPin,
     Plus,
+    RotateCcw,
     Search,
     Sparkles,
 } from "lucide-react";
@@ -43,39 +44,53 @@ export default function Index() {
         analyses?.[0] ?? null
     );
 
-    const [search, setSearch] = useState(
-        filters?.search ?? ""
-    );
-
-    const [briefId, setBriefId] = useState(
-        filters?.brief_id ?? ""
-    );
-
     const [lang, setLang] = useState("fr");
-    
+    const [filterModalOpen, setFilterModalOpen] = useState(false);
+    const [selectedField, setSelectedField] = useState<string | null>(null);
+    const [filterValue, setFilterValue] = useState<any>('');
+     const [activeFilters, setActiveFilters] = useState<{ field: string; value: string }[]>([]);
+      const FILTER_FIELDS = [
+            { key: 'full_name', label: 'Nom complet', type: 'text' },
+            { key: 'score', label: 'Score', type: 'number' },
+            { key: 'extracted_text.technical_skills', label: 'Compétences', type: 'text' },
+            {
+                key: 'brief',
+                label: 'Titre du brief',
+                type: 'select',
+                options: [
+                    ...briefs.map((b: any) => ({ value: b.id, label: b.title })),
+                ],
+            },
+        ];
+        
+        function handleSearch() {
+        const cleanFilters = activeFilters
+            .filter((f) => f.value && f.value && String(f.value).trim() !== '')
+            .map((f) => ({
+                field: f.field,
+                value: f.value,
+            }));
 
-    // SEARCH + FILTER
-    useEffect(() => {
-        const timeout = setTimeout(() => {
-
-            router.get(
-                route("dashboard.cv-analysis.index"),
-                {
-                    search,
-                    brief_id: briefId,
-                },
-                {
+            router.get(route('dashboard.cv-analysis.index'), {
+                filters: JSON.stringify(cleanFilters),
                     preserveState: true,
                     preserveScroll: true,
-                    replace: true,
-                }
-            );
 
-        }, 400);
+            });
+    }
+    console.log(activeFilters);
 
-        return () => clearTimeout(timeout);
 
-    }, [search, briefId]);
+    function addFilter(field: string) {
+        setActiveFilters((prev) => {
+            if (prev.some((f) => f.field === field)) return prev;
+            return [...prev, { field, value: '' }];
+        });
+    }
+
+    function removeFilter(field: string) {
+        setActiveFilters((prev) => prev.filter((f) => f.field !== field));
+    }
 
     const parsedTags = useMemo(() => {
 
@@ -129,90 +144,315 @@ export default function Index() {
                     </div>
 
                     {/* FILTERS */}
-                    <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-
-                        {/* SEARCH */}
-                        <div className="relative">
-
-                            <Search
-                                size={16}
-                                className="absolute left-4 top-1/2 -translate-y-1/2 text-ds-text3"
-                            />
-
-                            <input
-                                type="text"
-                                placeholder="Rechercher candidat..."
-                                value={search}
-                                onChange={(e) =>
-                                    setSearch(e.target.value)
-                                }
-                                className="
-                                    w-full
-                                    rounded-xl
-                                    border
-                                    border-ds-border
-                                    bg-ds-surface
-                                    py-[9px]
-                                    pl-10
-                                    pr-4
-                                    text-sm
-                                    text-ds-text2
-                                    outline-none
-                                    transition
-                                    focus:border-[#6C63FF]
-                                    focus:ring-0
-                                "
-                            />
-
-                        </div>
-
-                        {/* FILTER BRIEF */}
-                        {/* <select
-                            value={briefId}
-                            onChange={(e) =>
-                                setBriefId(e.target.value)
-                            }
-                            className="border-ds-border bg-ds-surface text-ds-text focus:border-[#6C63FF] rounded-2xl border px-4 py-3 text-sm outline-none transition"
+                            <div className="mb-5 flex flex-wrap items-center gap-3">
+                        {/* Search */}
+                        <button
+                            onClick={() => setFilterModalOpen(true)}
+                            className="bg-ds-accent flex items-center gap-2 rounded-lg px-4 py-2.5 text-[13px] font-medium text-white hover:bg-[#7C74FF]"
                         >
-                            <option value="">
-                                Tous les briefs
-                            </option>
-
-                            {briefs?.map((brief: any) => (
-                                <option
-                                    key={brief.id}
-                                    value={brief.id}
-                                >
-                                    {brief.title}
-                                </option>
-                            ))}
-
-                        </select> */}
-                                        <ReactSelect
-                                            classNamePrefix="rs"
-                                            options={briefs.map(
-                                                (
-                                                    brief: any
-                                                ) => ({
-                                                    value: brief.id,
-                                                    label: brief.title
-                                                }))
-                                            }
-                                            value={briefs
-                                                .map((brief: any) => ({
-                                                    value: brief.id,
-                                                    label: brief.title
-                                                }))
-                                                .find(
-                                                    (option: any) =>
-                                                        option.value === briefId
-                                                ) ?? null
-                                            }
-                                            onChange={(option) => setBriefId(option?.value ?? "")}
-                                            placeholder={"Choose brief"}
-                                        />
+                            <Search size={14} />
+                            Définir les filtres
+                        </button>
+                        <button
+                            onClick={() => {
+                                setSelectedField(null);
+                                setFilterValue('');
+                                router.get(route('dashboard.cv-analysis.index'));
+                            }}
+                            className="border-ds-border text-ds-text2 hover:bg-ds-surface flex items-center gap-2 rounded-lg border px-4 py-2.5 text-[13px]"
+                        >
+                            <RotateCcw size={13} />
+                            Reset
+                        </button>
 
                     </div>
+
+                                        {filterModalOpen && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                            
+                            <div className="w-full max-w-2xl rounded-2xl border border-ds-border bg-ds-surface shadow-2xl">
+                                
+                                {/* HEADER */}
+                                <div className="flex items-center justify-between border-b border-ds-border px-6 py-4">
+                                    
+                                    <div>
+                                        <h2 className="font-heading text-[18px] font-bold text-ds-text">
+                                            Filtres avancés
+                                        </h2>
+
+                                        <p className="mt-1 text-[13px] text-ds-text3">
+                                            Sélectionnez les filtres à afficher
+                                        </p>
+                                    </div>
+
+                                    <button
+                                        onClick={() => setFilterModalOpen(false)}
+                                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-ds-border bg-ds-bg3 text-ds-text2 transition hover:border-ds-border2 hover:bg-ds-bg2 hover:text-ds-text"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+
+                                {/* CONTENT */}
+                                <div className="custom-scroll max-h-[420px] overflow-y-auto p-6">
+
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+
+                                        {FILTER_FIELDS.map((f) => {
+
+                                            const isActive = activeFilters.some(
+                                                (item) => item.field === f.key
+                                            );
+
+                                            return (
+                                                <button
+                                                    key={f.key}
+                                                    onClick={() => addFilter(f.key)}
+                                                    className={`
+                                                        group relative overflow-hidden rounded-xl border px-4 py-3 text-left transition-all duration-200
+                                                        
+                                                        ${
+                                                            isActive
+                                                                ? 'border-ds-accent bg-ds-accent text-white shadow-lg shadow-ds-accent/20'
+                                                                : 'border-ds-border bg-ds-bg2 text-ds-text hover:border-ds-accent/40 hover:bg-ds-bg3'
+                                                        }
+                                                    `}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        
+                                                        <span className="text-[13px] font-medium">
+                                                            {f.label}
+                                                        </span>
+
+                                                        {isActive && (
+                                                            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[11px] font-bold">
+                                                                ✓
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* FOOTER */}
+                                <div className="flex items-center justify-between border-t border-ds-border px-6 py-4">
+                                    
+                                    <p className="text-[12px] text-ds-text3">
+                                        {activeFilters.length} filtre(s) sélectionné(s)
+                                    </p>
+
+                                    <div className="flex items-center gap-3">
+
+                                        <button
+                                            onClick={() => {setActiveFilters([]),setFilterModalOpen(false)}}
+                                            className="rounded-lg border border-ds-border bg-ds-bg3 px-4 py-2 text-[13px] font-medium text-ds-text2 transition hover:bg-ds-bg2 hover:text-ds-text"
+                                        >
+                                            Reset
+                                        </button>
+
+                                        <button
+                                            onClick={() => setFilterModalOpen(false)}
+                                            className="rounded-lg bg-ds-accent px-5 py-2 text-[13px] font-semibold text-white transition hover:opacity-90"
+                                        >
+                                            Appliquer
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeFilters.length > 0 && (
+                        <div className="mb-5 rounded-2xl border border-ds-border bg-ds-surface p-5">
+
+                            {/* HEADER */}
+                            <div className="mb-5 flex items-center justify-between">
+
+                                <div>
+                                    <h3 className="text-sm font-semibold text-ds-text">
+                                        Filtres actifs
+                                    </h3>
+
+                                    <p className="mt-1 text-xs text-ds-text3">
+                                        Configurez vos filtres de recherche
+                                    </p>
+                                </div>
+
+                                <button
+                                    onClick={() => setActiveFilters([])}
+                                    className="
+                                        rounded-lg border border-ds-border
+                                        bg-ds-bg3 px-3 py-2 text-xs
+                                        text-ds-text2 transition
+
+                                        hover:bg-ds-bg2
+                                        hover:text-ds-text
+                                    "
+                                >
+                                    Reset
+                                </button>
+                            </div>
+
+                            {/* GRID */}
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+
+                                {activeFilters.map((f, index) => {
+
+                                    const field = FILTER_FIELDS.find(
+                                        (x) => x.key === f.field
+                                    );
+
+                                    if (!field) return null;
+
+                                    return (
+                                        <div
+                                            key={f.field}
+                                            className="
+                                                rounded-xl border border-ds-border
+                                                bg-ds-bg2 p-3
+                                            "
+                                        >
+
+                                            {/* TOP */}
+                                            <div className="mb-3 flex items-center justify-between">
+
+                                                <p className="text-xs font-semibold text-ds-text">
+                                                    {field.label}
+                                                </p>
+
+                                                <button
+                                                    onClick={() => removeFilter(f.field)}
+                                                    className="
+                                                        flex h-6 w-6 items-center justify-center
+                                                        rounded-md text-ds-text3 transition
+
+                                                        hover:bg-red-500/10
+                                                        hover:text-red-400
+                                                    "
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+
+                                            {/* FIELD */}
+                                            {field.type === 'select' ? (
+
+                                                <ReactSelect
+                                                    classNamePrefix="rs"
+                                                    options={field.options}
+                                                    value={
+                                                        field.options?.find(
+                                                            (opt: any) =>
+                                                                opt.value === f.value
+                                                        ) ?? null
+                                                    }
+                                                    onChange={(opt: any) => {
+
+                                                        const newFilters = [...activeFilters];
+
+                                                        newFilters[index].value =
+                                                            opt?.value ?? '';
+
+                                                        setActiveFilters(newFilters);
+                                                    }}
+                                                    placeholder="Sélectionner..."
+                                                    styles={{
+                                                        control: (base, state) => ({
+                                                            ...base,
+                                                            backgroundColor: 'var(--ds-bg3)',
+                                                            borderColor: state.isFocused
+                                                                ? '#6C63FF'
+                                                                : 'var(--ds-border)',
+                                                            minHeight: '42px',
+                                                            boxShadow: 'none',
+                                                            borderRadius: '10px',
+                                                            fontSize: '13px',
+                                                            cursor: 'pointer',
+                                                        }),
+
+                                                        menu: (base) => ({
+                                                            ...base,
+                                                            backgroundColor: 'var(--ds-surface)',
+                                                            border: '1px solid var(--ds-border)',
+                                                            overflow: 'hidden',
+                                                            zIndex: 30,
+                                                        }),
+
+                                                        singleValue: (base) => ({
+                                                            ...base,
+                                                            color: 'var(--ds-text)',
+                                                        }),
+
+                                                        input: (base) => ({
+                                                            ...base,
+                                                            color: 'var(--ds-text)',
+                                                        }),
+
+                                                        placeholder: (base) => ({
+                                                            ...base,
+                                                            color: 'var(--ds-text3)',
+                                                        }),
+
+                                                        option: (base, state) => ({
+                                                            ...base,
+                                                            backgroundColor: state.isFocused
+                                                                ? 'rgba(108,99,255,0.15)'
+                                                                : 'transparent',
+                                                            color: 'var(--ds-text)',
+                                                            cursor: 'pointer',
+                                                            fontSize: '13px',
+                                                        }),
+                                                    }}
+                                                />
+
+                                            ) : (
+
+                                                <input
+                                                    type={field.type}
+                                                    value={f.value}
+                                                    onChange={(e) => {
+
+                                                        const newFilters = [...activeFilters];
+
+                                                        newFilters[index].value =
+                                                            e.target.value;
+
+                                                        setActiveFilters(newFilters);
+                                                    }}
+                                                    placeholder={field.label}
+                                                    className="
+                                                        w-full rounded-xl border border-ds-border
+                                                        bg-ds-bg3 px-3 py-2.5 text-[13px]
+                                                        text-ds-text placeholder:text-ds-text3
+                                                        outline-none transition
+
+                                                        focus:border-ds-accent
+                                                    "
+                                                />
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* ACTIONS */}
+                            <div className="mt-5 flex justify-end">
+
+                                <button
+                                    onClick={handleSearch}
+                                    className="
+                                        bg-ds-accent rounded-xl px-5 py-2.5
+                                        text-[13px] font-semibold text-white
+                                        transition hover:opacity-90
+                                    "
+                                >
+                                    Rechercher
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     {/* EMPTY */}
                     {(!analyses || analyses.length === 0) && (
@@ -475,7 +715,7 @@ export default function Index() {
 
                                         </div>
 
-                                        {selected.extracted_text.technical_skills.length > 0 ? (
+                                        {selected?.extracted_text?.technical_skills?.length > 0? (
 
                                             <div className="flex flex-wrap gap-2">
 
@@ -520,7 +760,7 @@ export default function Index() {
 
                                         </div>
 
-                                        {selected.brief.required_skills.length > 0 ? (
+                                        {selected?.brief?.required_skills?.length > 0? (
 
                                             <div className="flex flex-wrap gap-2">
                                                 <p className="text-ds-text2">

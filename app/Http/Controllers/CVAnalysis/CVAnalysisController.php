@@ -21,69 +21,147 @@ class CVAnalysisController extends Controller
          *
          * @return \Illuminate\Http\Response
          */
-public function index(Request $request): Response
-{
-    /** @var ActivityLogger $logger */
-    $logger = app(ActivityLogger::class);
+        public function index(Request $request): Response
+        {
+            /** @var ActivityLogger $logger */
+            $logger = app(ActivityLogger::class);
 
-    try {
+            try {
+                $query = CvAnalysis::query()
+                    ->with([
+                        'candidate',
+                        'brief',
+                    ]);
 
-        $search = $request->search;
-        $briefId = $request->brief_id;
+                $filters = $request->input('filters', []);
 
-        $query = CvAnalysis::with(['candidate', 'brief']);
+                if (is_string($filters)) {
+                    $filters = json_decode($filters, true);
+                }
 
-        // SEARCH CANDIDATE NAME
-        if ($search) {
-            $query->whereHas('candidate', function ($q) use ($search) {
-                $q->where('full_name', 'like', '%' . $search . '%');
-            });
+                if (is_array($filters) && count($filters) > 0) {
+
+                    foreach ($filters as $filter) {
+
+                        if (
+                            !isset($filter['field']) ||
+                            !isset($filter['value']) ||
+                            $filter['value'] === ''
+                        ) {
+                            continue;
+                        }
+
+                        $field = $filter['field'];
+                        $value = trim($filter['value']);
+
+                        if ($field === 'full_name') {
+
+                            $query->whereHas('candidate', function ($q) use ($value) {
+                                $q->where('full_name', 'LIKE', "%{$value}%");
+                            });
+
+                            continue;
+                        }
+
+                        if ($field === 'brief') {
+
+                            $query->where('brief_id', $value);
+
+                            continue;
+                        }
+                        if ($field === 'score') {
+
+                            $query->where('score_global', '>=', (int) $value);
+
+                            continue;
+                        }
+
+                        if ($field === 'extracted_text.technical_skills') {
+
+                            $skills = preg_split('/\s+/', trim($value)); 
+                            
+
+                            $query->where(function ($q) use ($skills) {
+
+                                foreach ($skills as $skill) {
+                                    $q->orWhereJsonContains('extracted_text->technical_skills', $skill);
+                                }
+
+                            });
+                            continue;
+                        }
+
+                        
+                    }
+                }
+
+                $analyses = $query
+                    ->latest()
+                    ->get()
+                    ->map(function ($analysis) {
+
+                        return [
+
+                            'id' => $analysis->id,
+
+                            'candidate' => [
+                                'id' => $analysis->candidate?->id,
+                                'full_name' => $analysis->candidate?->full_name,
+                                'linkedin_url' => $analysis->candidate?->linkedin_url,
+                            ],
+
+                            'brief' => [
+                                'id' => $analysis->brief?->id,
+                                'title' => $analysis->brief?->title,
+                                'required_skills' => $analysis->brief?->required_skills,
+                            ],
+
+                            'score_global' => $analysis->score_global,
+                            'score_experience' => $analysis->score_experience,
+                            'score_education' => $analysis->score_education,
+                            'score_skills' => $analysis->score_skills,
+                            'ai_summary' => $analysis->ai_summary,
+                            'ai_summary_en' => $analysis->ai_summary_en,
+                            'ai_tags' => $analysis->ai_tags,
+                            'cv_file_path' => $analysis->cv_file_path,
+                            'extracted_text' => $analysis->extracted_text,
+                            'created_at' => $analysis->created_at?->toDateTimeString(),
+                        ];
+                    });
+
+                $briefs = Brief::select('id', 'title')
+                    ->orderBy('title')
+                    ->get();
+                $logger->log(
+                    'cv_analysis.index',
+                    'Consultation des analyses CV.',
+                    [
+                        'filters' => $filters,
+                    ],
+                    [CvAnalysis::class]
+                );
+                return Inertia::render('CVAnalysis/Index', [
+                    'analyses' => $analyses,
+                    'briefs' => $briefs,
+                    'filters' => $filters,
+                ]);
+
+            } catch (\Throwable $e) {
+
+                $logger->log(
+                    'cv_analysis.index.error',
+                    $e->getMessage(),
+                    [
+                        'exception' => $e->getMessage(),
+                    ],
+                    [CvAnalysis::class]
+                );
+
+                return Inertia::render('Fallback', [
+                    'error' => 'Erreur lors du chargement des analyses.',
+                ]);
+            }
         }
-
-        // FILTER BRIEF
-        if ($briefId) {
-            $query->where('brief_id', $briefId);
-        }
-
-        $analyses = $query
-            ->latest()
-            ->get();
-
-        $briefs = Brief::select('id', 'title')
-            ->orderBy('title')
-            ->get();
-
-        $logger->log(
-            'cv_analysis.index',
-            'Consultation des analyses CV.',
-            [],
-            [CvAnalysis::class]
-        );
-
-        return Inertia::render('CVAnalysis/Index', [
-            'analyses' => $analyses,
-            'briefs' => $briefs,
-
-            'filters' => [
-                'search' => $search,
-                'brief_id' => $briefId,
-            ],
-        ]);
-
-    } catch (\Throwable $e) {
-
-        $logger->log(
-            'cv_analysis.index.error',
-            $e->getMessage(),
-            ['exception' => $e->getMessage()],
-            [CvAnalysis::class]
-        );
-
-        return Inertia::render('Fallback', [
-            'error' => 'Erreur lors du chargement des analyses.',
-        ]);
-    }
-}
 
     /**
      * Show form for creating CV analysis.

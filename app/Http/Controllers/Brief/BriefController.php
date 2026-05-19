@@ -56,56 +56,99 @@ class BriefController extends Controller
      * @param  Request  $request  Supports query params: `search` (string), `status` (BriefStatus value)
      * @return Response Inertia page — Briefs/Index — or Briefs/Fallback on failure
      */
-    public function index(Request $request): Response
-    {
-        /** @var ActivityLogger $logger */
-        $logger = app(ActivityLogger::class);
+        public function index(Request $request): Response
+        {
+            /** @var ActivityLogger $logger */
+            $logger = app(ActivityLogger::class);
+            try {
 
-        try {
+                $query = Brief::with('creator');
+                $filters = $request->input('filters');
+                if (is_string($filters)) {
+                    $filters = json_decode($filters, true);
+                }
+                if (!empty($filters) && is_array($filters)) {
+                    $allowedFields = [
+                        'title',
+                        'sector',
+                        'contract_type',
+                        'location',
+                        'salary_range',
+                        'min_experience_years',
+                        'education_level',
+                        'languages',
+                        'seniority_level',
+                        'target_companies',
+                        'gender_pref',
+                        'age_range',
+                        'status',
+                    ];
 
-            $briefs = Brief::with('creator')
-                ->when($request->search, fn ($q, $s) => $q->where('title', 'like', "%$s%"))
-                ->when($request->status, fn ($q, $s) => $q->where('status', $s))
-                ->latest()
-                ->paginate(10)
-                ->through(fn ($brief) => [
-                    'id' => $brief->id,
-                    'title' => $brief->title,
-                    'sector' => $brief->sector,
-                    'contract_type' => $brief->contract_type,
-                    'location' => $brief->location,
-                    'min_experience_years' => $brief->min_experience_years,
-                    'education_level' => $brief->education_level,
-                    'gender_pref' => $brief->gender_pref,
-                    'status' => $brief->status,
-                    'created_by' => $brief->creator?->name,
-                    'created_at' => $brief->created_at->toDateTimeString(),
+                    foreach ($filters as $filter) {
+
+                        if (
+                            !is_array($filter) ||
+                            empty($filter['field']) ||
+                            !isset($filter['value']) ||
+                            $filter['value'] === ''
+                        ) {
+                            continue;
+                        }
+
+                        $field = in_array($filter['field'], $allowedFields)
+                            ? $filter['field']
+                            : null;
+
+                        if (!$field) {
+                            continue;
+                        }
+
+                        $query->where($field, 'like', '%' . $filter['value'] . '%');
+                    }
+                }
+                $briefs = $query
+                    ->latest()
+                    ->paginate(10)
+                    ->through(fn ($brief) => [
+                        'id' => $brief->id,
+                        'title' => $brief->title,
+                        'sector' => $brief->sector,
+                        'contract_type' => $brief->contract_type,
+                        'location' => $brief->location,
+                        'min_experience_years' => $brief->min_experience_years,
+                        'education_level' => $brief->education_level,
+                        'gender_pref' => $brief->gender_pref,
+                        'status' => $brief->status,
+                        'created_by' => $brief->creator?->name,
+                        'created_at' => $brief->created_at->toDateTimeString(),
+                    ]);
+                $logger->log(
+                    'brief.index',
+                    'Consultation de la liste des briefs.',
+                    [
+                        'filters' => $filters ?? []
+                    ],
+                    [Brief::class]
+                );
+                return Inertia::render('Briefs/Index', [
+                    'briefs' => $briefs,
+                    'filters' => $filters ?? [],
                 ]);
 
-            $logger->log(
-                'brief.index',
-                'Consultation de la liste des briefs.',
-                ['filters' => $request->only(['search', 'status'])],
-                [Brief::class]
-            );
+            } catch (\Throwable $e) {
 
-            return Inertia::render('Briefs/Index', [
-                'briefs' => $briefs,
-                'filters' => $request->only(['search', 'status']),
-            ]);
-        } catch (\Throwable $e) {
-            $logger->log(
-                'brief.index.error',
-                'Erreur lors de la récupération de la liste des briefs : '.$e->getMessage(),
-                ['exception' => $e->getMessage()],
-                [Brief::class]
-            );
+                $logger->log(
+                    'brief.index.error',
+                    'Erreur lors de la récupération des briefs : ' . $e->getMessage(),
+                    ['exception' => $e->getMessage()],
+                    [Brief::class]
+                );
 
-            return Inertia::render('Fallback', [
-                'error' => 'Impossible de charger la liste des briefs.',
-            ]);
+                return Inertia::render('Fallback', [
+                    'error' => 'Impossible de charger la liste des briefs.',
+                ]);
+            }
         }
-    }
 
     /**
      * Show the form for creating a new brief.
