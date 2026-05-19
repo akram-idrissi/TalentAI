@@ -48,6 +48,7 @@ class CVAnalysisController extends Controller
                             !isset($filter['value']) ||
                             $filter['value'] === ''
                         ) {
+                            
                             continue;
                         }
 

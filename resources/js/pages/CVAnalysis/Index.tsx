@@ -62,13 +62,14 @@ export default function Index() {
                 ],
             },
         ];
-        
+
         function handleSearch() {
         const cleanFilters = activeFilters
             .filter((f) => f.value && f.value && String(f.value).trim() !== '')
             .map((f) => ({
                 field: f.field,
                 value: f.value,
+                
             }));
 
             router.get(route('dashboard.cv-analysis.index'), {

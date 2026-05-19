@@ -218,6 +218,7 @@ export default function Index({ briefs,filters }: IndexBriefProps) {
                             <Search size={14} />
                             Définir les filtres
                         </button>
+                        
 
                         <button
                             onClick={() => {

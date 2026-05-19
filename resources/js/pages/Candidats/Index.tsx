@@ -231,6 +231,7 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
 
     const COLUMNS = ['CANDIDAT', 'POSTE VISÉ', 'SOURCE', 'SCORE CV', 'SCORE ENTRETIEN', 'STATUT', ''];
 
+    
     return (
         <>
             <Head title={t('candidats.index.title')} />

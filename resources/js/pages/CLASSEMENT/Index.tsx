@@ -96,14 +96,21 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
                         ],
                     },
                 ];
+
+
             function handleSearch() {
             const cleanFilters = activeFilters
                 .filter((f) => f.value && String(f.value).trim() !== '')
                 .map((f) => ({
                     field: f.field,
+
                     value: f.value,
+
                 }));
     
+
+ 
+                
                 router.get(
                     route('dashboard.classement'),
                     {
@@ -183,6 +190,7 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
                             <Search size={14} />
                             Définir les filtres
                         </button>
+
                         <button
                             onClick={() => {
                                 setSelectedField(null);
@@ -197,7 +205,7 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
 
                     </div>
 
-                                        {filterModalOpen && (
+                    {filterModalOpen && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
                             
                             <div className="w-full max-w-2xl rounded-2xl border border-ds-border bg-ds-surface shadow-2xl">
@@ -208,6 +216,7 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
                                     <div>
                                         <h2 className="font-heading text-[18px] font-bold text-ds-text">
                                             Filtres avancés
+                                            
                                         </h2>
 
                                         <p className="mt-1 text-[13px] text-ds-text3">

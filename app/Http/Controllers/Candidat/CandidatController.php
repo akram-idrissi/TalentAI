@@ -177,6 +177,7 @@ public function index(Request $request): Response
     } catch (\Throwable $e) {
 
         $logger->log(
+            
             'candidat.index.error',
             'Erreur lors de la récupération des candidats.',
             [

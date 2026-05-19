@@ -11,6 +11,7 @@ Route::get('/classement', function (Request $request) {
 
         $selectedBriefId = $request->input('brief_id');
 
+        
         if (!$selectedBriefId) {
             $selectedBriefId = $briefs->first()?->id;
         }
