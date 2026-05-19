@@ -22,6 +22,7 @@ return [
         'title' => 'Entretiens',
         'list' => 'Entretiens',
         'reports' => 'Rapports IA',
+        'cv-analysis' => 'Analyse CV',
     ],
 
     'settings' => [
@@ -32,5 +33,6 @@ return [
         'title' => 'Administration',
         'users' => 'Utilisateurs',
         'roles' => 'Rôles',
+        'activity_logs' => 'Journal des activités',
     ],
 ];

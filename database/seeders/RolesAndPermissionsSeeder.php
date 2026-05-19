@@ -45,6 +45,10 @@ class RolesAndPermissionsSeeder extends Seeder
             // Reports
             'reports.view',
             'reports.export',
+            // CV Analysis
+            'cv-analysis.view',
+            'cv-analysis.upload',
+            'cv-analysis.create',
 
             // Integrations
             'integrations.view',
@@ -65,6 +69,10 @@ class RolesAndPermissionsSeeder extends Seeder
             // Settings
             'settings.view',
             'settings.manage',
+
+            // Activity Logs
+            'activity_logs.view',
+
         ];
 
         foreach ($permissions as $permission) {

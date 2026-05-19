@@ -22,6 +22,7 @@ return [
         'title' => 'Interviews',
         'list' => 'Interviews',
         'reports' => 'AI Reports',
+        'cv-analysis' => 'CV Analysis',
     ],
 
     'settings' => [
@@ -32,5 +33,6 @@ return [
         'title' => 'Administration',
         'users' => 'Users',
         'roles' => 'Roles',
+        'activity_logs' => 'Activity Log',
     ],
 ];

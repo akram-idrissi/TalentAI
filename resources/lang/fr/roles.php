@@ -60,14 +60,18 @@ return [
         'sourcing' => 'Sourcing',
         'interviews' => 'Entretiens',
         'reports' => 'Rapports',
+        'cv-analysis' => 'Analyse des CV',
+        'integrations' => 'Intégrations',
         'settings' => 'Paramètres',
         'classement' => 'Classement',
+        'activity_logs' => 'Journal des activités',
     ],
 
     'actions' => [
         'view' => 'Voir',
         'create' => 'Créer',
         'edit' => 'Modifier',
+        'upload' => 'Téléverser',
         'delete' => 'Supprimer',
         'approve' => 'Approuver',
         'export' => 'Exporter',
