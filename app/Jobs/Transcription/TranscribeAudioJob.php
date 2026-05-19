@@ -64,6 +64,11 @@ class TranscribeAudioJob implements ShouldQueue
             'transcript_text' => $rawTranscript,
             'diarized_transcript' => $diarizedTranscript,
         ]);
+        AnalyseTranscriptionJob::dispatch(
+            $this->transcription,
+            $brief,
+            []
+        );
 
         // Audio no longer needed once transcribed
         // Storage::delete($this->transcription->audio_path);

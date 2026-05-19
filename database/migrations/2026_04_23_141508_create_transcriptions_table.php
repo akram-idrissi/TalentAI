@@ -28,6 +28,13 @@ return new class extends Migration
             $table->longText('transcript_text')->nullable();
             $table->longText('diarized_transcript')->nullable();
             $table->text('error')->nullable();
+
+            $table->string('analysis_status')->default('pending');
+
+            $table->unsignedTinyInteger('analysis_score')->nullable();
+            $table->string('analysis_verdict')->nullable();
+            $table->json('analysis_result')->nullable();
+            $table->text('analysis_error')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });
