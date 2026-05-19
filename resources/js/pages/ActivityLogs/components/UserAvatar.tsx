@@ -5,18 +5,6 @@ type UserAvatarProps = {
     size?: 'sm' | 'md';
     className?: string;
 };
-// export function UserAvatar({ name, index }: { name: string | null; index: number }) {
-//     const initials = name
-//         ? name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()
-//         : '?';
-//     return (
-//         <div
-//             className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${AVATAR_COLORS[index % AVATAR_COLORS.length]} text-[11px] font-bold text-white`}
-//         >
-//             {initials}
-//         </div>
-//     );
-// }
 export function UserAvatar({ name, index = 0, size = 'sm', className = '' }: UserAvatarProps) {
     const initials = name
         ? name
