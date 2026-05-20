@@ -218,7 +218,7 @@ class BriefController extends Controller
                 $logger->log(
                     'brief.store',
                     "Création du brief « {$brief->title} » (ID : {$brief->id}).",
-                    ['brief_id' => $brief->id, 'title' => $brief->title],
+                    [$request->all()],
                     [Brief::class]
                 );
             } catch (\Throwable) {

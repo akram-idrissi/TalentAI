@@ -11,6 +11,8 @@ import {
     RotateCcw,
     Search,
     Sparkles,
+    ChevronDown, 
+    ChevronUp
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useI18n } from '@/hooks/useI18n';
@@ -72,6 +74,7 @@ function initials(name: string) {
 export default function Index() {
     const { analyses, briefs, filters } = usePage().props as unknown as PageProps;
     const { t } = useI18n();
+    const [filtersOpen, setFiltersOpen] = useState(true);
 
     const [selected, setSelected] = useState<Analysis | null>(analyses?.[0] ?? null);
 
@@ -79,7 +82,9 @@ export default function Index() {
     const [filterModalOpen, setFilterModalOpen] = useState(false);
     const [selectedField, setSelectedField] = useState<string | null>(null);
     const [filterValue, setFilterValue] = useState<any>('');
-     const [activeFilters, setActiveFilters] = useState<{ field: string; value: string }[]>([]);
+             const [activeFilters, setActiveFilters] = useState<{ field: string; value: string }[]>(
+            Array.isArray(filters) ? filters : []
+        );
       const FILTER_FIELDS = [
             { key: 'full_name', label: 'Nom complet', type: 'text' },
             { key: 'score', label: 'Score', type: 'number' },
@@ -285,6 +290,7 @@ export default function Index() {
                     {activeFilters.length > 0 && (
                         <div className="mb-5 rounded-2xl border border-ds-border bg-ds-surface p-5">
 
+                           
                             {/* HEADER */}
                             <div className="mb-5 flex items-center justify-between">
 
@@ -298,21 +304,44 @@ export default function Index() {
                                     </p>
                                 </div>
 
-                                <button
-                                    onClick={() => setActiveFilters([])}
-                                    className="
-                                        rounded-lg border border-ds-border
-                                        bg-ds-bg3 px-3 py-2 text-xs
-                                        text-ds-text2 transition
-
-                                        hover:bg-ds-bg2
-                                        hover:text-ds-text
-                                    "
-                                >
-                                    Reset
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setActiveFilters([])}
+                                        className="
+                                            rounded-lg border border-ds-border
+                                            bg-ds-bg3 px-3 py-2 text-xs
+                                            text-ds-text2 transition
+                                            hover:bg-ds-bg2
+                                            hover:text-ds-text
+                                        "
+                                    >
+                                        {t('briefs.index.actions.reset')}
+                                    </button>
+                                    <button
+                                        onClick={() => setFiltersOpen(!filtersOpen)}
+                                        className="
+                                            flex items-center gap-1 rounded-lg
+                                            border border-ds-border bg-ds-bg3
+                                            px-3 py-2 text-xs text-ds-text2
+                                            transition hover:bg-ds-bg2 hover:text-ds-text
+                                        "
+                                    >
+                                        {filtersOpen ? (
+                                            <>
+                                                
+                                                <ChevronUp size={14} />
+                                            </>
+                                        ) : (
+                                            <>
+                                                
+                                                <ChevronDown size={14} />
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
                             </div>
-
+                            {filtersOpen && (
+                                <>
                             {/* GRID */}
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
 
@@ -452,6 +481,7 @@ export default function Index() {
                                             )}
                                         </div>
                                     );
+                                
                                 })}
                             </div>
 
@@ -469,8 +499,10 @@ export default function Index() {
                                     Rechercher
                                 </button>
                             </div>
+                            </>
+                            )}  
                         </div>
-                    )}
+                  )}
 
                     {/* EMPTY */}
                     {(!analyses || analyses.length === 0) && (

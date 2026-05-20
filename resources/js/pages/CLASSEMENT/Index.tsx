@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
-import { Award, Download, Phone, RotateCcw, Search } from 'lucide-react';
+import { Award, Download, Phone, RotateCcw, Search,ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 import ReactSelect from 'react-select';
 import { useI18n } from '@/hooks/useI18n';
@@ -38,6 +38,7 @@ interface Props {
     briefs: Brief[];
     selectedBriefId: number | null;
     candidates: Candidate[];
+    filters?: { field: string; value: string }[] | null;
 }
 
 const BREAKDOWN_META: Record<string, { label: string; bar: string; text: string }> = {
@@ -75,9 +76,10 @@ function initials(name: string) {
 
 const SUMMARY_LIMIT = 120;
 
-export default function ClassementIndex({ briefs, selectedBriefId, candidates }: Props) {
+export default function ClassementIndex({ briefs, selectedBriefId, candidates,filters }: Props) {
 
     const [selected, setSelected] = useState<Candidate | null>(candidates[0] ?? null);
+    const [filtersOpen, setFiltersOpen] = useState(true);
     const [expanded, setExpanded] = useState(false);
         const { t } = useI18n();
 
@@ -85,7 +87,9 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
        const [filterModalOpen, setFilterModalOpen] = useState(false);
         const [selectedField, setSelectedField] = useState<string | null>(null);
         const [filterValue, setFilterValue] = useState<any>('');
-        const [activeFilters, setActiveFilters] = useState<{ field: string; value: string }[]>([]);
+        const [activeFilters, setActiveFilters] = useState<{ field: string; value: string }[]>(
+            Array.isArray(filters) ? filters : []
+        );
         const FILTER_FIELDS = [
                     { key: 'full_name', label: 'Nom complet', type: 'text' },
                     { key: 'score', label: 'Score', type: 'number' },
@@ -121,7 +125,7 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
                         filters: JSON.stringify(cleanFilters),
                     },
                     {
-                        preserveState: false,
+                        preserveState: true,
                         preserveScroll: true,
                     }
                 );
@@ -308,6 +312,7 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
                     {activeFilters.length > 0 && (
                         <div className="mb-5 rounded-2xl border border-ds-border bg-ds-surface p-5">
 
+                           
                             {/* HEADER */}
                             <div className="mb-5 flex items-center justify-between">
 
@@ -321,21 +326,44 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
                                     </p>
                                 </div>
 
-                                <button
-                                    onClick={() => setActiveFilters([])}
-                                    className="
-                                        rounded-lg border border-ds-border
-                                        bg-ds-bg3 px-3 py-2 text-xs
-                                        text-ds-text2 transition
-
-                                        hover:bg-ds-bg2
-                                        hover:text-ds-text
-                                    "
-                                >
-                                    {t('briefs.index.actions.reset')}
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setActiveFilters([])}
+                                        className="
+                                            rounded-lg border border-ds-border
+                                            bg-ds-bg3 px-3 py-2 text-xs
+                                            text-ds-text2 transition
+                                            hover:bg-ds-bg2
+                                            hover:text-ds-text
+                                        "
+                                    >
+                                        {t('briefs.index.actions.reset')}
+                                    </button>
+                                    <button
+                                        onClick={() => setFiltersOpen(!filtersOpen)}
+                                        className="
+                                            flex items-center gap-1 rounded-lg
+                                            border border-ds-border bg-ds-bg3
+                                            px-3 py-2 text-xs text-ds-text2
+                                            transition hover:bg-ds-bg2 hover:text-ds-text
+                                        "
+                                    >
+                                        {filtersOpen ? (
+                                            <>
+                                                
+                                                <ChevronUp size={14} />
+                                            </>
+                                        ) : (
+                                            <>
+                                                
+                                                <ChevronDown size={14} />
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
                             </div>
-
+                            {filtersOpen && (
+                                <>
                             {/* GRID */}
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
 
@@ -475,6 +503,7 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
                                             )}
                                         </div>
                                     );
+                                
                                 })}
                             </div>
 
@@ -492,6 +521,8 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
                                     Rechercher
                                 </button>
                             </div>
+                            </>
+                            )}  
                         </div>
                     )}
                     </div>

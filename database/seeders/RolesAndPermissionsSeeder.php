@@ -90,48 +90,99 @@ class RolesAndPermissionsSeeder extends Seeder
         $superAdmin->syncPermissions(Permission::where('guard_name', 'web')->get());
 
         // Admin — manages users, settings, all content
-        $admin = Role::firstOrCreate(['name' => 'admin',
-            'guard_name' => 'web']);
+        $admin = Role::firstOrCreate([
+            'name' => 'admin',
+            'guard_name' => 'web'
+        ]);
         $admin->syncPermissions([
-            'briefs.view', 'briefs.create', 'briefs.edit', 'briefs.delete', 'briefs.approve',
-            'sourcing.view', 'sourcing.create', 'sourcing.edit', 'sourcing.delete',
-            'candidates.view', 'candidates.create', 'candidates.edit', 'candidates.delete', 'candidates.export',
-            'interviews.view', 'interviews.create', 'interviews.edit', 'interviews.delete', 'interviews.approve',
-            'reports.view', 'reports.export',
-            'integrations.view', 'integrations.manage',
-            'classement.view', 'classement.manage',
-            'users.view', 'users.create', 'users.edit', 'users.delete',
-            'roles.view', 'cv-analysis.view', 'cv-analysis.upload', 'cv-analysis.create',
-            'settings.view', 'settings.manage',
+            'briefs.view',
+            'briefs.create',
+            'briefs.edit',
+            'briefs.delete',
+            'briefs.approve',
+            'sourcing.view',
+            'sourcing.create',
+            'sourcing.edit',
+            'sourcing.delete',
+            'candidates.view',
+            'candidates.create',
+            'candidates.edit',
+            'candidates.delete',
+            'candidates.export',
+            'interviews.view',
+            'interviews.create',
+            'interviews.edit',
+            'interviews.delete',
+            'interviews.approve',
+            'reports.view',
+            'reports.export',
+            'integrations.view',
+            'integrations.manage',
+            'classement.view',
+            'classement.manage',
+            'users.view',
+            'users.create',
+            'users.edit',
+            'users.delete',
+            'roles.view',
+            'cv-analysis.view',
+            'cv-analysis.upload',
+            'cv-analysis.create',
+            'activity_logs.view',
+            'settings.view',
+            'settings.manage',
         ]);
 
         // Recruiter — full CRUD on core recruitment flow
-        $recruiter = Role::firstOrCreate(['name' => 'recruiter',
-            'guard_name' => 'web']);
+        $recruiter = Role::firstOrCreate([
+            'name' => 'recruiter',
+            'guard_name' => 'web'
+        ]);
         $recruiter->syncPermissions([
-            'briefs.view', 'briefs.create', 'briefs.edit',
-            'sourcing.view', 'sourcing.create', 'sourcing.edit', 'sourcing.delete',
-            'candidates.view', 'candidates.create', 'candidates.edit', 'candidates.delete', 'candidates.export',
-            'interviews.view', 'interviews.create', 'interviews.edit', 'interviews.delete',
+            'briefs.view',
+            'briefs.create',
+            'briefs.edit',
+            'sourcing.view',
+            'sourcing.create',
+            'sourcing.edit',
+            'sourcing.delete',
+            'candidates.view',
+            'candidates.create',
+            'candidates.edit',
+            'candidates.delete',
+            'candidates.export',
+            'interviews.view',
+            'interviews.create',
+            'interviews.edit',
+            'interviews.delete',
             'reports.view',
-            'classement.view', 'classement.manage',
+            'classement.view',
+            'classement.manage',
         ]);
 
         // Hiring Manager — view & approve, limited edit
-        $hiringManager = Role::firstOrCreate(['name' => 'hiring_manager',
-            'guard_name' => 'web']);
+        $hiringManager = Role::firstOrCreate([
+            'name' => 'hiring_manager',
+            'guard_name' => 'web'
+        ]);
         $hiringManager->syncPermissions([
-            'briefs.view', 'briefs.approve',
+            'briefs.view',
+            'briefs.approve',
             'sourcing.view',
-            'candidates.view', 'candidates.export',
-            'interviews.view', 'interviews.approve',
-            'reports.view', 'reports.export',
+            'candidates.view',
+            'candidates.export',
+            'interviews.view',
+            'interviews.approve',
+            'reports.view',
+            'reports.export',
             'classement.view',
         ]);
 
         // Viewer — read-only
-        $viewer = Role::firstOrCreate(['name' => 'viewer',
-            'guard_name' => 'web']);
+        $viewer = Role::firstOrCreate([
+            'name' => 'viewer',
+            'guard_name' => 'web'
+        ]);
         $viewer->syncPermissions([
             'briefs.view',
             'sourcing.view',

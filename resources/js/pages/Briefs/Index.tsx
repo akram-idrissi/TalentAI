@@ -7,7 +7,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import { ChevronLeft, ChevronRight, Edit2, Eye, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit2, Eye, Plus, RotateCcw, Search, Trash2,ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 import ReactSelect from 'react-select';
 
@@ -128,6 +128,7 @@ export default function Index({ briefs,filters }: IndexBriefProps) {
     const [search, setSearch] = useState('');
     const { can, isSuperAdmin } = usePermission();
     const canCreateBriefs = isSuperAdmin() || can('briefs.create');
+    const [filtersOpen, setFiltersOpen] = useState(true);
 
     const [deletingBrief, setDeletingBrief] = useState<Brief | null>(null);
     const [filterModalOpen, setFilterModalOpen] = useState(false);
@@ -135,7 +136,9 @@ export default function Index({ briefs,filters }: IndexBriefProps) {
     const [filterValue, setFilterValue] = useState<any>('');
     const [status, setStatus] = useState('');
     
-    const [activeFilters, setActiveFilters] = useState<{ field: string; value: string }[]>([]);
+        const [activeFilters, setActiveFilters] = useState<{ field: string; value: string }[]>(
+            Array.isArray(filters) ? filters : []
+        );
 
     const FILTER_FIELDS = [ { key: 'title', label: 'Poste', type: 'text' }, 
         { key: 'sector', label: 'Secteur', type: 'select', 
@@ -183,7 +186,10 @@ export default function Index({ briefs,filters }: IndexBriefProps) {
 
             router.get(route('dashboard.briefs.index'), {
                 filters: JSON.stringify(cleanFilters),
-            });
+                    },    {
+                    preserveState: true,
+                    preserveScroll: true,
+                });
         }
         console.log(activeFilters);
 
@@ -349,6 +355,7 @@ export default function Index({ briefs,filters }: IndexBriefProps) {
                     {activeFilters.length > 0 && (
                         <div className="mb-5 rounded-2xl border border-ds-border bg-ds-surface p-5">
 
+                           
                             {/* HEADER */}
                             <div className="mb-5 flex items-center justify-between">
 
@@ -362,21 +369,44 @@ export default function Index({ briefs,filters }: IndexBriefProps) {
                                     </p>
                                 </div>
 
-                                <button
-                                    onClick={() => setActiveFilters([])}
-                                    className="
-                                        rounded-lg border border-ds-border
-                                        bg-ds-bg3 px-3 py-2 text-xs
-                                        text-ds-text2 transition
-
-                                        hover:bg-ds-bg2
-                                        hover:text-ds-text
-                                    "
-                                >
-                                    {t('briefs.index.actions.reset')}
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setActiveFilters([])}
+                                        className="
+                                            rounded-lg border border-ds-border
+                                            bg-ds-bg3 px-3 py-2 text-xs
+                                            text-ds-text2 transition
+                                            hover:bg-ds-bg2
+                                            hover:text-ds-text
+                                        "
+                                    >
+                                        {t('briefs.index.actions.reset')}
+                                    </button>
+                                    <button
+                                        onClick={() => setFiltersOpen(!filtersOpen)}
+                                        className="
+                                            flex items-center gap-1 rounded-lg
+                                            border border-ds-border bg-ds-bg3
+                                            px-3 py-2 text-xs text-ds-text2
+                                            transition hover:bg-ds-bg2 hover:text-ds-text
+                                        "
+                                    >
+                                        {filtersOpen ? (
+                                            <>
+                                                
+                                                <ChevronUp size={14} />
+                                            </>
+                                        ) : (
+                                            <>
+                                                
+                                                <ChevronDown size={14} />
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
                             </div>
-
+                            {filtersOpen && (
+                                <>
                             {/* GRID */}
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
 
@@ -516,6 +546,7 @@ export default function Index({ briefs,filters }: IndexBriefProps) {
                                             )}
                                         </div>
                                     );
+                                
                                 })}
                             </div>
 
@@ -533,8 +564,10 @@ export default function Index({ briefs,filters }: IndexBriefProps) {
                                     Rechercher
                                 </button>
                             </div>
+                            </>
+                            )}  
                         </div>
-                    )}
+                  )}
 
                     {/* Empty state */}
                     {briefs.data.length === 0 && (
