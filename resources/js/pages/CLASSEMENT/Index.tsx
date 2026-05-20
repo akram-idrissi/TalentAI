@@ -215,8 +215,7 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
                                     
                                     <div>
                                         <h2 className="font-heading text-[18px] font-bold text-ds-text">
-                                            Filtres avancés
-                                            
+                                            Filtres avancés    
                                         </h2>
 
                                         <p className="mt-1 text-[13px] text-ds-text3">

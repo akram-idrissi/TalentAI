@@ -134,6 +134,7 @@ export default function Index({ briefs,filters }: IndexBriefProps) {
     const [selectedField, setSelectedField] = useState<string | null>(null);
     const [filterValue, setFilterValue] = useState<any>('');
     const [status, setStatus] = useState('');
+    
     const [activeFilters, setActiveFilters] = useState<{ field: string; value: string }[]>([]);
 
     const FILTER_FIELDS = [ { key: 'title', label: 'Poste', type: 'text' }, 

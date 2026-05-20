@@ -69,7 +69,6 @@ export default function Index() {
             .map((f) => ({
                 field: f.field,
                 value: f.value,
-                
             }));
 
             router.get(route('dashboard.cv-analysis.index'), {

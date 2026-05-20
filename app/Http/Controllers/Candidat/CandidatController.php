@@ -185,7 +185,6 @@ public function index(Request $request): Response
             ],
             [Candidat::class]
         );
-
         return Inertia::render('Fallback', [
             'error' => 'Impossible de charger les candidats.',
         ]);

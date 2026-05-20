@@ -27,7 +27,6 @@ class BriefController extends Controller
         return [
             'title' => 'required|string|max:255',
             'sector' => 'required|string|max:255',
-            
             'contract_type' => ['required', Rule::enum(ContractType::class)],
             'location' => 'required|string|max:255',
             'salary_range' => 'nullable|string|max:255',

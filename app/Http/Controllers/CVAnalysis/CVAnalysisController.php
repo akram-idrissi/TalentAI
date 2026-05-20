@@ -56,7 +56,6 @@ class CVAnalysisController extends Controller
                         $value = trim($filter['value']);
 
                         if ($field === 'full_name') {
-
                             $query->whereHas('candidate', function ($q) use ($value) {
                                 $q->where('full_name', 'LIKE', "%{$value}%");
                             });
