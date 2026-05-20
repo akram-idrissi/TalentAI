@@ -166,26 +166,26 @@ export default function Index({ briefs,filters }: IndexBriefProps) {
                     options: [ { value: 'draft', label: 'Draft' }, { value: 'active', label: 'Active' }, { value: 'sourcing', label: 'Sourcing' }, { value: 'interviews', label: 'Interviews' }, 
                 { value: 'closed', label: 'Closed' }, ]}, ]; 
 
-    function handleDelete() {
-        if (!deletingBrief) return;
-        router.delete(route('dashboard.briefs.destroy', deletingBrief.id), {
-            onSuccess: () => setDeletingBrief(null),
-        });
-    }
+        function handleDelete() {
+            if (!deletingBrief) return;
+            router.delete(route('dashboard.briefs.destroy', deletingBrief.id), {
+                onSuccess: () => setDeletingBrief(null),
+            });
+        }
 
-    function handleSearch() {
-        const cleanFilters = activeFilters
-            .filter((f) => f.value && f.value.trim() !== '')
-            .map((f) => ({
-                field: f.field,
-                value: f.value,
-            }));
+        function handleSearch() {
+            const cleanFilters = activeFilters
+                .filter((f) => f.value && f.value.trim() !== '')
+                .map((f) => ({
+                    field: f.field,
+                    value: f.value,
+                }));
 
-        router.get(route('dashboard.briefs.index'), {
-            filters: JSON.stringify(cleanFilters),
-        });
-    }
-    console.log(activeFilters);
+            router.get(route('dashboard.briefs.index'), {
+                filters: JSON.stringify(cleanFilters),
+            });
+        }
+        console.log(activeFilters);
 
 
     function addFilter(field: string) {
@@ -203,7 +203,7 @@ export default function Index({ briefs,filters }: IndexBriefProps) {
         <>
             <Head title={t('briefs.index.title')} />
             <AppLayout>
-                <div className="bg-ds-bg min-h-full px-6 py-8">
+                <div className="bg-ds-bg min-h-screen px-6">
                     {/* Header */}
                     <div className="mb-6">
                         <h1 className="font-heading text-ds-text text-[26px] font-bold">{t('briefs.index.title')}</h1>
@@ -246,9 +246,9 @@ export default function Index({ briefs,filters }: IndexBriefProps) {
                             )}
 
                          
-                        </div>
-
                     </div>
+
+                   
                     {filterModalOpen && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
                             
@@ -647,6 +647,7 @@ export default function Index({ briefs,filters }: IndexBriefProps) {
                         onCancel={() => setDeletingBrief(null)}
                     />
                 )}
+                </div>
             </AppLayout>
         </>
     );

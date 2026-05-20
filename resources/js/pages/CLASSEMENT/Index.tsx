@@ -184,7 +184,7 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
                         )}
                         
                    {/* FILTERS */}
-                            <div className="mb-5 flex flex-wrap items-center gap-3">
+                            <div className="mb-5 flex flex-wrap items-center py-3 gap-3">
                         {/* Search */}
                         <button
                             onClick={() => setFilterModalOpen(true)}
