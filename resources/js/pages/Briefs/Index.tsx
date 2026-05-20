@@ -1,5 +1,6 @@
 import DeleteModal from '@/components/ui/DeleteModal';
 import { useI18n } from '@/hooks/useI18n';
+import { usePermission } from '@/hooks/usePermission';
 import AppLayout from '@/layouts/app-layout';
 import type { Brief, IndexBriefProps } from '@/types/brief';
 import { Head, Link, router } from '@inertiajs/react';
@@ -13,7 +14,6 @@ import ReactSelect from 'react-select';
 dayjs.extend(relativeTime);
 dayjs.locale('fr');
 
-// ── Status badge ────────────────────────────────────────────
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
     active: { label: 'Actif', className: 'bg-badge-active-bg text-badge-active-text border border-badge-active-text/20' },
     draft: { label: 'Brouillon', className: 'bg-ds-accent/10 text-ds-accent2 border border-ds-accent/20' },
@@ -26,7 +26,6 @@ function BriefStatusBadge({ status }: { status: string }) {
     return <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${cfg.className}`}>{cfg.label}</span>;
 }
 
-// ── Avatar initials ─────────────────────────────────────────
 const AVATAR_COLORS = [
     'from-[#6C63FF] to-[#38BDF8]',
     'from-[#34D399] to-[#38BDF8]',
@@ -51,7 +50,6 @@ function BriefAvatar({ title, index }: { title: string; index: number }) {
     );
 }
 
-// ── Contract badge ──────────────────────────────────────────
 function ContractBadge({ type }: { type: string }) {
     return (
         <span className="border-ds-accent/20 bg-ds-accent/10 text-ds-accent2 inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold">
@@ -60,7 +58,6 @@ function ContractBadge({ type }: { type: string }) {
     );
 }
 
-// ── Pagination ──────────────────────────────────────────────
 interface PaginationMeta {
     current_page: number;
     last_page: number;
@@ -129,6 +126,9 @@ function Pagination({ meta, search }: { meta: PaginationMeta; search: string }) 
 export default function Index({ briefs,filters }: IndexBriefProps) {
     const { t } = useI18n();
     const [search, setSearch] = useState('');
+    const { can, isSuperAdmin } = usePermission();
+    const canCreateBriefs = isSuperAdmin() || can('briefs.create');
+
     const [deletingBrief, setDeletingBrief] = useState<Brief | null>(null);
     const [filterModalOpen, setFilterModalOpen] = useState(false);
     const [selectedField, setSelectedField] = useState<string | null>(null);
@@ -217,9 +217,10 @@ export default function Index({ briefs,filters }: IndexBriefProps) {
                             className="bg-ds-accent flex items-center gap-2 rounded-lg px-4 py-2.5 text-[13px] font-medium text-white hover:bg-[#7C74FF]"
                         >
                             <Search size={14} />
-                            Définir les filtres
+                            {t('briefs.index.actions.search')}
                         </button>
                         
+
 
                         <button
                             onClick={() => {
@@ -231,9 +232,10 @@ export default function Index({ briefs,filters }: IndexBriefProps) {
                             className="border-ds-border text-ds-text2 hover:bg-ds-surface flex items-center gap-2 rounded-lg border px-4 py-2.5 text-[13px]"
                         >
                             <RotateCcw size={13} />
-                            Reset
+                            {t('briefs.index.actions.reset')}
                         </button>
                                                    
+                        {canCreateBriefs && (
                                 <Link
                                     href={route('dashboard.briefs.create')}
                                     className="bg-ds-accent ml-auto flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-semibold text-white transition hover:opacity-90"
@@ -241,7 +243,11 @@ export default function Index({ briefs,filters }: IndexBriefProps) {
                                     <Plus size={14} />
                                     {t('briefs.index.actions.create')}
                                 </Link>
-                          
+                            )}
+
+                         
+                        </div>
+
                     </div>
                     {filterModalOpen && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -325,7 +331,7 @@ export default function Index({ briefs,filters }: IndexBriefProps) {
                                             onClick={() => {setActiveFilters([]),setFilterModalOpen(false)}}
                                             className="rounded-lg border border-ds-border bg-ds-bg3 px-4 py-2 text-[13px] font-medium text-ds-text2 transition hover:bg-ds-bg2 hover:text-ds-text"
                                         >
-                                            Reset
+                                            {t('briefs.index.actions.reset')}
                                         </button>
 
                                         <button
@@ -367,7 +373,7 @@ export default function Index({ briefs,filters }: IndexBriefProps) {
                                         hover:text-ds-text
                                     "
                                 >
-                                    Reset
+                                    {t('briefs.index.actions.reset')}
                                 </button>
                             </div>
 
@@ -538,13 +544,15 @@ export default function Index({ briefs,filters }: IndexBriefProps) {
                             </div>
                             <p className="font-heading text-ds-text text-[15px] font-semibold">{t('briefs.index.empty.title')}</p>
                             <p className="text-ds-text2 mt-1 text-[13px]">{t('briefs.index.empty.description')}</p>
-                            <Link
-                                href={route('dashboard.briefs.create')}
-                                className="bg-ds-accent mt-5 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#7C74FF]"
-                            >
-                                <Plus size={14} />
-                                {t('briefs.index.actions.create')}
-                            </Link>
+                            {canCreateBriefs && (
+                                <Link
+                                    href={route('dashboard.briefs.create')}
+                                    className="bg-ds-accent mt-5 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#7C74FF]"
+                                >
+                                    <Plus size={14} />
+                                    {t('briefs.index.actions.create')}
+                                </Link>
+                            )}
                         </div>
                     )}
 
@@ -629,7 +637,7 @@ export default function Index({ briefs,filters }: IndexBriefProps) {
                             </div>
                         </div>
                     )}
-                </div>
+                
 
                 {deletingBrief && (
                     <DeleteModal

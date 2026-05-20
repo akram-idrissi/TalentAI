@@ -18,5 +18,6 @@ Route::post('/locale', function (Request $request) {
 })->name('locale.switch');
 
 require __DIR__.'/dashboard.php';
+require __DIR__.'/roles.php';
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

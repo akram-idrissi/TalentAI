@@ -250,7 +250,7 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
                             className="bg-ds-accent flex items-center gap-2 rounded-lg px-4 py-2.5 text-[13px] font-medium text-white hover:bg-[#7C74FF]"
                         >
                             <Search size={14} />
-                            Définir les filtres
+                            {t('briefs.index.actions.search')}
                         </button>
                         <button
                             onClick={() => {
@@ -261,7 +261,7 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
                             className="border-ds-border text-ds-text2 hover:bg-ds-surface flex items-center gap-2 rounded-lg border px-4 py-2.5 text-[13px]"
                         >
                             <RotateCcw size={13} />
-                            Reset
+                            {t('briefs.index.actions.reset')}
                         </button>
 
                         {/* Add button */}
@@ -356,7 +356,7 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
                                             onClick={() => {setActiveFilters([]),setFilterModalOpen(false)}}
                                             className="rounded-lg border border-ds-border bg-ds-bg3 px-4 py-2 text-[13px] font-medium text-ds-text2 transition hover:bg-ds-bg2 hover:text-ds-text"
                                         >
-                                            Reset
+                                            {t('briefs.index.actions.reset')}
                                         </button>
 
                                         <button
@@ -398,7 +398,7 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
                                         hover:text-ds-text
                                     "
                                 >
-                                    Reset
+                                    {t('briefs.index.actions.reset')}
                                 </button>
                             </div>
 

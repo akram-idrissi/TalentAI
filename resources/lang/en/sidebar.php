@@ -22,10 +22,17 @@ return [
         'title' => 'Interviews',
         'list' => 'Interviews',
         'reports' => 'AI Reports',
+        'cv-analysis' => 'CV Analysis',
     ],
 
     'settings' => [
         'title' => 'Settings',
         'integrations' => 'Integrations',
+    ],
+    'administration' => [
+        'title' => 'Administration',
+        'users' => 'Users',
+        'roles' => 'Roles',
+        'activity_logs' => 'Activity Log',
     ],
 ];

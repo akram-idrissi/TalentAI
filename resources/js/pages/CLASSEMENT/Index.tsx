@@ -3,6 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import { Award, Download, Phone, RotateCcw, Search } from 'lucide-react';
 import { useState } from 'react';
 import ReactSelect from 'react-select';
+import { useI18n } from '@/hooks/useI18n';
 
 interface Brief {
     id: number;
@@ -75,8 +76,10 @@ function initials(name: string) {
 const SUMMARY_LIMIT = 120;
 
 export default function ClassementIndex({ briefs, selectedBriefId, candidates }: Props) {
+
     const [selected, setSelected] = useState<Candidate | null>(candidates[0] ?? null);
     const [expanded, setExpanded] = useState(false);
+        const { t } = useI18n();
 
     const currentBrief = briefs.find((b) => b.id === selectedBriefId) ?? null;
        const [filterModalOpen, setFilterModalOpen] = useState(false);
@@ -188,7 +191,7 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
                             className="bg-ds-accent flex items-center gap-2 rounded-lg px-4 py-2.5 text-[13px] font-medium text-white hover:bg-[#7C74FF]"
                         >
                             <Search size={14} />
-                            Définir les filtres
+                            {t('briefs.index.actions.search')}
                         </button>
 
                         <button
@@ -200,7 +203,7 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
                             className="border-ds-border text-ds-text2 hover:bg-ds-surface flex items-center gap-2 rounded-lg border px-4 py-2.5 text-[13px]"
                         >
                             <RotateCcw size={13} />
-                            Reset
+                           {t('briefs.index.actions.reset')}
                         </button>
 
                     </div>
@@ -287,7 +290,7 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
                                             onClick={() => {setActiveFilters([]),setFilterModalOpen(false)}}
                                             className="rounded-lg border border-ds-border bg-ds-bg3 px-4 py-2 text-[13px] font-medium text-ds-text2 transition hover:bg-ds-bg2 hover:text-ds-text"
                                         >
-                                            Reset
+                                            {t('briefs.index.actions.reset')}
                                         </button>
 
                                         <button
@@ -329,7 +332,7 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
                                         hover:text-ds-text
                                     "
                                 >
-                                    Reset
+                                    {t('briefs.index.actions.reset')}
                                 </button>
                             </div>
 

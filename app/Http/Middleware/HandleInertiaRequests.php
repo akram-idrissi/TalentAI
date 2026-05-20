@@ -44,6 +44,8 @@ class HandleInertiaRequests extends Middleware
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
                 'user' => $request->user(),
+                'roles' => fn () => $request->user()?->roleNames() ?? [],
+                'permissions' => fn () => $request->user()?->permissionNames() ?? [],
             ],
             'flash' => [
                 'success' => fn () => session('success'),
@@ -59,6 +61,10 @@ class HandleInertiaRequests extends Middleware
                 'briefs' => __('briefs'),
                 'integrations' => __('integrations'),
                 'candidats' => __('candidats'),
+                'users' => __('users'),
+                'roles' => __('roles'),
+                'activity_logs' => __('activity_logs'),
+                'errors' => __('errors'),
             ],
         ];
     }
