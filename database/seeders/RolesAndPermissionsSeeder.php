@@ -38,9 +38,7 @@ class RolesAndPermissionsSeeder extends Seeder
             // Interviews
             'interviews.view',
             'interviews.create',
-            'interviews.edit',
-            'interviews.delete',
-            'interviews.approve',
+            'interviews.upload',
 
             // Reports
             'reports.view',
@@ -96,7 +94,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'briefs.view', 'briefs.create', 'briefs.edit', 'briefs.delete', 'briefs.approve',
             'sourcing.view', 'sourcing.create', 'sourcing.edit', 'sourcing.delete',
             'candidates.view', 'candidates.create', 'candidates.edit', 'candidates.delete', 'candidates.export',
-            'interviews.view', 'interviews.create', 'interviews.edit', 'interviews.delete', 'interviews.approve',
+            'interviews.view', 'interviews.create', 'interviews.upload',
             'reports.view', 'reports.export',
             'integrations.view', 'integrations.manage',
             'classement.view', 'classement.manage',
@@ -112,7 +110,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'briefs.view', 'briefs.create', 'briefs.edit',
             'sourcing.view', 'sourcing.create', 'sourcing.edit', 'sourcing.delete',
             'candidates.view', 'candidates.create', 'candidates.edit', 'candidates.delete', 'candidates.export',
-            'interviews.view', 'interviews.create', 'interviews.edit', 'interviews.delete',
+            'interviews.view', 'interviews.create', 'interviews.upload',
             'reports.view',
             'classement.view', 'classement.manage',
         ]);
@@ -124,7 +122,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'briefs.view', 'briefs.approve',
             'sourcing.view',
             'candidates.view', 'candidates.export',
-            'interviews.view', 'interviews.approve',
+            'interviews.view',
             'reports.view', 'reports.export',
             'classement.view',
         ]);

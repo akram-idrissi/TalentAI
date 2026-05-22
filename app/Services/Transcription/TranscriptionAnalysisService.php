@@ -8,9 +8,11 @@ use Illuminate\Support\Facades\Log;
 class TranscriptionAnalysisService
 {
     // OpenRouter model string for Claude Sonnet 4
-    private const MODEL = 'anthropic/claude-sonnet-4';
+    // private const MODEL = 'anthropic/claude-sonnet-4';
+    private const MODEL = 'mistralai/mistral-small-3.2-24b-instruct';
 
-    private const MAX_TOKENS = 4096;
+    // private const MAX_TOKENS = 4096;
+    private const MAX_TOKENS = 1024;
 
     private string $apiKey;
 
@@ -95,6 +97,10 @@ de manière objective, rigoureuse et bienveillante.
 
 Tes évaluations sont structurées, basées sur des preuves tirées de la transcription, et toujours
 exprimées en français professionnel.
+
+Si la transcription est trop courte, illisible ou hors sujet pour évaluer un critère,
+attribue un score de 0 et indique "Données insuffisantes." dans le commentaire.
+Ne jamais inventer des éléments absents de la transcription.
 
 Tu réponds UNIQUEMENT en JSON valide, sans markdown, sans balises de code, sans texte avant ou après.
 Le JSON doit respecter exactement le schéma fourni dans le prompt utilisateur.

@@ -43,12 +43,6 @@ return [
     'openrouter' => [
         'key' => env('OPEN_ROUTER_KEY'),
     ],
-    'groq' => [
-        'key' => env('GROQ_API_KEY'),
-    ],
-    'ffmpeg' => [
-        'path' => env('FFMPEG_PATH', 'ffmpeg'),
-    ],
     'assemblyai' => [
         'key' => env('ASSEMBLYAI_API_KEY'),
     ],

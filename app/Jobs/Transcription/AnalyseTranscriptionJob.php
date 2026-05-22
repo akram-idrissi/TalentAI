@@ -63,6 +63,7 @@ class AnalyseTranscriptionJob implements ShouldQueue
             'analysis_verdict' => $result['verdict'],
             'analysis_result' => $result,
         ]);
+        $this->transcription->interview->update(['status' => 'done']);
 
         Log::info('AnalyseTranscriptionJob: analysis complete', [
             'transcription_id' => $this->transcription->id,
@@ -82,5 +83,6 @@ class AnalyseTranscriptionJob implements ShouldQueue
             'analysis_status' => 'failed',
             'analysis_error' => $e->getMessage(),
         ]);
+        $this->transcription->interview->update(['status' => 'analyzed']);
     }
 }

@@ -55,6 +55,7 @@ class HandleInertiaRequests extends Middleware
                 'success_count' => fn () => $request->session()->get('success_count'),
                 'total' => fn () => session('total'),
                 'test_result' => $request->session()->get('test_result'),
+                'interview_id' => fn () => $request->session()->get('interview_id'),
             ],
             'locale' => session('locale', config('app.locale')),
             'translations' => fn () => [
@@ -66,7 +67,7 @@ class HandleInertiaRequests extends Middleware
                 'roles' => __('roles'),
                 'activity_logs' => __('activity_logs'),
                 'errors' => __('errors'),
-                'transcriptions' => __('transcriptions'),
+                'interviews' => __('interviews'),
             ],
         ];
     }

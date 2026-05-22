@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Interview extends Model
@@ -21,6 +22,7 @@ class Interview extends Model
         'status',
         'scheduled_at',
         'completed_at',
+        'expectations',
     ];
 
     protected $casts = [
@@ -56,5 +58,10 @@ class Interview extends Model
     public function interviewer()
     {
         return $this->belongsTo(User::class, 'interviewer_id');
+    }
+
+    public function transcription(): HasOne
+    {
+        return $this->hasOne(Transcription::class, 'interview_id');
     }
 }
