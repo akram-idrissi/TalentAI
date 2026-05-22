@@ -188,6 +188,12 @@ class InterviewController extends Controller
         }
     }
 
+    /**
+     * Display a single interview with its transcription and analysis details.
+     *
+     * @param  Interview  $interview  Interview to display
+     * @return Response Inertia page — Interview/Show — or Fallback on failure
+     */
     public function show(Interview $interview): Response
     {
         $this->authorize('interviews.view');
@@ -272,16 +278,48 @@ class InterviewController extends Controller
         }
     }
 
+    /**
+     * Return the transcription and analysis status for an interview.
+     *
+     * @param  Interview  $interview  Interview being tracked
+     * @return JsonResponse Current processing status, or an error payload on failure
+     */
     public function status(Interview $interview): JsonResponse
     {
         $this->authorize('interviews.view');
-        $interview->load('transcription');
-        $transcription = $interview->transcription;
 
-        return response()->json([
-            'status' => $transcription?->status ?? 'pending',
-            'analysis_status' => $transcription?->analysis_status ?? 'pending',
-            'error' => $transcription?->error ?? null,
-        ]);
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $interview->load('transcription');
+            $transcription = $interview->transcription;
+
+            $logger->log(
+                'interview.status',
+                "Suivi du statut de l'entretien (ID : {$interview->id}).",
+                ['interview_id' => $interview->id],
+                [Interview::class]
+            );
+
+            return response()->json([
+                'status' => $transcription?->status ?? 'pending',
+                'analysis_status' => $transcription?->analysis_status ?? 'pending',
+                'error' => $transcription?->error ?? null,
+            ]);
+        } catch (\Throwable $e) {
+            $logger->log(
+                'interview.status.error',
+                "Erreur lors du suivi du statut de l'entretien (ID : {$interview->id}) : ".$e->getMessage(),
+                ['interview_id' => $interview->id, 'exception' => $e->getMessage()],
+                [Interview::class]
+            );
+
+            return response()->json([
+                'status' => 'failed',
+                'analysis_status' => 'failed',
+                'error' => 'Impossible de récupérer le statut de cet entretien.',
+            ], 500);
+        }
     }
 }
