@@ -8,6 +8,7 @@ use App\Enums\GenderPref;
 use App\Http\Controllers\Controller;
 use App\Models\Brief;
 use App\Services\ActivityLogger;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -22,6 +23,44 @@ class BriefController extends Controller
      *
      * @return array<string, mixed>
      */
+    private function applyFilters(Builder $query, array $filters): void
+    {
+        $allowedFields = [
+            'title',
+            'sector',
+            'contract_type',
+            'location',
+            'salary_range',
+            'min_experience_years',
+            'education_level',
+            'languages',
+            'seniority_level',
+            'target_companies',
+            'gender_pref',
+            'age_range',
+            'status',
+        ];
+
+        foreach ($filters as $filter) {
+            if (
+                ! is_array($filter) ||
+                empty($filter['field']) ||
+                ! isset($filter['value']) ||
+                $filter['value'] === ''
+            ) {
+                continue;
+            }
+
+            $field = in_array($filter['field'], $allowedFields) ? $filter['field'] : null;
+
+            if (! $field) {
+                continue;
+            }
+
+            $query->where($field, 'like', '%'.$filter['value'].'%');
+        }
+    }
+
     private function rules(): array
     {
         return [
@@ -60,12 +99,16 @@ class BriefController extends Controller
     {
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
-
         try {
 
-            $briefs = Brief::with('creator')
-                ->when($request->search, fn ($q, $s) => $q->where('title', 'like', "%$s%"))
-                ->when($request->status, fn ($q, $s) => $q->where('status', $s))
+            $query = Brief::with('creator');
+            $filters = $request->input('filters');
+            if (is_string($filters)) {
+                $filters = json_decode($filters, true);
+            }
+            $filters = is_array($filters) ? $filters : [];
+            $this->applyFilters($query, $filters);
+            $briefs = $query
                 ->latest()
                 ->paginate(10)
                 ->through(fn ($brief) => [
@@ -81,22 +124,25 @@ class BriefController extends Controller
                     'created_by' => $brief->creator?->name,
                     'created_at' => $brief->created_at->toDateTimeString(),
                 ]);
-
             $logger->log(
                 'brief.index',
                 'Consultation de la liste des briefs.',
-                ['filters' => $request->only(['search', 'status'])],
+                [
+                    'filters' => $filters ?? [],
+                ],
                 [Brief::class]
             );
 
             return Inertia::render('Briefs/Index', [
                 'briefs' => $briefs,
-                'filters' => $request->only(['search', 'status']),
+                'filters' => $filters ?? [],
             ]);
+
         } catch (\Throwable $e) {
+
             $logger->log(
                 'brief.index.error',
-                'Erreur lors de la récupération de la liste des briefs : '.$e->getMessage(),
+                'Erreur lors de la récupération des briefs : '.$e->getMessage(),
                 ['exception' => $e->getMessage()],
                 [Brief::class]
             );
@@ -175,7 +221,7 @@ class BriefController extends Controller
                 $logger->log(
                     'brief.store',
                     "Création du brief « {$brief->title} » (ID : {$brief->id}).",
-                    ['brief_id' => $brief->id, 'title' => $brief->title],
+                    [$request->all()],
                     [Brief::class]
                 );
             } catch (\Throwable) {

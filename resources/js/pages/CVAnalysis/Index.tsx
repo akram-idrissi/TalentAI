@@ -1,8 +1,11 @@
+import FilterPanel, { FilterEntry } from '@/components/ui/FilterPanel';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useI18n } from '@/hooks/useI18n';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Brain, Briefcase, FileSearch, Plus, Search, Sparkles } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
-import ReactSelect from 'react-select';
+import { Brain, Briefcase, FileSearch, Plus, Sparkles } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { toast } from 'react-hot-toast';
 
 interface Brief {
     id: number;
@@ -58,34 +61,46 @@ function initials(name: string) {
 
 export default function Index() {
     const { analyses, briefs, filters } = usePage().props as unknown as PageProps;
-
+    const { t } = useI18n();
     const [selected, setSelected] = useState<Analysis | null>(analyses?.[0] ?? null);
-
-    const [search, setSearch] = useState(filters?.search ?? '');
-
-    const [briefId, setBriefId] = useState(filters?.brief_id ?? '');
-
     const [lang, setLang] = useState('fr');
+    const [loading, setLoading] = useState(false);
+    const [activeFilters, setActiveFilters] = useState<FilterEntry[]>(Array.isArray(filters) ? filters : []);
 
-    // SEARCH + FILTER
-    useEffect(() => {
-        const timeout = setTimeout(() => {
-            router.get(
-                route('dashboard.cv-analysis.index'),
-                {
-                    search,
-                    brief_id: briefId,
-                },
-                {
-                    preserveState: true,
-                    preserveScroll: true,
-                    replace: true,
-                },
-            );
-        }, 400);
+    const FILTER_FIELDS = [
+        { key: 'full_name', label: t('candidats.index.filters.full_name'), type: 'text' as const },
+        { key: 'score', label: t('briefs.classement.filters.score'), type: 'number' as const },
+        { key: 'extracted_text.technical_skills', label: t('briefs.classement.filters.skills'), type: 'text' as const },
+        {
+            key: 'brief',
+            label: t('briefs.classement.filters.brief'),
+            type: 'select' as const,
+            options: briefs.map((b) => ({ value: String(b.id), label: b.title })),
+        },
+    ];
 
-        return () => clearTimeout(timeout);
-    }, [search, briefId]);
+    function handleSearch(filtersOverride?: FilterEntry[]) {
+        const toSearch = filtersOverride ?? activeFilters;
+        const cleanFilters = toSearch
+            .filter((f) => (Array.isArray(f.value) ? f.value.length > 0 : f.value && String(f.value).trim() !== ''))
+            .map((f) => ({ field: f.field, value: Array.isArray(f.value) ? f.value.join(',') : f.value }));
+
+        router.get(
+            route('dashboard.cv-analysis.index'),
+            { filters: JSON.stringify(cleanFilters) },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                onStart: () => setLoading(true),
+                onFinish: () => setLoading(false),
+                onSuccess: (page) => {
+                    const count = (page.props as { analyses?: unknown[] }).analyses?.length ?? 0;
+                    toast.success(`${count} analyse${count !== 1 ? 's' : ''} trouvée${count !== 1 ? 's' : ''}`);
+                },
+                onError: () => toast.error('Erreur lors de la recherche'),
+            },
+        );
+    }
 
     const parsedTags = useMemo(() => {
         if (!selected?.ai_tags) return [];
@@ -123,63 +138,44 @@ export default function Index() {
                     </div>
 
                     {/* FILTERS */}
-                    <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-                        {/* SEARCH */}
-                        <div className="relative">
-                            <Search size={16} className="text-ds-text3 absolute top-1/2 left-4 -translate-y-1/2" />
-
-                            <input
-                                type="text"
-                                placeholder="Rechercher candidat..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="border-ds-border bg-ds-surface text-ds-text2 w-full rounded-xl border py-[9px] pr-4 pl-10 text-sm transition outline-none focus:border-[#6C63FF] focus:ring-0"
-                            />
-                        </div>
-
-                        {/* FILTER BRIEF */}
-                        {/* <select
-                            value={briefId}
-                            onChange={(e) =>
-                                setBriefId(e.target.value)
-                            }
-                            className="border-ds-border bg-ds-surface text-ds-text focus:border-[#6C63FF] rounded-2xl border px-4 py-3 text-sm outline-none transition"
-                        >
-                            <option value="">
-                                Tous les briefs
-                            </option>
-
-                            {briefs?.map((brief: any) => (
-                                <option
-                                    key={brief.id}
-                                    value={brief.id}
-                                >
-                                    {brief.title}
-                                </option>
-                            ))}
-
-                        </select> */}
-                        <ReactSelect
-                            classNamePrefix="rs"
-                            options={briefs.map((brief) => ({
-                                value: String(brief.id),
-                                label: brief.title,
-                            }))}
-                            value={
-                                briefs
-                                    .map((brief) => ({
-                                        value: String(brief.id),
-                                        label: brief.title,
-                                    }))
-                                    .find((option) => option.value === briefId) ?? null
-                            }
-                            onChange={(option) => setBriefId(option?.value ?? '')}
-                            placeholder={'Choose brief'}
+                    <div className="mb-5">
+                        <FilterPanel
+                            fields={FILTER_FIELDS}
+                            activeFilters={activeFilters}
+                            onChange={setActiveFilters}
+                            onSearch={handleSearch}
+                            loading={loading}
                         />
                     </div>
 
+                    {/* Skeleton while loading */}
+                    {loading && (
+                        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                            <div className="space-y-4 lg:col-span-2">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                    <div key={i} className="border-ds-border bg-ds-surface rounded-3xl border p-5">
+                                        <div className="flex items-start gap-4">
+                                            <Skeleton className="bg-ds-bg3 h-14 w-14 shrink-0 rounded-full" />
+                                            <div className="flex-1 space-y-2 pt-1">
+                                                <Skeleton className="bg-ds-bg3 h-4 w-2/3" />
+                                                <Skeleton className="bg-ds-bg3 h-3 w-1/2" />
+                                                <Skeleton className="bg-ds-bg3 h-3 w-3/4" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="border-ds-border bg-ds-surface space-y-4 rounded-3xl border p-6">
+                                <Skeleton className="bg-ds-bg3 mx-auto h-16 w-16 rounded-full" />
+                                <Skeleton className="bg-ds-bg3 mx-auto h-4 w-3/4" />
+                                <Skeleton className="bg-ds-bg3 mx-auto h-3 w-1/2" />
+                                <Skeleton className="bg-ds-bg3 h-24 w-full rounded-xl" />
+                            </div>
+                        </div>
+                    )}
+
                     {/* EMPTY */}
-                    {(!analyses || analyses.length === 0) && (
+                    {!loading && (!analyses || analyses.length === 0) && (
                         <div className="border-ds-border bg-ds-surface flex flex-col items-center justify-center rounded-3xl border py-28 text-center">
                             <FileSearch size={60} className="text-ds-text3 mb-4" />
 
@@ -190,7 +186,7 @@ export default function Index() {
                     )}
 
                     {/* CONTENT */}
-                    {analyses?.length > 0 && (
+                    {!loading && analyses?.length > 0 && (
                         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                             {/* LEFT */}
                             <div className="space-y-4 lg:col-span-2">
@@ -324,7 +320,7 @@ export default function Index() {
                                             <h3 className="font-bold">Skills CV</h3>
                                         </div>
 
-                                        {selected.extracted_text.technical_skills.length > 0 ? (
+                                        {selected?.extracted_text?.technical_skills?.length > 0 ? (
                                             <div className="flex flex-wrap gap-2">
                                                 {selected.extracted_text.technical_skills.map((tag: string, index: number) => (
                                                     <span
@@ -347,7 +343,7 @@ export default function Index() {
                                             <h3 className="font-bold">Skills Brif</h3>
                                         </div>
 
-                                        {(selected.brief?.required_skills?.length ?? 0) > 0 ? (
+                                        {(selected?.brief?.required_skills?.length ?? 0) > 0 ? (
                                             <div className="flex flex-wrap gap-2">
                                                 <p className="text-ds-text2">{selected.brief?.required_skills}</p>
                                             </div>

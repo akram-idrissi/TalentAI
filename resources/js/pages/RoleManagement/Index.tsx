@@ -1,10 +1,13 @@
+import FilterPanel, { FilterEntry } from '@/components/ui/FilterPanel';
+import SkeletonTable from '@/components/ui/SkeletonTable';
 import { useI18n } from '@/hooks/useI18n';
 import { usePermission } from '@/hooks/usePermission';
 import AppLayout from '@/layouts/app-layout';
 import { PageProps } from '@/types/roles';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { Edit2, Plus, Shield, Users } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'react-hot-toast';
 import { CreateRoleModal } from './components/CreateRoleModal';
 import { RoleUsersModal } from './components/RoleUsersModal';
 import { ROLE_COLORS } from './constants';
@@ -17,12 +20,62 @@ function formatPermission(perm: string, t: (key: string, opts?: Record<string, u
 }
 
 export default function RolesIndex() {
-    const { roles, allPermissions } = usePage<PageProps>().props;
+    const { roles, allPermissions, filters } = usePage<PageProps>().props;
     const { t } = useI18n();
     const { can } = usePermission();
 
     const [viewingRoleId, setViewingRoleId] = useState<number | null>(null);
     const [showCreate, setShowCreate] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    const initFilters: FilterEntry[] = [];
+    if (filters?.role) initFilters.push({ field: 'role', value: filters.role });
+    if (filters?.permissions?.length) initFilters.push({ field: 'permissions', value: filters.permissions });
+    const [activeFilters, setActiveFilters] = useState<FilterEntry[]>(initFilters);
+
+    const allPermsList = Object.values(allPermissions).flat();
+
+    const FILTER_FIELDS = [
+        {
+            key: 'role',
+            label: t('roles.index.table.role'),
+            type: 'select' as const,
+            multi: true,
+            options: roles.map((r) => ({ value: r.name, label: t(`roles.roles.${r.name}`, { fallback: r.name }) })),
+        },
+        {
+            key: 'permissions',
+            label: t('roles.index.table.permissions'),
+            type: 'select' as const,
+            multi: true,
+            options: allPermsList.map((p) => ({ value: p, label: formatPermission(p, t) })),
+        },
+    ];
+
+    function handleSearch() {
+        const role = activeFilters.find((f) => f.field === 'role')?.value ?? '';
+        const permissions = activeFilters.find((f) => f.field === 'permissions')?.value ?? [];
+
+        router.get(
+            route('dashboard.roles.index'),
+            {
+                ...(role ? { role: String(role) } : {}),
+                ...(Array.isArray(permissions) && permissions.length ? { permissions } : {}),
+            },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+                onStart: () => setLoading(true),
+                onFinish: () => setLoading(false),
+                onSuccess: (page) => {
+                    const count = (page.props as { roles?: unknown[] }).roles?.length ?? 0;
+                    toast.success(count === 1 ? t('roles.index.table.user_count.one') : `${count} ${t('roles.index.nav.users').toLowerCase()}`);
+                },
+                onError: () => toast.error(t('roles.index.flash.index_error')),
+            },
+        );
+    }
 
     const viewingRole = viewingRoleId !== null ? (roles.find((r) => r.id === viewingRoleId) ?? null) : null;
 
@@ -59,110 +112,125 @@ export default function RolesIndex() {
                         </div>
                     </div>
 
-                    {/* Table */}
-                    <div className="border-ds-border bg-ds-surface overflow-hidden rounded-xl border">
-                        <div className="overflow-x-auto">
-                            <table className="w-full border-collapse text-[13px]">
-                                <thead>
-                                    <tr className="border-ds-border border-b">
-                                        {TABLE_COLS.map((col, i) => (
-                                            <th
-                                                key={i}
-                                                className="text-ds-text3 px-4 py-3 text-left text-[10px] font-semibold tracking-[0.8px] uppercase"
-                                            >
-                                                {col}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {roles.map((role) => {
-                                        const userCount =
-                                            role.users_count === 1
-                                                ? t('roles.index.table.user_count.one')
-                                                : t('roles.index.table.user_count.other', { count: role.users_count });
-
-                                        return (
-                                            <tr
-                                                key={role.id}
-                                                className="border-ds-border hover:bg-ds-bg3/40 border-b transition-colors last:border-0"
-                                            >
-                                                {/* Role name */}
-                                                <td className="px-4 py-4 align-top">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="bg-ds-accent/10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full">
-                                                            <Shield size={15} className="text-ds-accent" />
-                                                        </div>
-                                                        <span
-                                                            className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_COLORS[role.name] ?? ROLE_COLORS.viewer}`}
-                                                        >
-                                                            {t(`roles.roles.${role.name}`, { fallback: role.name })}
-                                                        </span>
-                                                    </div>
-                                                </td>
-
-                                                {/* User count — clickable */}
-                                                <td className="px-4 py-4 align-top">
-                                                    <button
-                                                        onClick={() => setViewingRoleId(role.id)}
-                                                        className="text-ds-accent text-[13px] font-medium hover:underline"
-                                                    >
-                                                        {userCount}
-                                                    </button>
-                                                </td>
-
-                                                {/* Permission pills */}
-                                                <td className="px-4 py-4 align-top">
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {role.name === 'super_admin' ? (
-                                                            <span className="border-ds-accent/20 bg-ds-accent/10 text-ds-accent2 inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold">
-                                                                {t('roles.index.table.all_permissions')}
-                                                            </span>
-                                                        ) : role.permissions.length === 0 ? (
-                                                            <span className="text-ds-text3 text-xs">{t('roles.index.table.no_permissions')}</span>
-                                                        ) : (
-                                                            <>
-                                                                {(role.permissions as string[]).slice(0, 4).map((perm) => (
-                                                                    <span
-                                                                        key={perm}
-                                                                        className="border-ds-border bg-ds-bg3 text-ds-text2 rounded-full border px-2 py-0.5 text-[11px]"
-                                                                    >
-                                                                        {formatPermission(perm, t)}
-                                                                    </span>
-                                                                ))}
-                                                                {role.permissions.length > 4 && (
-                                                                    <span className="border-ds-border bg-ds-bg3 text-ds-text3 rounded-full border px-2 py-0.5 text-[11px]">
-                                                                        {t('roles.index.table.more', {
-                                                                            count: role.permissions.length - 4,
-                                                                        })}
-                                                                    </span>
-                                                                )}
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                </td>
-
-                                                {/* Actions */}
-                                                <td className="px-4 py-4 align-top">
-                                                    <div className="flex items-center justify-end gap-1">
-                                                        {can('roles.manage') && role.name !== 'super_admin' && (
-                                                            <a
-                                                                href={route('dashboard.roles.edit', role.id)}
-                                                                className="border-ds-border text-ds-text3 hover:border-ds-accent/40 hover:text-ds-accent flex h-7 w-7 items-center justify-center rounded-lg border transition"
-                                                                title={t('roles.index.table.actions.edit')}
-                                                            >
-                                                                <Edit2 size={13} />
-                                                            </a>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
+                    {/* Filter panel */}
+                    <div className="mb-4">
+                        <FilterPanel
+                            fields={FILTER_FIELDS}
+                            activeFilters={activeFilters}
+                            onChange={setActiveFilters}
+                            onSearch={handleSearch}
+                            loading={loading}
+                        />
                     </div>
+
+                    {/* Table or skeleton */}
+                    {loading ? (
+                        <SkeletonTable cols={TABLE_COLS.length} rows={roles.length || 5} />
+                    ) : (
+                        <div className="border-ds-border bg-ds-surface overflow-hidden rounded-xl border">
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse text-[13px]">
+                                    <thead>
+                                        <tr className="border-ds-border border-b">
+                                            {TABLE_COLS.map((col, i) => (
+                                                <th
+                                                    key={i}
+                                                    className="text-ds-text3 px-4 py-3 text-left text-[10px] font-semibold tracking-[0.8px] uppercase"
+                                                >
+                                                    {col}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {roles.map((role) => {
+                                            const userCount =
+                                                role.users_count === 1
+                                                    ? t('roles.index.table.user_count.one')
+                                                    : t('roles.index.table.user_count.other', { count: role.users_count });
+
+                                            return (
+                                                <tr
+                                                    key={role.id}
+                                                    className="border-ds-border hover:bg-ds-bg3/40 border-b transition-colors last:border-0"
+                                                >
+                                                    {/* Role name */}
+                                                    <td className="px-4 py-4 align-top">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="bg-ds-accent/10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full">
+                                                                <Shield size={15} className="text-ds-accent" />
+                                                            </div>
+                                                            <span
+                                                                className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_COLORS[role.name] ?? ROLE_COLORS.viewer}`}
+                                                            >
+                                                                {t(`roles.roles.${role.name}`, { fallback: role.name })}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+
+                                                    {/* User count — clickable */}
+                                                    <td className="px-4 py-4 align-top">
+                                                        <button
+                                                            onClick={() => setViewingRoleId(role.id)}
+                                                            className="text-ds-accent text-[13px] font-medium hover:underline"
+                                                        >
+                                                            {userCount}
+                                                        </button>
+                                                    </td>
+
+                                                    {/* Permission pills */}
+                                                    <td className="px-4 py-4 align-top">
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {role.name === 'super_admin' ? (
+                                                                <span className="border-ds-accent/20 bg-ds-accent/10 text-ds-accent2 inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold">
+                                                                    {t('roles.index.table.all_permissions')}
+                                                                </span>
+                                                            ) : role.permissions.length === 0 ? (
+                                                                <span className="text-ds-text3 text-xs">{t('roles.index.table.no_permissions')}</span>
+                                                            ) : (
+                                                                <>
+                                                                    {(role.permissions as string[]).slice(0, 4).map((perm) => (
+                                                                        <span
+                                                                            key={perm}
+                                                                            className="border-ds-border bg-ds-bg3 text-ds-text2 rounded-full border px-2 py-0.5 text-[11px]"
+                                                                        >
+                                                                            {formatPermission(perm, t)}
+                                                                        </span>
+                                                                    ))}
+                                                                    {role.permissions.length > 4 && (
+                                                                        <span className="border-ds-border bg-ds-bg3 text-ds-text3 rounded-full border px-2 py-0.5 text-[11px]">
+                                                                            {t('roles.index.table.more', {
+                                                                                count: role.permissions.length - 4,
+                                                                            })}
+                                                                        </span>
+                                                                    )}
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Actions */}
+                                                    <td className="px-4 py-4 align-top">
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            {can('roles.manage') && role.name !== 'super_admin' && (
+                                                                <a
+                                                                    href={route('dashboard.roles.edit', role.id)}
+                                                                    className="border-ds-border text-ds-text3 hover:border-ds-accent/40 hover:text-ds-accent flex h-7 w-7 items-center justify-center rounded-lg border transition"
+                                                                    title={t('roles.index.table.actions.edit')}
+                                                                >
+                                                                    <Edit2 size={13} />
+                                                                </a>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Modals */}

@@ -182,6 +182,30 @@ return [
             'cancel' => 'Cancel',
             'confirm' => 'Yes, delete',
         ],
+
+        'filters' => [
+            'full_name' => 'Full name',
+            'headline' => 'Headline',
+            'location' => 'Location',
+            'current_company' => 'Company',
+            'current_title' => 'Current position',
+            'experience_years' => 'Experience',
+            'education_level' => 'Education',
+            'sector' => 'Sector',
+            'source' => 'Source',
+            'status' => 'Status',
+            'open_to_work' => 'Open to Work',
+            'yes' => 'Yes',
+            'no' => 'No',
+            'status_options' => [
+                'sourced' => 'Sourced',
+                'contacted' => 'Contacted',
+                'interview' => 'Interview',
+                'recommended' => 'Recommended',
+                'offer' => 'Offer',
+                'rejected' => 'Rejected',
+            ],
+        ],
     ],
 
 ];
