@@ -182,6 +182,30 @@ return [
             'cancel' => 'Annuler',
             'confirm' => 'Oui, supprimer',
         ],
+
+        'filters' => [
+            'full_name' => 'Nom complet',
+            'headline' => 'Titre professionnel',
+            'location' => 'Localisation',
+            'current_company' => 'Entreprise',
+            'current_title' => 'Poste actuel',
+            'experience_years' => 'Expérience',
+            'education_level' => 'Éducation',
+            'sector' => 'Secteur',
+            'source' => 'Source',
+            'status' => 'Statut',
+            'open_to_work' => 'Open to Work',
+            'yes' => 'Oui',
+            'no' => 'Non',
+            'status_options' => [
+                'sourced' => 'Sourcé',
+                'contacted' => 'Contacté',
+                'interview' => 'Entretien',
+                'recommended' => 'Recommandé',
+                'offer' => 'Offre',
+                'rejected' => 'Rejeté',
+            ],
+        ],
     ],
 
 ];

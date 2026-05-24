@@ -167,6 +167,14 @@ return [
         ],
     ],
 
+    'classement' => [
+        'filters' => [
+            'score' => 'Score',
+            'skills' => 'Compétences',
+            'brief' => 'Brief',
+        ],
+    ],
+
     'index' => [
         'breadcrumb' => 'Recrutement / Briefs',
         'title' => 'Gestion des briefs',
@@ -177,10 +185,62 @@ return [
         'actions' => [
             'create' => 'Créer un brief',
             'search' => 'Rechercher',
+            'filters' => 'Filtres',
+            'apply' => 'Appliquer',
             'reset' => 'Réinitialiser',
             'view' => 'Voir',
             'edit' => 'Modifier',
             'delete' => 'Supprimer',
+        ],
+
+        'filters' => [
+            'modal_title' => 'Filtres avancés',
+            'modal_subtitle' => 'Sélectionnez les filtres à afficher',
+            'active_title' => 'Filtres actifs',
+            'active_subtitle' => 'Configurez vos filtres de recherche',
+            'selected_count' => 'filtre(s) sélectionné(s)',
+            'select_placeholder' => 'Sélectionner...',
+            'search_btn' => 'Rechercher',
+            'fields' => [
+                'title' => 'Poste',
+                'sector' => 'Secteur',
+                'contract_type' => 'Contrat',
+                'location' => 'Localisation',
+                'min_experience_years' => 'Expérience',
+                'education_level' => 'Éducation',
+                'status' => 'Statut',
+            ],
+            'sector_options' => [
+                'commerce' => 'Commerce & Vente',
+                'tech' => 'Tech & Digital',
+                'finance' => 'Finance & Audit',
+                'rh' => 'RH & Formation',
+                'marketing' => 'Marketing',
+                'operations' => 'Opérations & Logistique',
+                'juridique' => 'Juridique',
+                'sante' => 'Santé',
+            ],
+            'contract_options' => [
+                'CDI' => 'CDI',
+                'CDD' => 'CDD',
+                'freelance' => 'Freelance',
+                'stage' => 'Stage',
+            ],
+            'education_options' => [
+                'bac' => 'Bac',
+                'bac2' => 'Bac+2',
+                'bac3' => 'Bac+3 (Licence)',
+                'bac5' => 'Bac+5 (Master)',
+                'bac5_grande_ecole' => 'Bac+5 Grande École',
+                'doctorat' => 'Doctorat',
+            ],
+            'status_options' => [
+                'draft' => 'Brouillon',
+                'active' => 'Actif',
+                'sourcing' => 'En sourcing',
+                'interviews' => 'Entretiens',
+                'closed' => 'Clôturé',
+            ],
         ],
 
         'columns' => [
