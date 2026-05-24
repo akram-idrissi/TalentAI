@@ -6,6 +6,7 @@ use App\Enums\CandidatStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Candidat;
 use App\Services\ActivityLogger;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -20,6 +21,53 @@ class CandidatController extends Controller
      *
      * @return array<string, mixed>
      */
+    private function applyFilters(Builder $query, array $filters): void
+    {
+        $textFields = [
+            'full_name', 'headline', 'location', 'current_company',
+            'current_title', 'education_level', 'sector', 'source', 'status',
+        ];
+        $numberFields = ['experience_years'];
+        $booleanFields = ['open_to_work'];
+
+        foreach ($filters as $filter) {
+            if (
+                ! is_array($filter) ||
+                empty($filter['field']) ||
+                ! isset($filter['value']) ||
+                $filter['value'] === ''
+            ) {
+                continue;
+            }
+
+            $field = $filter['field'];
+            $value = $filter['value'];
+
+            if (in_array($field, $textFields)) {
+                $keywords = preg_split('/\s+/', trim($value));
+                $query->where(function ($q) use ($field, $keywords) {
+                    foreach ($keywords as $keyword) {
+                        $q->orWhere($field, 'LIKE', '%'.$keyword.'%');
+                    }
+                });
+
+                continue;
+            }
+
+            if (in_array($field, $numberFields)) {
+                $query->where($field, '>=', (int) $value);
+
+                continue;
+            }
+
+            if (in_array($field, $booleanFields)) {
+                $query->where($field, filter_var($value, FILTER_VALIDATE_BOOLEAN));
+
+                continue;
+            }
+        }
+    }
+
     private function rules(): array
     {
         return [
@@ -50,146 +98,85 @@ class CandidatController extends Controller
      * @param  Request  $request  Supports query params: `search` (string), `status` (CandidatStatus value)
      * @return Response Inertia page — Candidats/Index — or Candidats/Fallback on failure
      */
-public function index(Request $request): Response
-{
-    /** @var ActivityLogger $logger */
-    $logger = app(ActivityLogger::class);
+    public function index(Request $request): Response
+    {
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
 
-    try {
+        try {
 
-        $query = Candidat::query()
-            ->with([
-                'briefs' => fn ($q) =>
-                    $q->orderByDesc('brief_candidat.sourced_at')->limit(1)
-            ]);
-        $filters = $request->input('filters', []);
+            $query = Candidat::query()
+                ->with([
+                    'briefs' => fn ($q) => $q->orderByDesc('brief_candidat.sourced_at')->limit(1),
+                ]);
+            $filters = $request->input('filters', []);
 
-        if (is_string($filters)) {
-            $filters = json_decode($filters, true);
-        }
-
-        $filters = is_array($filters) ? $filters : [];
-        $textFields = [
-            'full_name',
-            'headline',
-            'location',
-            'current_company',
-            'current_title',
-            'education_level',
-            'sector',
-            'source',
-            'status',
-        ];
-
-        $numberFields = [
-            'experience_years',
-        ];
-
-        $booleanFields = [
-            'open_to_work',
-        ];
-
-        foreach ($filters as $filter) {
-
-            if (
-                !is_array($filter) ||
-                empty($filter['field']) ||
-                !isset($filter['value']) ||
-                $filter['value'] === ''
-            ) {
-                continue;
+            if (is_string($filters)) {
+                $filters = json_decode($filters, true);
             }
 
-            $field = $filter['field'];
-            $value = $filter['value'];
-            if (in_array($field, $textFields)) {
-                $keywords = preg_split('/\s+/', trim($value));
-                $query->where(function ($q) use ($field, $keywords) {
-                    foreach ($keywords as $keyword) {
-                        $q->orWhere(
-                            $field,
-                            'LIKE',
-                            '%' . $keyword . '%'
-                        );
-                    }
-                });
-                continue;
-            }
-            if (in_array($field, $numberFields)) {
-                $query->where(
-                    $field,
-                    '>=',
-                    (int) $value
-                );
-                continue;
-            }
-            if (in_array($field, $booleanFields)) {
+            $filters = is_array($filters) ? $filters : [];
+            $this->applyFilters($query, $filters);
+            $candidats = $query
+                ->latest()
+                ->paginate(10)
+                ->through(fn ($candidat) => [
 
-                $query->where(
-                    $field,
-                    filter_var($value, FILTER_VALIDATE_BOOLEAN)
-                );
-                continue;
-            }
-        }
-        $candidats = $query
-            ->latest()
-            ->paginate(10)
-            ->through(fn ($candidat) => [
+                    'id' => $candidat->id,
+                    'full_name' => $candidat->full_name,
+                    'email' => $candidat->email,
+                    'phone' => $candidat->phone,
+                    'headline' => $candidat->headline,
+                    'location' => $candidat->location,
+                    'current_title' => $candidat->current_title,
+                    'current_company' => $candidat->current_company,
+                    'experience_years' => $candidat->experience_years,
+                    'education_level' => $candidat->education_level,
+                    'sector' => $candidat->sector,
+                    'source' => $candidat->source,
+                    'linkedin_url' => $candidat->linkedin_url,
+                    'status' => $candidat->status,
+                    'open_to_work' => $candidat->open_to_work,
 
-                'id' => $candidat->id,
-                'full_name' => $candidat->full_name,
-                'email' => $candidat->email,
-                'phone' => $candidat->phone,
-                'headline' => $candidat->headline,
-                'location' => $candidat->location,
-                'current_title' => $candidat->current_title,
-                'current_company' => $candidat->current_company,
-                'experience_years' => $candidat->experience_years,
-                'education_level' => $candidat->education_level,
-                'sector' => $candidat->sector,
-                'source' => $candidat->source,
-                'linkedin_url' => $candidat->linkedin_url,
-                'status' => $candidat->status,
-                'open_to_work' => $candidat->open_to_work,
+                    'created_at' => $candidat->created_at?->toDateTimeString(),
 
-                'created_at' => $candidat->created_at?->toDateTimeString(),
+                    'brief_title' => $candidat->briefs->first()?->title,
 
-                'brief_title' => $candidat->briefs->first()?->title,
+                    'score_cv' => $candidat->briefs->first()?->pivot?->score
+                        ? round($candidat->briefs->first()->pivot->score)
+                        : null,
+                ]);
+            $logger->log(
+                'candidat.index',
+                'Consultation de la liste des candidats.',
+                [
+                    'filters' => $filters,
+                ],
+                [Candidat::class]
+            );
 
-                'score_cv' => $candidat->briefs->first()?->pivot?->score
-                    ? round($candidat->briefs->first()->pivot->score)
-                    : null,
-            ]);
-        $logger->log(
-            'candidat.index',
-            'Consultation de la liste des candidats.',
-            [
+            return Inertia::render('Candidats/Index', [
+                'candidats' => $candidats,
                 'filters' => $filters,
-            ],
-            [Candidat::class]
-        );
-        return Inertia::render('Candidats/Index', [
-            'candidats' => $candidats,
-            'filters' => $filters,
-        ]);
+            ]);
 
-    } catch (\Throwable $e) {
+        } catch (\Throwable $e) {
 
-        $logger->log(
-            
-            'candidat.index.error',
-            'Erreur lors de la récupération des candidats.',
-            [
-                'exception' => $e->getMessage(),
-            ],
-            [Candidat::class]
-        );
-        return Inertia::render('Fallback', [
-            'error' => 'Impossible de charger les candidats.',
-        ]);
+            $logger->log(
+
+                'candidat.index.error',
+                'Erreur lors de la récupération des candidats.',
+                [
+                    'exception' => $e->getMessage(),
+                ],
+                [Candidat::class]
+            );
+
+            return Inertia::render('Fallback', [
+                'error' => 'Impossible de charger les candidats.',
+            ]);
+        }
     }
-}
 
     /**
      * Show the form for creating a new candidat.
