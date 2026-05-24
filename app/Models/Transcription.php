@@ -17,6 +17,7 @@ class Transcription extends Model
         'interview_id',
         'transcript_text',
         'audio_path',
+        'assemblyai_transcript_id',
         'status',
         'diarized_transcript',
         'error',
