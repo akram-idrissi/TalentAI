@@ -13,18 +13,22 @@ return new class extends Migration
 
             $table->unsignedBigInteger('interview_id')->unique();
 
-            $table->longText('transcript_text')->nullable();
-
-            $table->float('whisper_confidence')->nullable();
-
-            $table->string('language')->nullable();
-
-            $table->integer('progress_pct')->default(0);
-
             $table->foreign('interview_id')
                 ->references('id')
                 ->on('interviews');
 
+            $table->string('audio_path');
+            $table->string('status')->default('pending');
+            $table->longText('transcript_text')->nullable();
+            $table->longText('diarized_transcript')->nullable();
+            $table->text('error')->nullable();
+
+            $table->string('analysis_status')->default('pending');
+
+            $table->unsignedTinyInteger('analysis_score')->nullable();
+            $table->string('analysis_verdict')->nullable();
+            $table->json('analysis_result')->nullable();
+            $table->text('analysis_error')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

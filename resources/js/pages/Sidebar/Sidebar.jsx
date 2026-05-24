@@ -116,10 +116,19 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
         localStorage.setItem('sidebar-collapsed', JSON.stringify(collapsed));
     }, [collapsed]);
 
-    const currentRoute = route();
-    const isActive = (name) => {
+    const { url } = usePage();
+
+    const isActive = (routeName) => {
         try {
-            return currentRoute.current(name) || currentRoute.current(`${name}.*`);
+            const routeUrl = route(routeName);
+            const currentPath = url.split('?')[0].replace(/\/$/, '');
+            const routePath = new URL(routeUrl, window.location.origin).pathname.replace(/\/$/, '');
+
+            if (routeName === 'dashboard') {
+                return currentPath === routePath;
+            }
+
+            return currentPath === routePath || currentPath.startsWith(`${routePath}/`);
         } catch {
             return false;
         }
@@ -182,7 +191,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                             id: 'interviews',
                             label: t('sidebar.interviews.list'),
                             icon: Mic,
-                            route: 'dashboard.interviews',
+                            route: 'dashboard.interviews.index',
                             badge: 3,
                         },
                         can('reports.view') && {

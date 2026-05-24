@@ -43,6 +43,9 @@ return [
     'openrouter' => [
         'key' => env('OPEN_ROUTER_KEY'),
     ],
+    'assemblyai' => [
+        'key' => env('ASSEMBLYAI_API_KEY'),
+    ],
     'gemini' => [
         'key' => env('GEMINI_API_KEY'),
     ],

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Transcription extends Model
@@ -12,12 +13,18 @@ class Transcription extends Model
     protected $table = 'transcriptions';
 
     protected $fillable = [
+
         'interview_id',
         'transcript_text',
-        'whisper_confidence',
-        'language',
-        'progress_pct',
-        'created_at',
+        'audio_path',
+        'status',
+        'diarized_transcript',
+        'error',
+        'analysis_status',
+        'analysis_score',
+        'analysis_verdict',
+        'analysis_result',
+        'analysis_error',
     ];
 
     /**
@@ -28,13 +35,12 @@ class Transcription extends Model
     protected function casts(): array
     {
         return [
-            'whisper_confidence' => 'float',
-            'progress_pct' => 'integer',
+            'analysis_result' => 'array',
             'created_at' => 'datetime',
         ];
     }
 
-    public function interview()
+    public function interview(): BelongsTo
     {
         return $this->belongsTo(Interview::class, 'interview_id');
     }

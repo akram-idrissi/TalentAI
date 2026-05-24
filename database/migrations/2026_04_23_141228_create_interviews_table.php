@@ -19,9 +19,7 @@ return new class extends Migration
 
             $table->enum('platform', ['zoom', 'meet', 'teams', 'presentiel']);
 
-            $table->string('recording_url')->nullable();
-
-            $table->integer('duration_seconds')->nullable();
+            $table->text('expectations')->nullable();
 
             $table->enum('status', [
                 'scheduled',

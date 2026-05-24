@@ -38,9 +38,7 @@ class RolesAndPermissionsSeeder extends Seeder
             // Interviews
             'interviews.view',
             'interviews.create',
-            'interviews.edit',
-            'interviews.delete',
-            'interviews.approve',
+            'interviews.upload',
 
             // Reports
             'reports.view',
@@ -95,6 +93,14 @@ class RolesAndPermissionsSeeder extends Seeder
             'guard_name' => 'web',
         ]);
         $admin->syncPermissions([
+            'briefs.view', 'briefs.create', 'briefs.edit', 'briefs.delete', 'briefs.approve',
+            'sourcing.view', 'sourcing.create', 'sourcing.edit', 'sourcing.delete',
+            'candidates.view', 'candidates.create', 'candidates.edit', 'candidates.delete', 'candidates.export',
+            'interviews.view', 'interviews.create', 'interviews.upload',
+            'reports.view', 'reports.export',
+            'integrations.view', 'integrations.manage',
+            'classement.view', 'classement.manage',
+            'users.view', 'users.create', 'users.edit', 'users.delete',
             'briefs.view',
             'briefs.create',
             'briefs.edit',
@@ -139,6 +145,10 @@ class RolesAndPermissionsSeeder extends Seeder
             'guard_name' => 'web',
         ]);
         $recruiter->syncPermissions([
+            'briefs.view', 'briefs.create', 'briefs.edit',
+            'sourcing.view', 'sourcing.create', 'sourcing.edit', 'sourcing.delete',
+            'candidates.view', 'candidates.create', 'candidates.edit', 'candidates.delete', 'candidates.export',
+            'interviews.view', 'interviews.create', 'interviews.upload',
             'briefs.view',
             'briefs.create',
             'briefs.edit',
@@ -169,6 +179,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'briefs.view',
             'briefs.approve',
             'sourcing.view',
+            'candidates.view', 'candidates.export',
+            'interviews.view',
+            'reports.view', 'reports.export',
             'candidates.view',
             'candidates.export',
             'interviews.view',
