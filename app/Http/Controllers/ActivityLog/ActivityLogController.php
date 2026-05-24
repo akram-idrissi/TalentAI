@@ -122,6 +122,9 @@ class ActivityLogController extends Controller
             ->when($dateTo, fn ($q) => $q->whereDate('logged_at', '<=', $dateTo));
     }
 
+    /**
+     * Display the specified activity log entry.
+     */
     public function show(ActivityLog $activityLog): Response
     {
         $this->authorize('activity_logs.view');

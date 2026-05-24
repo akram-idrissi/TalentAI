@@ -169,6 +169,9 @@ class CVAnalysisController extends Controller
         }
     }
 
+    /**
+     * Show the form for creating a new CV analysis.
+     */
     public function create(Request $request)
     {
         /** @var ActivityLogger $logger */
