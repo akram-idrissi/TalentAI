@@ -40,23 +40,23 @@ class ActivityLogController extends Controller
                 ->paginate(25)
                 ->withQueryString()
                 ->through(fn ($log) => [
-                'id' => $log->id,
-                'action' => $log->action,
-                'description' => $log->description,
-                'user_id' => $log->user_id,
-                'user_name' => $log->user_name,
-                'user_email' => $log->user_email,
-                'user_role' => $log->user_role,
-                'is_authenticated' => $log->is_authenticated,
-                'controller' => $log->controller,
-                'controller_method' => $log->controller_method,
-                'http_method' => $log->http_method,
-                'url' => $log->url,
-                'ip_address' => $log->ip_address,
-                'properties' => $log->properties,
-                'models' => $log->models,
-                'logged_at' => $log->logged_at,
-            ]);
+                    'id' => $log->id,
+                    'action' => $log->action,
+                    'description' => $log->description,
+                    'user_id' => $log->user_id,
+                    'user_name' => $log->user_name,
+                    'user_email' => $log->user_email,
+                    'user_role' => $log->user_role,
+                    'is_authenticated' => $log->is_authenticated,
+                    'controller' => $log->controller,
+                    'controller_method' => $log->controller_method,
+                    'http_method' => $log->http_method,
+                    'url' => $log->url,
+                    'ip_address' => $log->ip_address,
+                    'properties' => $log->properties,
+                    'models' => $log->models,
+                    'logged_at' => $log->logged_at,
+                ]);
 
             // Distinct action prefixes for the filter dropdown (e.g. "brief", "users", "roles")
             $actionGroups = ActivityLog::query()

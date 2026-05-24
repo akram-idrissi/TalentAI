@@ -92,7 +92,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // Admin — manages users, settings, all content
         $admin = Role::firstOrCreate([
             'name' => 'admin',
-            'guard_name' => 'web'
+            'guard_name' => 'web',
         ]);
         $admin->syncPermissions([
             'briefs.view',
@@ -136,7 +136,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // Recruiter — full CRUD on core recruitment flow
         $recruiter = Role::firstOrCreate([
             'name' => 'recruiter',
-            'guard_name' => 'web'
+            'guard_name' => 'web',
         ]);
         $recruiter->syncPermissions([
             'briefs.view',
@@ -163,7 +163,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // Hiring Manager — view & approve, limited edit
         $hiringManager = Role::firstOrCreate([
             'name' => 'hiring_manager',
-            'guard_name' => 'web'
+            'guard_name' => 'web',
         ]);
         $hiringManager->syncPermissions([
             'briefs.view',
@@ -181,7 +181,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // Viewer — read-only
         $viewer = Role::firstOrCreate([
             'name' => 'viewer',
-            'guard_name' => 'web'
+            'guard_name' => 'web',
         ]);
         $viewer->syncPermissions([
             'briefs.view',

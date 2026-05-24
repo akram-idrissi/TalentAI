@@ -1,6 +1,7 @@
 <?php
-use Illuminate\Http\Request;
+
 use App\Models\Brief;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 Route::get('/classement', function (Request $request) {
@@ -9,18 +10,18 @@ Route::get('/classement', function (Request $request) {
         ->orderByDesc('created_at')
         ->get();
 
-        $selectedBriefId = $request->input('brief_id');
-        if (!$selectedBriefId) {
-            $selectedBriefId = $briefs->first()?->id;
-        }
+    $selectedBriefId = $request->input('brief_id');
+    if (! $selectedBriefId) {
+        $selectedBriefId = $briefs->first()?->id;
+    }
 
-        $filters = $request->input('filters', []);
+    $filters = $request->input('filters', []);
 
-        if (is_string($filters)) {
-            $filters = json_decode($filters, true);
-        }
+    if (is_string($filters)) {
+        $filters = json_decode($filters, true);
+    }
 
-        $filters = is_array($filters) ? $filters : [];
+    $filters = is_array($filters) ? $filters : [];
     $candidates = collect();
 
     if ($selectedBriefId) {
@@ -36,7 +37,7 @@ Route::get('/classement', function (Request $request) {
             $candidates = $brief->candidates;
             foreach ($filters as $filter) {
 
-                if (!isset($filter['field'], $filter['value']) || $filter['value'] === '') {
+                if (! isset($filter['field'], $filter['value']) || $filter['value'] === '') {
                     continue;
                 }
 
@@ -58,6 +59,7 @@ Route::get('/classement', function (Request $request) {
                     }
                     if ($field === 'skills') {
                         $skills = $c->skills ?? [];
+
                         return collect($skills)->contains(function ($s) use ($value) {
                             return str_contains(strtolower($s), strtolower($value));
                         });
@@ -93,6 +95,6 @@ Route::get('/classement', function (Request $request) {
         'briefs' => $briefs,
         'selectedBriefId' => (int) $selectedBriefId,
         'candidates' => $candidates,
-        'filters' => $filters, 
+        'filters' => $filters,
     ]);
 })->name('classement');
