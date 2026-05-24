@@ -1,22 +1,73 @@
 <?php
-
+use Illuminate\Http\Request;
 use App\Models\Brief;
 use Inertia\Inertia;
 
-Route::get('/classement', function () {
-    $briefs = Brief::select('id', 'title')->orderByDesc('created_at')->get();
+Route::get('/classement', function (Request $request) {
 
-    $selectedBriefId = request('brief_id') ?? $briefs->first()?->id;
+    $briefs = Brief::select('id', 'title')
+        ->orderByDesc('created_at')
+        ->get();
 
-    $candidates = [];
+        $selectedBriefId = $request->input('brief_id');
+        if (!$selectedBriefId) {
+            $selectedBriefId = $briefs->first()?->id;
+        }
+
+        $filters = $request->input('filters', []);
+
+        if (is_string($filters)) {
+            $filters = json_decode($filters, true);
+        }
+
+        $filters = is_array($filters) ? $filters : [];
+    $candidates = collect();
 
     if ($selectedBriefId) {
+
         $brief = Brief::with(['candidates' => function ($q) {
+
             $q->orderByDesc('brief_candidat.score');
+
         }])->find($selectedBriefId);
 
         if ($brief) {
-            $candidates = $brief->candidates->map(function ($c) {
+
+            $candidates = $brief->candidates;
+            foreach ($filters as $filter) {
+
+                if (!isset($filter['field'], $filter['value']) || $filter['value'] === '') {
+                    continue;
+                }
+
+                $field = $filter['field'];
+                $value = $filter['value'];
+
+                $candidates = $candidates->filter(function ($c) use ($field, $value) {
+
+                    if ($field === 'full_name') {
+                        return str_contains(strtolower($c->full_name), strtolower($value));
+                    }
+
+                    if ($field === 'title') {
+                        return str_contains(strtolower($c->current_title ?? ''), strtolower($value));
+                    }
+
+                    if ($field === 'score') {
+                        return ($c->pivot->score ?? 0) >= (int) $value;
+                    }
+                    if ($field === 'skills') {
+                        $skills = $c->skills ?? [];
+                        return collect($skills)->contains(function ($s) use ($value) {
+                            return str_contains(strtolower($s), strtolower($value));
+                        });
+                    }
+
+                    return true;
+                });
+            }
+
+            $candidates = $candidates->map(function ($c) {
                 return [
                     'id' => $c->id,
                     'name' => $c->full_name,
@@ -34,7 +85,7 @@ Route::get('/classement', function () {
                             : $c->pivot->score_breakdown)
                         : null,
                 ];
-            })->values()->toArray();
+            })->values();
         }
     }
 
@@ -42,5 +93,6 @@ Route::get('/classement', function () {
         'briefs' => $briefs,
         'selectedBriefId' => (int) $selectedBriefId,
         'candidates' => $candidates,
+        'filters' => $filters, 
     ]);
 })->name('classement');

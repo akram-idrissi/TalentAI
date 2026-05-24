@@ -3,8 +3,9 @@ import { useI18n } from '@/hooks/useI18n';
 import AppLayout from '@/layouts/app-layout';
 import type { Candidat, CandidatStatus, IndexCandidatProps } from '@/types/candidat';
 import { Head, Link, router } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight, ExternalLink, Plus, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink, Plus, RotateCcw, Search,ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
+import ReactSelect from 'react-select';
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
     sourced: { label: 'Sourcé', className: 'bg-ds-bg3 text-ds-text2 border border-ds-border' },
@@ -126,8 +127,69 @@ const STATUT_OPTIONS: { value: CandidatStatus | ''; label: string }[] = [
 export default function Index({ candidats, filters }: IndexCandidatProps) {
     const { t } = useI18n();
     const [search, setSearch] = useState(filters.search ?? '');
+    const [filtersOpen, setFiltersOpen] = useState(true);
     const [statusFilter, setStatusFilter] = useState<CandidatStatus | ''>((filters.status as CandidatStatus | undefined) ?? '');
     const [deletingCandidat, setDeletingCandidat] = useState<Candidat | null>(null);
+     const [filterModalOpen, setFilterModalOpen] = useState(false);
+    const [selectedField, setSelectedField] = useState<string | null>(null);
+    const [filterValue, setFilterValue] = useState<any>('');
+            const [activeFilters, setActiveFilters] = useState<{ field: string; value: string }[]>(
+            Array.isArray(filters) ? filters : []
+        );
+        const FILTER_FIELDS = [
+        { key: 'full_name', label: 'Nom complet', type: 'text' },
+        { key: 'headline', label: 'Headline', type: 'text' },
+        { key: 'location', label: 'Localisation', type: 'text' },
+        { key: 'current_company', label: 'Entreprise', type: 'text' },
+        { key: 'current_title', label: 'Poste actuel', type: 'text' },
+        { key: 'experience_years', label: 'Expérience', type: 'number' },
+        { key: 'education_level', label: 'Education', type: 'text' },
+        { key: 'sector', label: 'Secteur', type: 'select', options: [    
+            { value: 'commerce', label: 'Commerce & Vente' },
+            { value: 'tech', label: 'Tech & Digital' },
+            { value: 'finance', label: 'Finance & Audit' },
+            { value: 'rh', label: 'RH & Formation' },
+            { value: 'marketing', label: 'Marketing' },
+            { value: 'operations', label: 'Opérations & Logistique' },
+            { value: 'juridique', label: 'Juridique' },
+            { value: 'sante', label: 'Santé' },] },
+
+        {
+            key: 'source',
+            label: 'Source',
+            type: 'select',
+            options: [
+                { value: 'linkedin', label: 'LinkedIn' },
+                { value: 'indeed', label: 'Indeed' },
+                { value: 'apify', label: 'Apify' },
+                { value: 'cv', label: 'CV' }
+            ],
+        },
+
+        {
+            key: 'status',
+            label: 'Statut',
+            type: 'select',
+            options: [
+                { value: 'sourced', label: 'Sourcé' },
+                { value: 'contacted', label: 'Contacté' },
+                { value: 'interview', label: 'Entretien' },
+                { value: 'recommended', label: 'Recommandé' },
+                { value: 'offer', label: 'Offre' },
+                { value: 'rejected', label: 'Rejeté' },
+            ],
+        },
+
+        {
+            key: 'open_to_work',
+            label: 'Open To Work',
+            type: 'select',
+            options: [
+                { value: 'true', label: 'Oui' },
+                { value: 'false', label: 'Non' },
+            ],
+        },
+    ];
 
     function handleDelete() {
         if (!deletingCandidat) return;
@@ -142,10 +204,39 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
         router.get(route('dashboard.candidats.index'), { ...(s ? { search: s } : {}), ...(st ? { status: st } : {}) }, { preserveState: true });
     }
 
-    const totalLabel = `${candidats.total} profil${candidats.total !== 1 ? 's' : ''} actif${candidats.total !== 1 ? 's' : ''} · Toutes sources confondues`;
+        function handleSearch() {
+        const cleanFilters = activeFilters
+            .filter((f) => f.value && f.value.trim() !== '')
+            .map((f) => ({
+                field: f.field,
+                value: f.value,
+            }));
 
+        router.get(route('dashboard.candidats.index'), {
+            filters: JSON.stringify(cleanFilters),
+        },    {
+        preserveState: true,
+        preserveScroll: true,
+    });
+    }
+    console.log(activeFilters);
+
+
+    function addFilter(field: string) {
+        setActiveFilters((prev) => {
+            if (prev.some((f) => f.field === field)) return prev;
+            return [...prev, { field, value: '' }];
+        });
+    }
+
+    function removeFilter(field: string) {
+        setActiveFilters((prev) => prev.filter((f) => f.field !== field));
+    }
+
+    const totalLabel = `${candidats.total} profil${candidats.total !== 1 ? 's' : ''} actif${candidats.total !== 1 ? 's' : ''} · Toutes sources confondues`;
     const COLUMNS = ['CANDIDAT', 'POSTE VISÉ', 'SOURCE', 'SCORE CV', 'SCORE ENTRETIEN', 'STATUT', ''];
 
+    
     return (
         <>
             <Head title={t('candidats.index.title')} />
@@ -160,34 +251,24 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
                     {/* Toolbar */}
                     <div className="mb-5 flex flex-wrap items-center gap-3">
                         {/* Search */}
-                        <div className="relative min-w-[260px] flex-1">
-                            <Search size={14} className="text-ds-text3 absolute top-1/2 left-3.5 -translate-y-1/2" />
-                            <input
-                                type="text"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
-                                placeholder="Rechercher un candidat..."
-                                className="border-ds-border bg-ds-bg3 text-ds-text placeholder:text-ds-text3 focus:border-ds-accent w-full rounded-xl border py-2.5 pr-4 pl-9 text-[13px] focus:outline-none"
-                            />
-                        </div>
-
-                        {/* Status filter */}
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => {
-                                const v = e.target.value as CandidatStatus | '';
-                                setStatusFilter(v);
-                                applyFilters(undefined, v);
-                            }}
-                            className="border-ds-border bg-ds-bg3 text-ds-text focus:border-ds-accent rounded-xl border px-4 py-2.5 text-[13px] focus:outline-none"
+                        <button
+                            onClick={() => setFilterModalOpen(true)}
+                            className="bg-ds-accent flex items-center gap-2 rounded-lg px-4 py-2.5 text-[13px] font-medium text-white hover:bg-[#7C74FF]"
                         >
-                            {STATUT_OPTIONS.map((o) => (
-                                <option key={o.value} value={o.value}>
-                                    {o.label}
-                                </option>
-                            ))}
-                        </select>
+                            <Search size={14} />
+                            {t('briefs.index.actions.search')}
+                        </button>
+                        <button
+                            onClick={() => {
+                                setSelectedField(null);
+                                setFilterValue('');
+                                router.get(route('dashboard.candidats.index'));
+                            }}
+                            className="border-ds-border text-ds-text2 hover:bg-ds-surface flex items-center gap-2 rounded-lg border px-4 py-2.5 text-[13px]"
+                        >
+                            <RotateCcw size={13} />
+                            {t('briefs.index.actions.reset')}
+                        </button>
 
                         {/* Add button */}
                         <Link
@@ -198,6 +279,320 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
                             Ajouter manuellement
                         </Link>
                     </div>
+
+                    {filterModalOpen && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                            
+                            <div className="w-full max-w-2xl rounded-2xl border border-ds-border bg-ds-surface shadow-2xl">
+                                
+                                {/* HEADER */}
+                                <div className="flex items-center justify-between border-b border-ds-border px-6 py-4">
+                                    
+                                    <div>
+                                        <h2 className="font-heading text-[18px] font-bold text-ds-text">
+                                            Filtres avancés
+                                        </h2>
+
+                                        <p className="mt-1 text-[13px] text-ds-text3">
+                                            Sélectionnez les filtres à afficher
+                                        </p>
+                                    </div>
+
+                                    <button
+                                        onClick={() => setFilterModalOpen(false)}
+                                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-ds-border bg-ds-bg3 text-ds-text2 transition hover:border-ds-border2 hover:bg-ds-bg2 hover:text-ds-text"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+
+                                {/* CONTENT */}
+                                <div className="custom-scroll max-h-[420px] overflow-y-auto p-6">
+
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+
+                                        {FILTER_FIELDS.map((f) => {
+
+                                            const isActive = activeFilters.some(
+                                                (item) => item.field === f.key
+                                            );
+
+                                            return (
+                                                <button
+                                                    key={f.key}
+                                                    onClick={() => addFilter(f.key)}
+                                                    className={`
+                                                        group relative overflow-hidden rounded-xl border px-4 py-3 text-left transition-all duration-200
+                                                        
+                                                        ${
+                                                            isActive
+                                                                ? 'border-ds-accent bg-ds-accent text-white shadow-lg shadow-ds-accent/20'
+                                                                : 'border-ds-border bg-ds-bg2 text-ds-text hover:border-ds-accent/40 hover:bg-ds-bg3'
+                                                        }
+                                                    `}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        
+                                                        <span className="text-[13px] font-medium">
+                                                            {f.label}
+                                                        </span>
+
+                                                        {isActive && (
+                                                            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[11px] font-bold">
+                                                                ✓
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* FOOTER */}
+                                <div className="flex items-center justify-between border-t border-ds-border px-6 py-4">
+                                    
+                                    <p className="text-[12px] text-ds-text3">
+                                        {activeFilters.length} filtre(s) sélectionné(s)
+                                    </p>
+
+                                    <div className="flex items-center gap-3">
+
+                                        <button
+                                            onClick={() => {setActiveFilters([]),setFilterModalOpen(false)}}
+                                            className="rounded-lg border border-ds-border bg-ds-bg3 px-4 py-2 text-[13px] font-medium text-ds-text2 transition hover:bg-ds-bg2 hover:text-ds-text"
+                                        >
+                                            {t('briefs.index.actions.reset')}
+                                        </button>
+
+                                        <button
+                                            onClick={() => setFilterModalOpen(false)}
+                                            className="rounded-lg bg-ds-accent px-5 py-2 text-[13px] font-semibold text-white transition hover:opacity-90"
+                                        >
+                                            Appliquer
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeFilters.length > 0 && (
+                        <div className="mb-5 rounded-2xl border border-ds-border bg-ds-surface p-5">
+
+                           
+                            {/* HEADER */}
+                            <div className="mb-5 flex items-center justify-between">
+
+                                <div>
+                                    <h3 className="text-sm font-semibold text-ds-text">
+                                        Filtres actifs
+                                    </h3>
+
+                                    <p className="mt-1 text-xs text-ds-text3">
+                                        Configurez vos filtres de recherche
+                                    </p>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setActiveFilters([])}
+                                        className="
+                                            rounded-lg border border-ds-border
+                                            bg-ds-bg3 px-3 py-2 text-xs
+                                            text-ds-text2 transition
+                                            hover:bg-ds-bg2
+                                            hover:text-ds-text
+                                        "
+                                    >
+                                        {t('briefs.index.actions.reset')}
+                                    </button>
+                                    <button
+                                        onClick={() => setFiltersOpen(!filtersOpen)}
+                                        className="
+                                            flex items-center gap-1 rounded-lg
+                                            border border-ds-border bg-ds-bg3
+                                            px-3 py-2 text-xs text-ds-text2
+                                            transition hover:bg-ds-bg2 hover:text-ds-text
+                                        "
+                                    >
+                                        {filtersOpen ? (
+                                            <>
+                                                
+                                                <ChevronUp size={14} />
+                                            </>
+                                        ) : (
+                                            <>
+                                                
+                                                <ChevronDown size={14} />
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                            {filtersOpen && (
+                                <>
+                            {/* GRID */}
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+
+                                {activeFilters.map((f, index) => {
+
+                                    const field = FILTER_FIELDS.find(
+                                        (x) => x.key === f.field
+                                    );
+
+                                    if (!field) return null;
+
+                                    return (
+                                        <div
+                                            key={f.field}
+                                            className="
+                                                rounded-xl border border-ds-border
+                                                bg-ds-bg2 p-3
+                                            "
+                                        >
+
+                                            {/* TOP */}
+                                            <div className="mb-3 flex items-center justify-between">
+
+                                                <p className="text-xs font-semibold text-ds-text">
+                                                    {field.label}
+                                                </p>
+
+                                                <button
+                                                    onClick={() => removeFilter(f.field)}
+                                                    className="
+                                                        flex h-6 w-6 items-center justify-center
+                                                        rounded-md text-ds-text3 transition
+
+                                                        hover:bg-red-500/10
+                                                        hover:text-red-400
+                                                    "
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+
+                                            {/* FIELD */}
+                                            {field.type === 'select' ? (
+
+                                                <ReactSelect
+                                                    classNamePrefix="rs"
+                                                    options={field.options}
+                                                    value={
+                                                        field.options?.find(
+                                                            (opt: any) =>
+                                                                opt.value === f.value
+                                                        ) ?? null
+                                                    }
+                                                    onChange={(opt: any) => {
+
+                                                        const newFilters = [...activeFilters];
+
+                                                        newFilters[index].value =
+                                                            opt?.value ?? '';
+
+                                                        setActiveFilters(newFilters);
+                                                    }}
+                                                    placeholder="Sélectionner..."
+                                                    styles={{
+                                                        control: (base, state) => ({
+                                                            ...base,
+                                                            backgroundColor: 'var(--ds-bg3)',
+                                                            borderColor: state.isFocused
+                                                                ? '#6C63FF'
+                                                                : 'var(--ds-border)',
+                                                            minHeight: '42px',
+                                                            boxShadow: 'none',
+                                                            borderRadius: '10px',
+                                                            fontSize: '13px',
+                                                            cursor: 'pointer',
+                                                        }),
+
+                                                        menu: (base) => ({
+                                                            ...base,
+                                                            backgroundColor: 'var(--ds-surface)',
+                                                            border: '1px solid var(--ds-border)',
+                                                            overflow: 'hidden',
+                                                            zIndex: 30,
+                                                        }),
+
+                                                        singleValue: (base) => ({
+                                                            ...base,
+                                                            color: 'var(--ds-text)',
+                                                        }),
+
+                                                        input: (base) => ({
+                                                            ...base,
+                                                            color: 'var(--ds-text)',
+                                                        }),
+
+                                                        placeholder: (base) => ({
+                                                            ...base,
+                                                            color: 'var(--ds-text3)',
+                                                        }),
+
+                                                        option: (base, state) => ({
+                                                            ...base,
+                                                            backgroundColor: state.isFocused
+                                                                ? 'rgba(108,99,255,0.15)'
+                                                                : 'transparent',
+                                                            color: 'var(--ds-text)',
+                                                            cursor: 'pointer',
+                                                            fontSize: '13px',
+                                                        }),
+                                                    }}
+                                                />
+
+                                            ) : (
+
+                                                <input
+                                                    type={field.type}
+                                                    value={f.value}
+                                                    onChange={(e) => {
+
+                                                        const newFilters = [...activeFilters];
+
+                                                        newFilters[index].value =
+                                                            e.target.value;
+
+                                                        setActiveFilters(newFilters);
+                                                    }}
+                                                    placeholder={field.label}
+                                                    className="
+                                                        w-full rounded-xl border border-ds-border
+                                                        bg-ds-bg3 px-3 py-2.5 text-[13px]
+                                                        text-ds-text placeholder:text-ds-text3
+                                                        outline-none transition
+
+                                                        focus:border-ds-accent
+                                                    "
+                                                />
+                                            )}
+                                        </div>
+                                    );
+                                
+                                })}
+                            </div>
+
+                            {/* ACTIONS */}
+                            <div className="mt-5 flex justify-end">
+
+                                <button
+                                    onClick={handleSearch}
+                                    className="
+                                        bg-ds-accent rounded-xl px-5 py-2.5
+                                        text-[13px] font-semibold text-white
+                                        transition hover:opacity-90
+                                    "
+                                >
+                                    Rechercher
+                                </button>
+                            </div>
+                            </>
+                            )}  
+                        </div>
+                  )}
 
                     {/* Empty state */}
                     {candidats.data.length === 0 && (
