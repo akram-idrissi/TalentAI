@@ -18,6 +18,7 @@ type AllPermissions = Record<string, string[]>;
 export type PageProps = {
     roles: Role[];
     allPermissions: AllPermissions;
+    filters?: { role?: string; permissions?: string[] };
     flash: { success?: string; error?: string };
 };
 
