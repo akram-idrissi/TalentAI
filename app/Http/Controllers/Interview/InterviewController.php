@@ -295,6 +295,9 @@ class InterviewController extends Controller
     {
         $this->authorize('interviews.view');
 
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
         try {
             $interview->load(['transcription', 'brief']);
             $transcription = $interview->transcription;
@@ -362,12 +365,16 @@ class InterviewController extends Controller
                 }
             }
 
+            $logger->log('interview.status', 'Consultation du statut de transcription.', ['interview_id' => $interview->id], [Interview::class]);
+
             return response()->json([
                 'status' => $transcription->status,
                 'analysis_status' => $transcription->analysis_status ?? 'pending',
                 'error' => $transcription->error ?? null,
             ]);
         } catch (\Throwable $e) {
+            $logger->log('interview.status.error', 'Erreur lors de la récupération du statut : '.$e->getMessage(), ['exception' => $e->getMessage()], [Interview::class]);
+
             return response()->json([
                 'status' => 'failed',
                 'analysis_status' => 'failed',

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Interview;
 use App\Http\Controllers\Controller;
 use App\Models\Brief;
 use App\Models\Transcription;
+use App\Services\ActivityLogger;
 use App\Services\Transcription\AssemblyAIService;
 use App\Services\Transcription\TranscriptionAnalysisService;
 use Illuminate\Http\JsonResponse;
@@ -14,11 +15,21 @@ use Illuminate\Support\Facades\Storage;
 
 class TranscriptionWebhookController extends Controller
 {
+    /**
+     * Handle an incoming AssemblyAI transcription webhook.
+     *
+     * @param  Request  $request  Incoming webhook payload
+     * @param  AssemblyAIService  $assemblyAI  AssemblyAI service
+     * @param  TranscriptionAnalysisService  $analysisService  Analysis service
+     */
     public function handle(
         Request $request,
         AssemblyAIService $assemblyAI,
         TranscriptionAnalysisService $analysisService
     ): JsonResponse {
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
         // Verify the secret token embedded in the webhook URL
         $expectedSecret = config('services.assemblyai.webhook_secret');
         if (! hash_equals((string) $expectedSecret, (string) $request->query('secret', ''))) {
@@ -138,6 +149,8 @@ class TranscriptionWebhookController extends Controller
             ]);
             $transcription->interview->update(['status' => 'analyzed']);
         }
+
+        $logger->log('transcription.webhook', 'Webhook AssemblyAI traité.', ['transcription_id' => $transcription->id ?? null], [Transcription::class]);
 
         return response()->json(['ok' => true]);
     }
