@@ -54,7 +54,9 @@ function UserDropdown({ user, collapsed }) {
     return (
         <div ref={ref} className="border-sidebar-border relative border-t p-3">
             {open && (
-                <div className="border-ds-border2 bg-ds-surface absolute right-3 bottom-full left-3 mb-2 overflow-hidden rounded-xl border shadow-xl">
+                <div
+                    className={`border-ds-border2 bg-ds-surface absolute overflow-hidden rounded-xl border shadow-xl ${collapsed ? 'bottom-0 left-full ml-2 w-48' : 'right-3 bottom-full left-3 mb-2'}`}
+                >
                     <div className="border-ds-border border-b px-3 py-2.5">
                         <p className="text-ds-text text-[13px] font-semibold">{user?.name}</p>
                         <p className="text-ds-text3 text-[11px]">{user?.email}</p>
@@ -295,7 +297,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                 </div>
 
                 {/* Nav */}
-                <nav className="custom-scroll flex-1 overflow-y-auto py-3">
+                <nav className={`custom-scroll flex-1 py-3 ${collapsed ? 'overflow-visible' : 'overflow-y-auto'}`}>
                     {sections.map((section, i) => (
                         <div key={i} className="mb-1">
                             {!collapsed && (

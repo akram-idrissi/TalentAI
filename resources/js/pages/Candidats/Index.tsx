@@ -1,10 +1,13 @@
 import DeleteModal from '@/components/ui/DeleteModal';
+import FilterPanel, { FilterEntry } from '@/components/ui/FilterPanel';
+import SkeletonTable from '@/components/ui/SkeletonTable';
 import { useI18n } from '@/hooks/useI18n';
 import AppLayout from '@/layouts/app-layout';
-import type { Candidat, CandidatStatus, IndexCandidatProps } from '@/types/candidat';
+import type { Candidat, IndexCandidatProps } from '@/types/candidat';
 import { Head, Link, router } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight, ExternalLink, Plus, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'react-hot-toast';
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
     sourced: { label: 'Sourcé', className: 'bg-ds-bg3 text-ds-text2 border border-ds-border' },
@@ -113,21 +116,73 @@ function Pagination({ meta, search }: { meta: PaginationMeta; search: string }) 
     );
 }
 
-const STATUT_OPTIONS: { value: CandidatStatus | ''; label: string }[] = [
-    { value: '', label: 'Tous les statuts' },
-    { value: 'sourced', label: 'Sourcé' },
-    { value: 'contacted', label: 'Contacté' },
-    { value: 'interview', label: 'Entretien' },
-    { value: 'recommended', label: 'Recommandé' },
-    { value: 'offer', label: 'Offre' },
-    { value: 'rejected', label: 'Rejeté' },
-];
-
 export default function Index({ candidats, filters }: IndexCandidatProps) {
     const { t } = useI18n();
-    const [search, setSearch] = useState(filters.search ?? '');
-    const [statusFilter, setStatusFilter] = useState<CandidatStatus | ''>((filters.status as CandidatStatus | undefined) ?? '');
+    const [search] = useState(filters.search ?? '');
     const [deletingCandidat, setDeletingCandidat] = useState<Candidat | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [activeFilters, setActiveFilters] = useState<FilterEntry[]>(Array.isArray(filters) ? filters : []);
+
+    const FILTER_FIELDS = [
+        { key: 'full_name', label: t('candidats.index.filters.full_name'), type: 'text' as const },
+        { key: 'headline', label: t('candidats.index.filters.headline'), type: 'text' as const },
+        { key: 'location', label: t('candidats.index.filters.location'), type: 'text' as const },
+        { key: 'current_company', label: t('candidats.index.filters.current_company'), type: 'text' as const },
+        { key: 'current_title', label: t('candidats.index.filters.current_title'), type: 'text' as const },
+        { key: 'experience_years', label: t('candidats.index.filters.experience_years'), type: 'number' as const },
+        { key: 'education_level', label: t('candidats.index.filters.education_level'), type: 'text' as const },
+        {
+            key: 'sector',
+            label: t('candidats.index.filters.sector'),
+            type: 'select' as const,
+            multi: true,
+            options: [
+                { value: 'commerce', label: t('briefs.index.filters.sector_options.commerce') },
+                { value: 'tech', label: t('briefs.index.filters.sector_options.tech') },
+                { value: 'finance', label: t('briefs.index.filters.sector_options.finance') },
+                { value: 'rh', label: t('briefs.index.filters.sector_options.rh') },
+                { value: 'marketing', label: t('briefs.index.filters.sector_options.marketing') },
+                { value: 'operations', label: t('briefs.index.filters.sector_options.operations') },
+                { value: 'juridique', label: t('briefs.index.filters.sector_options.juridique') },
+                { value: 'sante', label: t('briefs.index.filters.sector_options.sante') },
+            ],
+        },
+        {
+            key: 'source',
+            label: t('candidats.index.filters.source'),
+            type: 'select' as const,
+            multi: true,
+            options: [
+                { value: 'linkedin', label: 'LinkedIn' },
+                { value: 'indeed', label: 'Indeed' },
+                { value: 'apify', label: 'Apify' },
+                { value: 'cv', label: 'CV' },
+            ],
+        },
+        {
+            key: 'status',
+            label: t('candidats.index.filters.status'),
+            type: 'select' as const,
+            multi: true,
+            options: [
+                { value: 'sourced', label: t('briefs.index.filters.status_options.sourced') },
+                { value: 'contacted', label: t('candidats.index.filters.status_options.contacted') },
+                { value: 'interview', label: t('candidats.index.filters.status_options.interview') },
+                { value: 'recommended', label: t('candidats.index.filters.status_options.recommended') },
+                { value: 'offer', label: t('candidats.index.filters.status_options.offer') },
+                { value: 'rejected', label: t('candidats.index.filters.status_options.rejected') },
+            ],
+        },
+        {
+            key: 'open_to_work',
+            label: t('candidats.index.filters.open_to_work'),
+            type: 'select' as const,
+            options: [
+                { value: 'true', label: t('candidats.index.filters.yes') },
+                { value: 'false', label: t('candidats.index.filters.no') },
+            ],
+        },
+    ];
 
     function handleDelete() {
         if (!deletingCandidat) return;
@@ -136,14 +191,29 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
         });
     }
 
-    function applyFilters(newSearch?: string, newStatus?: CandidatStatus | '') {
-        const s = newSearch ?? search;
-        const st = newStatus ?? statusFilter;
-        router.get(route('dashboard.candidats.index'), { ...(s ? { search: s } : {}), ...(st ? { status: st } : {}) }, { preserveState: true });
+    function handleSearch(filtersOverride?: FilterEntry[]) {
+        const toSearch = filtersOverride ?? activeFilters;
+        const cleanFilters = toSearch
+            .filter((f) => (Array.isArray(f.value) ? f.value.length > 0 : f.value && (f.value as string).trim() !== ''))
+            .map((f) => ({ field: f.field, value: Array.isArray(f.value) ? f.value.join(',') : f.value }));
+        router.get(
+            route('dashboard.candidats.index'),
+            { filters: JSON.stringify(cleanFilters) },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                onStart: () => setLoading(true),
+                onFinish: () => setLoading(false),
+                onSuccess: (page) => {
+                    const total = (page.props as { candidats?: { total?: number } }).candidats?.total ?? 0;
+                    toast.success(`${total} candidat${total !== 1 ? 's' : ''} trouvé${total !== 1 ? 's' : ''}`);
+                },
+                onError: () => toast.error(t('candidats.index.flash.index_error')),
+            },
+        );
     }
 
     const totalLabel = `${candidats.total} profil${candidats.total !== 1 ? 's' : ''} actif${candidats.total !== 1 ? 's' : ''} · Toutes sources confondues`;
-
     const COLUMNS = ['CANDIDAT', 'POSTE VISÉ', 'SOURCE', 'SCORE CV', 'SCORE ENTRETIEN', 'STATUT', ''];
 
     return (
@@ -158,49 +228,30 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
                     </div>
 
                     {/* Toolbar */}
-                    <div className="mb-5 flex flex-wrap items-center gap-3">
-                        {/* Search */}
-                        <div className="relative min-w-[260px] flex-1">
-                            <Search size={14} className="text-ds-text3 absolute top-1/2 left-3.5 -translate-y-1/2" />
-                            <input
-                                type="text"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
-                                placeholder="Rechercher un candidat..."
-                                className="border-ds-border bg-ds-bg3 text-ds-text placeholder:text-ds-text3 focus:border-ds-accent w-full rounded-xl border py-2.5 pr-4 pl-9 text-[13px] focus:outline-none"
+                    <div className="mb-5 flex items-start gap-3">
+                        <div className="flex-1">
+                            <FilterPanel
+                                fields={FILTER_FIELDS}
+                                activeFilters={activeFilters}
+                                onChange={setActiveFilters}
+                                onSearch={handleSearch}
+                                loading={loading}
                             />
                         </div>
-
-                        {/* Status filter */}
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => {
-                                const v = e.target.value as CandidatStatus | '';
-                                setStatusFilter(v);
-                                applyFilters(undefined, v);
-                            }}
-                            className="border-ds-border bg-ds-bg3 text-ds-text focus:border-ds-accent rounded-xl border px-4 py-2.5 text-[13px] focus:outline-none"
-                        >
-                            {STATUT_OPTIONS.map((o) => (
-                                <option key={o.value} value={o.value}>
-                                    {o.label}
-                                </option>
-                            ))}
-                        </select>
-
-                        {/* Add button */}
                         <Link
                             href={route('dashboard.candidats.create')}
-                            className="bg-ds-accent ml-auto flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-semibold text-white transition hover:opacity-90"
+                            className="bg-ds-accent flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-semibold text-white transition hover:opacity-90"
                         >
                             <Plus size={14} />
-                            Ajouter manuellement
+                            {t('candidats.index.actions.create')}
                         </Link>
                     </div>
 
+                    {/* Skeleton while loading */}
+                    {loading && <SkeletonTable cols={7} rows={8} />}
+
                     {/* Empty state */}
-                    {candidats.data.length === 0 && (
+                    {!loading && candidats.data.length === 0 && (
                         <div className="border-ds-border bg-ds-surface flex flex-col items-center justify-center rounded-2xl border py-24 text-center">
                             <p className="text-ds-text text-[15px] font-semibold">{t('candidats.index.empty.title')}</p>
                             <p className="text-ds-text2 mt-1 text-[13px]">{t('candidats.index.empty.description')}</p>
@@ -215,7 +266,7 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
                     )}
 
                     {/* Table */}
-                    {candidats.data.length > 0 && (
+                    {!loading && candidats.data.length > 0 && (
                         <div className="border-ds-border bg-ds-surface overflow-hidden rounded-2xl border">
                             <div className="overflow-x-auto">
                                 <table className="w-full border-collapse text-[13px]">

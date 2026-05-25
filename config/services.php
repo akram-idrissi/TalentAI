@@ -45,6 +45,7 @@ return [
     ],
     'assemblyai' => [
         'key' => env('ASSEMBLYAI_API_KEY'),
+        'webhook_secret' => env('ASSEMBLYAI_WEBHOOK_SECRET'),
     ],
     'gemini' => [
         'key' => env('GEMINI_API_KEY'),

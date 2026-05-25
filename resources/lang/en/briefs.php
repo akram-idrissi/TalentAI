@@ -166,6 +166,14 @@ return [
             'cancel_no' => 'Keep editing',
         ],
     ],
+    'classement' => [
+        'filters' => [
+            'score' => 'Score',
+            'skills' => 'Skills',
+            'brief' => 'Brief',
+        ],
+    ],
+
     'index' => [
         'breadcrumb' => 'Recruitment / Briefs',
         'title' => 'Brief Management',
@@ -176,10 +184,62 @@ return [
         'actions' => [
             'create' => 'Create Brief',
             'search' => 'Search',
+            'filters' => 'Filters',
+            'apply' => 'Apply',
             'reset' => 'Reset',
             'view' => 'View',
             'edit' => 'Edit',
             'delete' => 'Delete',
+        ],
+
+        'filters' => [
+            'modal_title' => 'Advanced filters',
+            'modal_subtitle' => 'Select the filters to display',
+            'active_title' => 'Active filters',
+            'active_subtitle' => 'Configure your search filters',
+            'selected_count' => 'filter(s) selected',
+            'select_placeholder' => 'Select...',
+            'search_btn' => 'Search',
+            'fields' => [
+                'title' => 'Position',
+                'sector' => 'Sector',
+                'contract_type' => 'Contract',
+                'location' => 'Location',
+                'min_experience_years' => 'Experience',
+                'education_level' => 'Education',
+                'status' => 'Status',
+            ],
+            'sector_options' => [
+                'commerce' => 'Sales & Commerce',
+                'tech' => 'Tech & Digital',
+                'finance' => 'Finance & Audit',
+                'rh' => 'HR & Training',
+                'marketing' => 'Marketing',
+                'operations' => 'Operations & Logistics',
+                'juridique' => 'Legal',
+                'sante' => 'Healthcare',
+            ],
+            'contract_options' => [
+                'CDI' => 'Permanent',
+                'CDD' => 'Fixed-term',
+                'freelance' => 'Freelance',
+                'stage' => 'Internship',
+            ],
+            'education_options' => [
+                'bac' => 'High School',
+                'bac2' => 'Associate Degree',
+                'bac3' => 'Bachelor\'s Degree',
+                'bac5' => 'Master\'s Degree',
+                'bac5_grande_ecole' => 'Grande École (Master)',
+                'doctorat' => 'PhD',
+            ],
+            'status_options' => [
+                'draft' => 'Draft',
+                'active' => 'Active',
+                'sourcing' => 'Sourcing',
+                'interviews' => 'Interviews',
+                'closed' => 'Closed',
+            ],
         ],
 
         'columns' => [

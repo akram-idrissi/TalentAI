@@ -17,6 +17,7 @@ Route::post('/locale', function (Request $request) {
     return redirect()->back();
 })->name('locale.switch');
 
+require __DIR__.'/webhooks.php';
 require __DIR__.'/dashboard.php';
 require __DIR__.'/roles.php';
 require __DIR__.'/settings.php';

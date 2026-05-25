@@ -1,7 +1,11 @@
+import FilterPanel, { FilterEntry } from '@/components/ui/FilterPanel';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useI18n } from '@/hooks/useI18n';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
 import { Award, Download, Phone } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'react-hot-toast';
 
 interface Brief {
     id: number;
@@ -36,6 +40,7 @@ interface Props {
     briefs: Brief[];
     selectedBriefId: number | null;
     candidates: Candidate[];
+    filters?: { field: string; value: string }[] | null;
 }
 
 const BREAKDOWN_META: Record<string, { label: string; bar: string; text: string }> = {
@@ -73,16 +78,51 @@ function initials(name: string) {
 
 const SUMMARY_LIMIT = 120;
 
-export default function ClassementIndex({ briefs, selectedBriefId, candidates }: Props) {
+export default function ClassementIndex({ briefs, selectedBriefId, candidates, filters }: Props) {
+    const { t } = useI18n();
     const [selected, setSelected] = useState<Candidate | null>(candidates[0] ?? null);
     const [expanded, setExpanded] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [activeFilters, setActiveFilters] = useState<FilterEntry[]>(Array.isArray(filters) ? filters : []);
 
     const currentBrief = briefs.find((b) => b.id === selectedBriefId) ?? null;
 
-    function handleBriefChange(e: React.ChangeEvent<HTMLSelectElement>) {
-        const id = Number(e.target.value);
-        if (!id) return;
-        router.get(route('dashboard.classement'), { brief_id: id }, { preserveScroll: true });
+    const FILTER_FIELDS = [
+        { key: 'full_name', label: t('candidats.index.filters.full_name'), type: 'text' as const },
+        { key: 'score', label: t('briefs.classement.filters.score'), type: 'number' as const },
+        { key: 'skills', label: t('briefs.classement.filters.skills'), type: 'text' as const },
+        {
+            key: 'brief',
+            label: t('briefs.classement.filters.brief'),
+            type: 'select' as const,
+            options: briefs.map((b) => ({ value: String(b.id), label: b.title })),
+        },
+    ];
+
+    function handleSearch(filtersOverride?: FilterEntry[]) {
+        const toSearch = filtersOverride ?? activeFilters;
+        const cleanFilters = toSearch
+            .filter((f) => (Array.isArray(f.value) ? f.value.length > 0 : f.value && String(f.value).trim() !== ''))
+            .map((f) => ({ field: f.field, value: Array.isArray(f.value) ? f.value.join(',') : f.value }));
+
+        router.get(
+            route('dashboard.classement'),
+            {
+                brief_id: cleanFilters.find((f) => f.field === 'brief')?.value || selectedBriefId,
+                filters: JSON.stringify(cleanFilters),
+            },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                onStart: () => setLoading(true),
+                onFinish: () => setLoading(false),
+                onSuccess: (page) => {
+                    const count = (page.props as { candidates?: unknown[] }).candidates?.length ?? 0;
+                    toast.success(`${count} candidat${count !== 1 ? 's' : ''} trouvé${count !== 1 ? 's' : ''}`);
+                },
+                onError: () => toast.error('Erreur lors de la recherche'),
+            },
+        );
     }
 
     function handleSelect(c: Candidate) {
@@ -121,23 +161,39 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
                             </p>
                         )}
 
-                        {briefs.length > 1 && (
-                            <select
-                                value={selectedBriefId ?? ''}
-                                onChange={handleBriefChange}
-                                className="border-ds-border bg-ds-surface text-ds-text focus:border-ds-accent mt-3 rounded-lg border px-3 py-1.5 text-sm focus:outline-none"
-                            >
-                                {briefs.map((b) => (
-                                    <option key={b.id} value={b.id}>
-                                        {b.title}
-                                    </option>
-                                ))}
-                            </select>
-                        )}
+                        {/* FILTERS */}
+                        <div className="py-3">
+                            <FilterPanel
+                                fields={FILTER_FIELDS}
+                                activeFilters={activeFilters}
+                                onChange={setActiveFilters}
+                                onSearch={handleSearch}
+                                loading={loading}
+                            />
+                        </div>
                     </div>
 
+                    {/* Skeleton while loading */}
+                    {loading && (
+                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                            {Array.from({ length: 6 }).map((_, i) => (
+                                <div key={i} className="border-ds-border bg-ds-surface rounded-2xl border p-5">
+                                    <div className="mb-3 flex items-center gap-3">
+                                        <Skeleton className="bg-ds-bg3 h-9 w-9 rounded-lg" />
+                                        <div className="flex-1 space-y-2">
+                                            <Skeleton className="bg-ds-bg3 h-3 w-3/4" />
+                                            <Skeleton className="bg-ds-bg3 h-2.5 w-1/2" />
+                                        </div>
+                                        <Skeleton className="bg-ds-bg3 h-8 w-14 rounded-full" />
+                                    </div>
+                                    <Skeleton className="bg-ds-bg3 h-2 w-full rounded-full" />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
                     {/* EMPTY STATE */}
-                    {candidates.length === 0 && (
+                    {!loading && candidates.length === 0 && (
                         <div className="flex flex-col items-center justify-center py-28 text-center">
                             <Award size={52} className="text-ds-text3 mb-4" />
                             <h2 className="text-ds-text text-lg font-semibold">Aucun candidat classé</h2>
@@ -149,7 +205,7 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates }:
                         </div>
                     )}
 
-                    {candidates.length > 0 && (
+                    {!loading && candidates.length > 0 && (
                         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
                             {/* ── CANDIDATE LIST ── */}
                             <div className="space-y-3 lg:col-span-2">

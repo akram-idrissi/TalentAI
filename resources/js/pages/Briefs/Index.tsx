@@ -1,14 +1,17 @@
 import DeleteModal from '@/components/ui/DeleteModal';
+import FilterPanel, { FilterEntry } from '@/components/ui/FilterPanel';
+import SkeletonTable from '@/components/ui/SkeletonTable';
 import { useI18n } from '@/hooks/useI18n';
 import { usePermission } from '@/hooks/usePermission';
 import AppLayout from '@/layouts/app-layout';
 import type { Brief, IndexBriefProps } from '@/types/brief';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import { ChevronLeft, ChevronRight, Edit2, Eye, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit2, Eye, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'react-hot-toast';
 
 dayjs.extend(relativeTime);
 dayjs.locale('fr');
@@ -124,10 +127,55 @@ function Pagination({ meta, search }: { meta: PaginationMeta; search: string }) 
 
 export default function Index({ briefs, filters }: IndexBriefProps) {
     const { t } = useI18n();
+    const [search] = useState('');
     const { can, isSuperAdmin } = usePermission();
     const canCreateBriefs = isSuperAdmin() || can('briefs.create');
-    const [search, setSearch] = useState(filters.search ?? '');
+
     const [deletingBrief, setDeletingBrief] = useState<Brief | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [activeFilters, setActiveFilters] = useState<FilterEntry[]>(Array.isArray(filters) ? filters : []);
+
+    type BriefTranslations = { briefs?: { index?: { filters?: Record<string, Record<string, string>> } } };
+    const { translations } = usePage<{ translations?: BriefTranslations }>().props;
+    const filterTr = translations?.briefs?.index?.filters ?? {};
+
+    function trOptions(bag: Record<string, string>) {
+        return Object.entries(bag ?? {}).map(([v, l]) => ({ value: v, label: l as string }));
+    }
+
+    const FILTER_FIELDS = [
+        { key: 'title', label: t('briefs.index.filters.fields.title'), type: 'text' as const },
+        {
+            key: 'sector',
+            label: t('briefs.index.filters.fields.sector'),
+            type: 'select' as const,
+            multi: true,
+            options: trOptions(filterTr.sector_options),
+        },
+        {
+            key: 'contract_type',
+            label: t('briefs.index.filters.fields.contract_type'),
+            type: 'select' as const,
+            multi: true,
+            options: trOptions(filterTr.contract_options),
+        },
+        { key: 'location', label: t('briefs.index.filters.fields.location'), type: 'text' as const },
+        { key: 'min_experience_years', label: t('briefs.index.filters.fields.min_experience_years'), type: 'number' as const },
+        {
+            key: 'education_level',
+            label: t('briefs.index.filters.fields.education_level'),
+            type: 'select' as const,
+            multi: true,
+            options: trOptions(filterTr.education_options),
+        },
+        {
+            key: 'status',
+            label: t('briefs.index.filters.fields.status'),
+            type: 'select' as const,
+            multi: true,
+            options: trOptions(filterTr.status_options),
+        },
+    ];
 
     function handleDelete() {
         if (!deletingBrief) return;
@@ -136,20 +184,34 @@ export default function Index({ briefs, filters }: IndexBriefProps) {
         });
     }
 
-    function handleSearch() {
-        router.get(route('dashboard.briefs.index'), { search }, { preserveState: true });
-    }
+    function handleSearch(filtersOverride?: FilterEntry[]) {
+        const toSearch = filtersOverride ?? activeFilters;
+        const cleanFilters = toSearch
+            .filter((f) => (Array.isArray(f.value) ? f.value.length > 0 : f.value && (f.value as string).trim() !== ''))
+            .map((f) => ({ field: f.field, value: Array.isArray(f.value) ? f.value.join(',') : f.value }));
 
-    function handleReset() {
-        setSearch('');
-        router.get(route('dashboard.briefs.index'));
+        router.get(
+            route('dashboard.briefs.index'),
+            { filters: JSON.stringify(cleanFilters) },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                onStart: () => setLoading(true),
+                onFinish: () => setLoading(false),
+                onSuccess: (page) => {
+                    const total = (page.props as { briefs?: { total?: number } }).briefs?.total ?? 0;
+                    toast.success(`${total} brief${total !== 1 ? 's' : ''} trouvé${total !== 1 ? 's' : ''}`);
+                },
+                onError: () => toast.error(t('briefs.index.flash.index_error')),
+            },
+        );
     }
 
     return (
         <>
             <Head title={t('briefs.index.title')} />
             <AppLayout>
-                <div className="bg-ds-bg min-h-full px-6 py-8">
+                <div className="bg-ds-bg min-h-screen px-6">
                     {/* Header */}
                     <div className="mb-6">
                         <h1 className="font-heading text-ds-text text-[26px] font-bold">{t('briefs.index.title')}</h1>
@@ -157,47 +219,32 @@ export default function Index({ briefs, filters }: IndexBriefProps) {
                     </div>
 
                     {/* Toolbar */}
-                    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-                        <div className="relative flex-1">
-                            <Search size={14} className="text-ds-text3 absolute top-1/2 left-3 -translate-y-1/2" />
-                            <input
-                                type="text"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                placeholder={t('briefs.index.search_placeholder')}
-                                className="border-ds-border bg-ds-bg3 text-ds-text placeholder:text-ds-text3 focus:border-ds-accent focus:ring-ds-accent/20 w-full rounded-lg border py-2.5 pr-4 pl-9 text-[13px] focus:ring-1 focus:outline-none"
+                    <div className="mb-5 flex items-start gap-3">
+                        <div className="flex-1">
+                            <FilterPanel
+                                fields={FILTER_FIELDS}
+                                activeFilters={activeFilters}
+                                onChange={setActiveFilters}
+                                onSearch={handleSearch}
+                                loading={loading}
                             />
                         </div>
-
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={handleSearch}
-                                className="bg-ds-accent rounded-lg px-4 py-2.5 text-[13px] font-medium text-white transition hover:bg-[#7C74FF]"
+                        {canCreateBriefs && (
+                            <Link
+                                href={route('dashboard.briefs.create')}
+                                className="bg-ds-accent flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-semibold text-white transition hover:opacity-90"
                             >
-                                {t('briefs.index.actions.search')}
-                            </button>
-                            <button
-                                onClick={handleReset}
-                                className="border-ds-border text-ds-text2 hover:bg-ds-surface hover:text-ds-text flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-[13px] transition"
-                            >
-                                <RotateCcw size={13} />
-                                {t('briefs.index.actions.reset')}
-                            </button>
-                            {canCreateBriefs && (
-                                <Link
-                                    href={route('dashboard.briefs.create')}
-                                    className="bg-ds-accent flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-[#7C74FF]"
-                                >
-                                    <Plus size={14} />
-                                    {t('briefs.index.actions.create')}
-                                </Link>
-                            )}
-                        </div>
+                                <Plus size={14} />
+                                {t('briefs.index.actions.create')}
+                            </Link>
+                        )}
                     </div>
 
+                    {/* Skeleton while loading */}
+                    {loading && <SkeletonTable cols={8} rows={8} />}
+
                     {/* Empty state */}
-                    {briefs.data.length === 0 && (
+                    {!loading && briefs.data.length === 0 && (
                         <div className="border-ds-border bg-ds-surface flex flex-col items-center justify-center rounded-xl border py-24 text-center">
                             <div className="bg-ds-accent/10 mb-4 flex h-14 w-14 items-center justify-center rounded-2xl">
                                 <span className="text-2xl">📋</span>
@@ -217,7 +264,7 @@ export default function Index({ briefs, filters }: IndexBriefProps) {
                     )}
 
                     {/* Table */}
-                    {briefs.data.length > 0 && (
+                    {!loading && briefs.data.length > 0 && (
                         <div className="border-ds-border bg-ds-surface overflow-hidden rounded-xl border">
                             <div className="overflow-x-auto">
                                 <table className="w-full border-collapse text-[13px]">
@@ -297,16 +344,16 @@ export default function Index({ briefs, filters }: IndexBriefProps) {
                             </div>
                         </div>
                     )}
-                </div>
 
-                {deletingBrief && (
-                    <DeleteModal
-                        label={deletingBrief.title}
-                        i18nPrefix="briefs.index.modal"
-                        onConfirm={handleDelete}
-                        onCancel={() => setDeletingBrief(null)}
-                    />
-                )}
+                    {deletingBrief && (
+                        <DeleteModal
+                            label={deletingBrief.title}
+                            i18nPrefix="briefs.index.modal"
+                            onConfirm={handleDelete}
+                            onCancel={() => setDeletingBrief(null)}
+                        />
+                    )}
+                </div>
             </AppLayout>
         </>
     );

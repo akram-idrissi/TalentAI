@@ -19,7 +19,7 @@ class RoleManagementController extends Controller
      *
      * @return Response Inertia page — RoleManagement/Index — or Fallback on failure
      */
-    public function rolesIndex(): Response
+    public function rolesIndex(Request $request): Response
     {
         $this->authorize('roles.view');
 
@@ -27,8 +27,17 @@ class RoleManagementController extends Controller
         $logger = app(ActivityLogger::class);
 
         try {
+            $roleName = $request->string('role')->trim()->toString();
+            $permissions = array_values(array_filter($request->array('permissions')));
+
             $roles = Role::withCount('users')
                 ->with(['permissions:name', 'users' => fn ($q) => $q->select('users.id', 'name', 'email', 'deactivated_at')])
+                ->when($roleName, fn ($q) => $q->where('name', $roleName))
+                ->when($permissions, function ($q) use ($permissions) {
+                    foreach ($permissions as $perm) {
+                        $q->whereHas('permissions', fn ($pq) => $pq->where('name', $perm));
+                    }
+                })
                 ->get()
                 ->map(fn ($role) => [
                     'id' => $role->id,
@@ -55,6 +64,7 @@ class RoleManagementController extends Controller
                 'allPermissions' => Permission::all()->pluck('name')->groupBy(
                     fn ($perm) => explode('.', $perm)[0]
                 ),
+                'filters' => ['role' => $roleName, 'permissions' => $permissions],
             ]);
         } catch (\Throwable $e) {
             $logger->log(
@@ -229,19 +239,14 @@ class RoleManagementController extends Controller
 
         try {
             $search = $request->string('search')->trim()->toString();
+            $email = $request->string('email')->trim()->toString();
             $role = $request->string('role')->trim()->toString();
 
             $users = User::with('roles:name')
                 ->select(['id', 'name',  'email', 'last_login_at', 'created_at', 'deleted_at', 'deactivated_at'])
-                ->when($search, function ($query, string $search) {
-                    $query->where(function ($q) use ($search) {
-                        $q->where('name', 'like', "%{$search}%")
-                            ->orWhere('email', 'like', "%{$search}%");
-                    });
-                })
-                ->when($role, function ($query, string $role) {
-                    $query->whereHas('roles', fn ($q) => $q->where('name', $role));
-                })
+                ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
+                ->when($email, fn ($q) => $q->where('email', 'like', "%{$email}%"))
+                ->when($role, fn ($q) => $q->whereHas('roles', fn ($r) => $r->where('name', $role)))
                 ->latest()
                 ->paginate(20)
                 ->withQueryString()
@@ -262,6 +267,7 @@ class RoleManagementController extends Controller
                 'roles' => Role::all(['id', 'name']),
                 'filters' => [
                     'search' => $search,
+                    'email' => $email,
                     'role' => $role,
                 ],
             ]);

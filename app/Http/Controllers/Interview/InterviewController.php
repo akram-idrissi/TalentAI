@@ -4,15 +4,17 @@ namespace App\Http\Controllers\Interview;
 
 use App\Enums\BriefStatus;
 use App\Http\Controllers\Controller;
-use App\Jobs\Transcription\TranscribeAudioJob;
 use App\Models\Brief;
 use App\Models\Candidat;
 use App\Models\Interview;
 use App\Models\Transcription;
 use App\Services\ActivityLogger;
+use App\Services\Transcription\AssemblyAIService;
+use App\Services\Transcription\TranscriptionAnalysisService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -124,7 +126,7 @@ class InterviewController extends Controller
      *
      * @throws ValidationException If validation fails (auto-handled by Laravel)
      */
-    public function upload(Request $request): RedirectResponse|Response
+    public function upload(Request $request, AssemblyAIService $assemblyAI): RedirectResponse|Response
     {
         $this->authorize('interviews.upload');
         /** @var ActivityLogger $logger */
@@ -154,7 +156,7 @@ class InterviewController extends Controller
                 'scheduled_at' => now(),
             ]);
 
-            $path = $request->file('audio')->store('transcriptions/pending', 'local');
+            $path = $request->file('audio')->store('transcriptions/pending', 's3');
 
             $transcription = Transcription::create([
                 'interview_id' => $interview->id,
@@ -162,12 +164,17 @@ class InterviewController extends Controller
                 'audio_path' => $path,
             ]);
 
-            TranscribeAudioJob::dispatch($transcription);
+            // Pre-signed URL valid for 1 hour — long enough for AssemblyAI to fetch the file
+            $presignedUrl = Storage::disk('s3')->temporaryUrl($path, now()->addHour());
+
+            $assemblyTranscriptId = $assemblyAI->submit($presignedUrl);
+
+            $transcription->update(['assemblyai_transcript_id' => $assemblyTranscriptId]);
 
             $logger->log(
                 'interview.upload',
-                "Transcription soumise (ID : {$transcription->id}).",
-                ['transcription_id' => $transcription->id, 'audio_path' => $path],
+                "Transcription soumise à AssemblyAI (ID : {$transcription->id}, AssemblyAI : {$assemblyTranscriptId}).",
+                ['transcription_id' => $transcription->id, 'assemblyai_transcript_id' => $assemblyTranscriptId],
                 [Transcription::class]
             );
 
@@ -284,7 +291,7 @@ class InterviewController extends Controller
      * @param  Interview  $interview  Interview being tracked
      * @return JsonResponse Current processing status, or an error payload on failure
      */
-    public function status(Interview $interview): JsonResponse
+    public function status(Interview $interview, AssemblyAIService $assemblyAI, TranscriptionAnalysisService $analysisService): JsonResponse
     {
         $this->authorize('interviews.view');
 
@@ -292,34 +299,135 @@ class InterviewController extends Controller
         $logger = app(ActivityLogger::class);
 
         try {
-            $interview->load('transcription');
+            $interview->load(['transcription', 'brief']);
             $transcription = $interview->transcription;
 
-            $logger->log(
-                'interview.status',
-                "Suivi du statut de l'entretien (ID : {$interview->id}).",
-                ['interview_id' => $interview->id],
-                [Interview::class]
-            );
+            if (! $transcription) {
+                return response()->json(['status' => 'pending', 'analysis_status' => 'pending']);
+            }
+
+            // If transcription is still pending, check AssemblyAI for updates
+            if ($transcription->status === 'pending' && $transcription->assemblyai_transcript_id) {
+                $assemblyStatus = $assemblyAI->checkStatus($transcription->assemblyai_transcript_id);
+
+                if ($assemblyStatus === 'completed') {
+                    // Fetch and process utterances
+                    $utterances = $assemblyAI->fetchUtterances($transcription->assemblyai_transcript_id);
+
+                    $firstSpeaker = $utterances[0]['speaker'] ?? 'A';
+                    $speakerMap = [$firstSpeaker => 'Interviewer'];
+                    foreach ($utterances as $u) {
+                        if (! isset($speakerMap[$u['speaker']])) {
+                            $speakerMap[$u['speaker']] = 'Candidate';
+                        }
+                    }
+
+                    $turns = array_filter(
+                        array_map(fn ($u) => trim($u['text']) === '' ? null : [
+                            'speaker' => $speakerMap[$u['speaker']] ?? $u['speaker'],
+                            'text' => $u['text'],
+                        ], $utterances)
+                    );
+
+                    $diarizedTranscript = implode("\n\n", array_map(fn ($t) => "{$t['speaker']}: {$t['text']}", $turns));
+
+                    $transcription->update([
+                        'status' => 'done',
+                        'transcript_text' => implode(' ', array_column($turns, 'text')),
+                        'diarized_transcript' => $diarizedTranscript,
+                        'analysis_status' => 'processing',
+                    ]);
+
+                    Storage::disk('s3')->delete($transcription->audio_path);
+
+                    // Run analysis — extend PHP time limit for this request
+                    @set_time_limit(300);
+
+                    try {
+                        $brief = $this->formatBrief($interview->brief, $interview->expectations ?? '');
+                        $result = $analysisService->analyse($diarizedTranscript, $brief);
+
+                        $transcription->update([
+                            'analysis_status' => 'done',
+                            'analysis_score' => $result['global_score'],
+                            'analysis_verdict' => $result['verdict'],
+                            'analysis_result' => $result,
+                        ]);
+                        $interview->update(['status' => 'done']);
+                    } catch (\Throwable $e) {
+                        $transcription->update(['analysis_status' => 'failed', 'analysis_error' => $e->getMessage()]);
+                    }
+
+                    $transcription->refresh();
+
+                } elseif ($assemblyStatus === 'error') {
+                    $transcription->update(['status' => 'failed']);
+                }
+            }
+
+            $logger->log('interview.status', 'Consultation du statut de transcription.', ['interview_id' => $interview->id], [Interview::class]);
 
             return response()->json([
-                'status' => $transcription?->status ?? 'pending',
-                'analysis_status' => $transcription?->analysis_status ?? 'pending',
-                'error' => $transcription?->error ?? null,
+                'status' => $transcription->status,
+                'analysis_status' => $transcription->analysis_status ?? 'pending',
+                'error' => $transcription->error ?? null,
             ]);
         } catch (\Throwable $e) {
-            $logger->log(
-                'interview.status.error',
-                "Erreur lors du suivi du statut de l'entretien (ID : {$interview->id}) : ".$e->getMessage(),
-                ['interview_id' => $interview->id, 'exception' => $e->getMessage()],
-                [Interview::class]
-            );
+            $logger->log('interview.status.error', 'Erreur lors de la récupération du statut : '.$e->getMessage(), ['exception' => $e->getMessage()], [Interview::class]);
 
             return response()->json([
                 'status' => 'failed',
                 'analysis_status' => 'failed',
-                'error' => 'Impossible de récupérer le statut de cet entretien.',
+                'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    private function formatBrief(Brief $brief, string $expectations): string
+    {
+        $skills = is_array($brief->required_skills) ? implode(', ', $brief->required_skills) : $brief->required_skills;
+        $soft = is_array($brief->soft_skills) ? implode(', ', $brief->soft_skills) : $brief->soft_skills;
+        $langs = is_array($brief->languages) ? implode(', ', $brief->languages) : $brief->languages;
+        $weights = is_array($brief->scoring_weights)
+            ? collect($brief->scoring_weights)->map(fn ($v, $k) => "{$k}: {$v}%")->implode(', ')
+            : $brief->scoring_weights;
+
+        $expectationsSection = $expectations
+            ? "\n\nAttentes spécifiques de l'interviewer :\n{$expectations}"
+            : '';
+
+        $sector = $brief->sector ?? 'Non précisé';
+        $contract = $brief->contract_type?->label();
+        $location = $brief->location ?? 'Non précisé';
+        $salary = $brief->salary_range ?? 'Non précisé';
+        $experience = $brief->min_experience_years ?? 'Non précisé';
+        $education = $brief->education_level ?? 'Non précisé';
+        $seniority = $brief->seniority_level ?? 'Non précisé';
+        $gender = $brief->gender_pref;
+        $age = $brief->age_range;
+        $mission = $brief->mission_description;
+        $title = $brief->title;
+
+        return <<<BRIEF
+Poste : {$title}
+Secteur : {$sector}
+Contrat : {$contract}
+Lieu : {$location}
+Salaire : {$salary}
+Expérience minimale : {$experience} an(s)
+Niveau d'études : {$education}
+Langues : {$langs}
+Séniorité : {$seniority}
+Préférence genre : {$gender}
+Tranche d'âge : {$age}
+
+Mission :
+{$mission}
+
+Compétences techniques requises : {$skills}
+Compétences comportementales : {$soft}
+
+Pondération des critères d'évaluation : {$weights}{$expectationsSection}
+BRIEF;
     }
 }

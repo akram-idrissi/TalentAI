@@ -5,6 +5,7 @@ namespace App\Http\Controllers\ActivityLog;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Services\ActivityLogger;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -31,22 +32,10 @@ class ActivityLogController extends Controller
             $dateFrom = $request->string('date_from')->trim()->toString();
             $dateTo = $request->string('date_to')->trim()->toString();
 
-            $logs = ActivityLog::query()
-                ->when($search, function ($q) use ($search) {
-                    $q->where(function ($inner) use ($search) {
-                        $inner->where('description', 'like', "%{$search}%")
-                            ->orWhere('action', 'like', "%{$search}%")
-                            ->orWhere('user_name', 'like', "%{$search}%")
-                            ->orWhere('user_email', 'like', "%{$search}%");
-                    });
-                })
-                ->when($action, fn ($q) => $q->where('action', 'like', "%{$action}%"))
-                ->when($user, fn ($q) => $q->where(function ($inner) use ($user) {
-                    $inner->where('user_name', 'like', "%{$user}%")
-                        ->orWhere('user_email', 'like', "%{$user}%");
-                }))
-                ->when($dateFrom, fn ($q) => $q->whereDate('logged_at', '>=', $dateFrom))
-                ->when($dateTo, fn ($q) => $q->whereDate('logged_at', '<=', $dateTo))
+            $logs = $this->applyFilters(
+                ActivityLog::query(),
+                $search, $action, $user, $dateFrom, $dateTo
+            )
                 ->orderByDesc('logged_at')
                 ->paginate(25)
                 ->withQueryString()
@@ -106,6 +95,35 @@ class ActivityLogController extends Controller
      *
      * @param  ActivityLog  $activityLog  Route-model-bound instance
      * @return Response Inertia page — ActivityLogs/Show — or Fallback on failure
+     */
+    private function applyFilters(
+        Builder $query,
+        string $search,
+        string $action,
+        string $user,
+        string $dateFrom,
+        string $dateTo,
+    ): Builder {
+        return $query
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($inner) use ($search) {
+                    $inner->where('description', 'like', "%{$search}%")
+                        ->orWhere('action', 'like', "%{$search}%")
+                        ->orWhere('user_name', 'like', "%{$search}%")
+                        ->orWhere('user_email', 'like', "%{$search}%");
+                });
+            })
+            ->when($action, fn ($q) => $q->where('action', 'like', "%{$action}%"))
+            ->when($user, fn ($q) => $q->where(function ($inner) use ($user) {
+                $inner->where('user_name', 'like', "%{$user}%")
+                    ->orWhere('user_email', 'like', "%{$user}%");
+            }))
+            ->when($dateFrom, fn ($q) => $q->whereDate('logged_at', '>=', $dateFrom))
+            ->when($dateTo, fn ($q) => $q->whereDate('logged_at', '<=', $dateTo));
+    }
+
+    /**
+     * Display the specified activity log entry.
      */
     public function show(ActivityLog $activityLog): Response
     {

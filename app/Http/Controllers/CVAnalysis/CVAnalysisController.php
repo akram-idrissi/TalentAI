@@ -7,6 +7,7 @@ use App\Jobs\AnalyseCVJob;
 use App\Models\Brief;
 use App\Models\CvAnalysis;
 use App\Services\ActivityLogger;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,53 +24,82 @@ class CVAnalysisController extends Controller
      * @param  Request  $request  Supports query params: search (candidate name), brief_id
      * @return Response CVAnalysis/Index or Fallback on error
      */
+    /**
+     * Display list of CV analyses.
+     *
+     * @return \Illuminate\Http\Response
+     */
     public function index(Request $request): Response
     {
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
         try {
+            $query = CvAnalysis::query()
+                ->with([
+                    'candidate',
+                    'brief',
+                ]);
 
-            $search = $request->search;
-            $briefId = $request->brief_id;
+            $filters = $request->input('filters', []);
 
-            $query = CvAnalysis::with(['candidate', 'brief']);
-
-            // SEARCH CANDIDATE NAME
-            if ($search) {
-                $query->whereHas('candidate', function ($q) use ($search) {
-                    $q->where('full_name', 'like', '%'.$search.'%');
-                });
+            if (is_string($filters)) {
+                $filters = json_decode($filters, true);
             }
 
-            // FILTER BRIEF
-            if ($briefId) {
-                $query->where('brief_id', $briefId);
-            }
+            $filters = is_array($filters) ? $filters : [];
+            $this->applyFilters($query, $filters);
 
             $analyses = $query
                 ->latest()
-                ->get();
+                ->get()
+                ->map(function ($analysis) {
+
+                    return [
+
+                        'id' => $analysis->id,
+
+                        'candidate' => [
+                            'id' => $analysis->candidate?->id,
+                            'full_name' => $analysis->candidate?->full_name,
+                            'linkedin_url' => $analysis->candidate?->linkedin_url,
+                        ],
+
+                        'brief' => [
+                            'id' => $analysis->brief?->id,
+                            'title' => $analysis->brief?->title,
+                            'required_skills' => $analysis->brief?->required_skills,
+                        ],
+
+                        'score_global' => $analysis->score_global,
+                        'score_experience' => $analysis->score_experience,
+                        'score_education' => $analysis->score_education,
+                        'score_skills' => $analysis->score_skills,
+                        'ai_summary' => $analysis->ai_summary,
+                        'ai_summary_en' => $analysis->ai_summary_en,
+                        'ai_tags' => $analysis->ai_tags,
+                        'cv_file_path' => $analysis->cv_file_path,
+                        'extracted_text' => $analysis->extracted_text,
+                        'created_at' => $analysis->created_at?->toDateTimeString(),
+                    ];
+                });
 
             $briefs = Brief::select('id', 'title')
                 ->orderBy('title')
                 ->get();
-
             $logger->log(
                 'cv_analysis.index',
                 'Consultation des analyses CV.',
-                [],
+                [
+                    'filters' => $filters,
+                ],
                 [CvAnalysis::class]
             );
 
             return Inertia::render('CVAnalysis/Index', [
                 'analyses' => $analyses,
                 'briefs' => $briefs,
-
-                'filters' => [
-                    'search' => $search,
-                    'brief_id' => $briefId,
-                ],
+                'filters' => $filters,
             ]);
 
         } catch (\Throwable $e) {
@@ -77,7 +107,9 @@ class CVAnalysisController extends Controller
             $logger->log(
                 'cv_analysis.index.error',
                 $e->getMessage(),
-                ['exception' => $e->getMessage()],
+                [
+                    'exception' => $e->getMessage(),
+                ],
                 [CvAnalysis::class]
             );
 
@@ -91,6 +123,54 @@ class CVAnalysisController extends Controller
      * Render the CV upload form with available briefs and the 5 most recent analyses.
      *
      * @return Response CVAnalysis/Create or Fallback on error
+     */
+    private function applyFilters(Builder $query, array $filters): void
+    {
+        foreach ($filters as $filter) {
+            if (
+                ! isset($filter['field']) ||
+                ! isset($filter['value']) ||
+                $filter['value'] === ''
+            ) {
+                continue;
+            }
+
+            $field = $filter['field'];
+            $value = trim($filter['value']);
+
+            if ($field === 'full_name') {
+                $query->whereHas('candidate', fn ($q) => $q->where('full_name', 'LIKE', "%{$value}%"));
+
+                continue;
+            }
+
+            if ($field === 'brief') {
+                $query->where('brief_id', $value);
+
+                continue;
+            }
+
+            if ($field === 'score') {
+                $query->where('score_global', '>=', (int) $value);
+
+                continue;
+            }
+
+            if ($field === 'extracted_text.technical_skills') {
+                $skills = preg_split('/\s+/', $value);
+                $query->where(function ($q) use ($skills) {
+                    foreach ($skills as $skill) {
+                        $q->orWhereJsonContains('extracted_text->technical_skills', $skill);
+                    }
+                });
+
+                continue;
+            }
+        }
+    }
+
+    /**
+     * Show the form for creating a new CV analysis.
      */
     public function create(Request $request)
     {
