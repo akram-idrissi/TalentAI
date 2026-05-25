@@ -1,3 +1,5 @@
+import { FilterEntry } from '@/components/ui/FilterPanel';
+
 export type Status = 'idle' | 'uploading' | 'pending' | 'processing' | 'done' | 'failed';
 
 export interface InterviewRecord {
@@ -90,4 +92,5 @@ interface PaginatedInterviews {
 
 export interface IndexInterviewsProps {
     interviews: PaginatedInterviews;
+    filters?: FilterEntry[];
 }

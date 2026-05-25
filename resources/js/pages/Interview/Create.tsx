@@ -3,7 +3,7 @@ import { useI18n } from '@/hooks/useI18n';
 import AppLayout from '@/layouts/app-layout';
 import { CreateInterviewProps, Option, Status } from '@/types/interviews';
 import { Head, router } from '@inertiajs/react';
-import { CheckCheck, ChevronLeft, RotateCcw, Upload } from 'lucide-react';
+import { AlertTriangle, CheckCheck, ChevronLeft, Loader2, Mic, RotateCcw, Upload } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import Select from 'react-select';
 import { InterviewField } from './components/InterviewField';
@@ -177,24 +177,21 @@ export default function CreateInterview({ candidates, briefs, interviews }: Crea
                                 </InterviewField>
 
                                 <InterviewField label="Plateforme">
-                                    <div className="grid grid-cols-4 gap-1.5">
-                                        {PLATFORMS.map((p) => (
-                                            <button
-                                                key={p}
-                                                type="button"
-                                                disabled={isWorking}
-                                                onClick={() => setPlatform(p)}
-                                                className={[
-                                                    'rounded-lg border py-2 text-[10px] font-bold uppercase transition-all disabled:cursor-not-allowed disabled:opacity-50',
-                                                    platform === p
-                                                        ? 'border-ds-accent bg-ds-accent/10 text-ds-accent'
-                                                        : 'border-ds-border text-ds-text3 hover:border-ds-border2 hover:text-ds-text',
-                                                ].join(' ')}
-                                            >
-                                                {p}
-                                            </button>
-                                        ))}
-                                    </div>
+                                    <Select
+                                        value={
+                                            PLATFORMS.map((p) => ({
+                                                value: p,
+                                                label: p,
+                                            })).find((o) => o.value === platform) || null
+                                        }
+                                        onChange={(option) => setPlatform(option?.value ?? 'zoom')}
+                                        options={PLATFORMS.map((p) => ({
+                                            value: p,
+                                            label: p,
+                                        }))}
+                                        isDisabled={isWorking}
+                                        styles={selectStyles}
+                                    />
                                 </InterviewField>
                                 <InterviewField label="Attentes spécifiques">
                                     <textarea
@@ -259,7 +256,9 @@ export default function CreateInterview({ candidates, briefs, interviews }: Crea
                                     <div className="border-ds-border bg-ds-bg mb-4 rounded-xl border px-4 py-3">
                                         <div className="mb-2 flex items-center justify-between text-[12px]">
                                             <span className="text-ds-text2">{STATUS_LABEL[status]}</span>
-                                            <span className="text-ds-accent animate-pulse">●</span>
+                                            <span className="text-ds-accent animate-pulse">
+                                                <Loader2 size={14} />
+                                            </span>
                                         </div>
                                         <div className="bg-ds-bg3 h-1 w-full overflow-hidden rounded-full">
                                             <div
@@ -305,7 +304,9 @@ export default function CreateInterview({ candidates, briefs, interviews }: Crea
                                 {/* Error */}
                                 {error && (
                                     <div className="border-ds-red/30 bg-ds-red/10 text-ds-red mb-4 flex items-start gap-3 rounded-xl border px-4 py-3 text-[13px]">
-                                        <span className="mt-0.5 shrink-0">⚠</span>
+                                        <span className="mt-0.5 shrink-0">
+                                            <AlertTriangle size={14} />
+                                        </span>
                                         <span>{error}</span>
                                     </div>
                                 )}
@@ -316,7 +317,9 @@ export default function CreateInterview({ candidates, briefs, interviews }: Crea
                             <p className="font-heading text-ds-text mb-4 text-[14px] font-semibold">{t('interviews.index.history_title')}</p>
                             {interviews.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-10 text-center">
-                                    <span className="mb-3 text-3xl">🎙️</span>
+                                    <span className="mb-3 text-3xl">
+                                        <Mic size={14} className="text-ds-text3" />
+                                    </span>
                                     <p className="text-ds-text text-[14px] font-semibold">{t('interviews.index.history_empty')}</p>
                                     <p className="text-ds-text2 mt-1 text-[13px]">{t('interviews.index.history_description')}</p>
                                 </div>

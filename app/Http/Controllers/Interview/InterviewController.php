@@ -77,45 +77,71 @@ class InterviewController extends Controller
     /**
      * Paginated list of all interviews for the authenticated user.
      */
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $this->authorize('interviews.view');
-        /** @var ActivityLogger $logger */
-        $logger = app(ActivityLogger::class);
 
-        try {
-            $interviews = Interview::with(['candidate', 'brief', 'transcription'])
-                ->where('interviewer_id', auth()->id())
-                ->latest('scheduled_at')
-                ->paginate(10)
-                ->through(fn ($i) => [
-                    'id' => $i->id,
-                    'candidate_name' => $i->candidate?->full_name ?? '—',
-                    'brief_title' => $i->brief?->title ?? '—',
-                    'platform' => $i->platform,
-                    'scheduled_at' => $i->scheduled_at?->format('d M Y'),
-                    'transcription_status' => $i->transcription?->status ?? 'none',
-                    'transcription_id' => $i->transcription?->id,
-                    'analysis_status' => $i->transcription?->analysis_status ?? 'none',
-                ]);
+        $filters = json_decode($request->input('filters', '[]'), true);
 
-            $logger->log('interview.list', 'Liste des entretiens consultée.', [], [Interview::class]);
+        $query = Interview::with(['candidate', 'brief', 'transcription'])
+            ->where('interviewer_id', auth()->id());
 
-            return Inertia::render('Interview/Index', [
-                'interviews' => $interviews,
-            ]);
-        } catch (\Throwable $e) {
-            $logger->log(
-                'interview.list.error',
-                'Erreur lors de la liste des entretiens : '.$e->getMessage(),
-                ['exception' => $e->getMessage()],
-                [Interview::class]
-            );
+        foreach ($filters as $filter) {
+            $field = $filter['field'] ?? null;
+            $value = $filter['value'] ?? null;
 
-            return Inertia::render('Fallback', [
-                'error' => 'Impossible d\'afficher la liste des entretiens.',
-            ]);
+            if (! $value) {
+                continue;
+            }
+
+            switch ($field) {
+                case 'search':
+                    $query->where(function ($q) use ($value) {
+                        $q->whereHas('candidate', fn ($c) => $c->where('full_name', 'like', "%$value%")
+                        )
+                            ->orWhereHas('brief', fn ($b) => $b->where('title', 'like', "%$value%")
+                            );
+                    });
+                    break;
+
+                case 'candidate':
+                    $query->whereHas('candidate', fn ($c) => $c->where('full_name', 'like', "%$value%")
+                    );
+                    break;
+
+                case 'brief':
+                    $query->whereHas('brief', fn ($b) => $b->where('title', 'like', "%$value%")
+                    );
+                    break;
+
+                case 'status':
+                    $query->whereHas('transcription', fn ($t) => $t->where('status', $value)
+                    );
+                    break;
+
+                case 'platform':
+                    $query->where('platform', $value);
+                    break;
+            }
         }
+
+        $interviews = $query
+            ->latest('scheduled_at')
+            ->paginate(10)
+            ->through(fn ($i) => [
+                'id' => $i->id,
+                'candidate_name' => $i->candidate?->full_name ?? '—',
+                'brief_title' => $i->brief?->title ?? '—',
+                'platform' => $i->platform,
+                'scheduled_at' => $i->scheduled_at?->format('d M Y'),
+                'transcription_status' => $i->transcription?->status ?? 'none',
+                'analysis_status' => $i->transcription?->analysis_status ?? 'none',
+            ]);
+
+        return Inertia::render('Interview/Index', [
+            'interviews' => $interviews,
+            'filters' => $filters,
+        ]);
     }
 
     /**
