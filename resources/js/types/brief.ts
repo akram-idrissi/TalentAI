@@ -30,10 +30,18 @@ export type SelectOption = {
     label: string;
 };
 
-export type CreateBriefProps = {
-    contractTypes: SelectOption[];
-    genderPrefs: SelectOption[];
-};
+export interface CreateBriefProps {
+    params: {
+        sectors: SelectOption[];
+        education_levels: SelectOption[];
+        experience_options: SelectOption[];
+        age_ranges: SelectOption[];
+        languages: SelectOption[];
+        seniority_levels: SelectOption[];
+        contract_types: SelectOption[];
+        gender_prefs: SelectOption[];
+    };
+}
 
 export type Brief = {
     id: number;

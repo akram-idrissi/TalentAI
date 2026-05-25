@@ -68,6 +68,7 @@ class HandleInertiaRequests extends Middleware
                 'activity_logs' => __('activity_logs'),
                 'errors' => __('errors'),
                 'interviews' => __('interviews'),
+                'parameters' => __('parameters'),
             ],
         ];
     }

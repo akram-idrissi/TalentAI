@@ -71,6 +71,12 @@ class RolesAndPermissionsSeeder extends Seeder
             // Activity Logs
             'activity_logs.view',
 
+            // Parameters
+            'parameters.view',
+            'parameters.create',
+            'parameters.edit',
+            'parameters.delete',
+
         ];
 
         foreach ($permissions as $permission) {

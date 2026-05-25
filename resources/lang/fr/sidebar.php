@@ -34,5 +34,6 @@ return [
         'users' => 'Utilisateurs',
         'roles' => 'Rôles',
         'activity_logs' => 'Journal des activités',
+        'parameters' => 'Paramètres',
     ],
 ];
