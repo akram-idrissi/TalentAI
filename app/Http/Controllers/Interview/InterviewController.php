@@ -77,71 +77,98 @@ class InterviewController extends Controller
     /**
      * Paginated list of all interviews for the authenticated user.
      */
-    public function index(Request $request): Response
+    public function index(): Response
     {
         $this->authorize('interviews.view');
 
-        $filters = json_decode($request->input('filters', '[]'), true);
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
 
-        $query = Interview::with(['candidate', 'brief', 'transcription'])
-            ->where('interviewer_id', auth()->id());
+        try {
 
-        foreach ($filters as $filter) {
-            $field = $filter['field'] ?? null;
-            $value = $filter['value'] ?? null;
+            $filters = json_decode(request('filters', '[]'), true);
 
-            if (! $value) {
-                continue;
-            }
+            $query = Interview::with(['candidate', 'brief', 'transcription'])
+                ->where('interviewer_id', auth()->id());
 
-            switch ($field) {
-                case 'search':
-                    $query->where(function ($q) use ($value) {
-                        $q->whereHas('candidate', fn ($c) => $c->where('full_name', 'like', "%$value%")
-                        )
-                            ->orWhereHas('brief', fn ($b) => $b->where('title', 'like', "%$value%")
-                            );
+            foreach ($filters as $filter) {
+
+                if ($filter['field'] === 'candidate') {
+                    $query->whereHas('candidate', function ($q) use ($filter) {
+                        $q->where(
+                            'full_name',
+                            'like',
+                            '%'.$filter['value'].'%',
+                        );
                     });
-                    break;
+                }
 
-                case 'candidate':
-                    $query->whereHas('candidate', fn ($c) => $c->where('full_name', 'like', "%$value%")
+                if ($filter['field'] === 'brief') {
+                    $query->whereHas('brief', function ($q) use ($filter) {
+                        $q->where(
+                            'title',
+                            'like',
+                            '%'.$filter['value'].'%',
+                        );
+                    });
+                }
+
+                if ($filter['field'] === 'platform') {
+                    $query->where(
+                        'platform',
+                        $filter['value'],
                     );
-                    break;
+                }
 
-                case 'brief':
-                    $query->whereHas('brief', fn ($b) => $b->where('title', 'like', "%$value%")
-                    );
-                    break;
-
-                case 'status':
-                    $query->whereHas('transcription', fn ($t) => $t->where('status', $value)
-                    );
-                    break;
-
-                case 'platform':
-                    $query->where('platform', $value);
-                    break;
+                if ($filter['field'] === 'status') {
+                    $query->whereHas('transcription', function ($q) use ($filter) {
+                        $q->where(
+                            'status',
+                            $filter['value'],
+                        );
+                    });
+                }
             }
-        }
 
-        $interviews = $query
-            ->latest('scheduled_at')
-            ->paginate(10)
-            ->through(fn ($i) => [
-                'id' => $i->id,
-                'candidate_name' => $i->candidate?->full_name ?? '—',
-                'brief_title' => $i->brief?->title ?? '—',
-                'platform' => $i->platform,
-                'scheduled_at' => $i->scheduled_at?->format('d M Y'),
-                'transcription_status' => $i->transcription?->status ?? 'none',
-                'analysis_status' => $i->transcription?->analysis_status ?? 'none',
+            $interviews = $query
+                ->latest('scheduled_at')
+                ->paginate(10)
+                ->through(fn ($i) => [
+                    'id' => $i->id,
+                    'candidate_name' => $i->candidate?->full_name ?? '—',
+                    'brief_title' => $i->brief?->title ?? '—',
+                    'platform' => $i->platform,
+                    'scheduled_at' => $i->scheduled_at?->format('d M Y'),
+                    'transcription_status' => $i->transcription?->status ?? 'none',
+                    'transcription_id' => $i->transcription?->id,
+                    'analysis_status' => $i->transcription?->analysis_status ?? 'none',
+                ]);
+
+            $logger->log(
+                'interview.list',
+                'Liste des entretiens consultée.',
+                [],
+                [Interview::class]
+            );
+
+            return Inertia::render('Interview/Index', [
+                'interviews' => $interviews,
+                'filters' => $filters,
             ]);
 
-        return Inertia::render('Interview/Index', [
-            'interviews' => $interviews,
-            'filters' => $filters,
-        ]);
+        } catch (\Throwable $e) {
+
+            $logger->log(
+                'interview.list.error',
+                'Erreur lors de la récupération des entretiens : '.$e->getMessage(),
+                ['exception' => $e->getMessage()],
+                [Interview::class]
+            );
+
+            return Inertia::render('Fallback', [
+                'error' => 'Impossible de charger les entretiens.',
+            ]);
+        }
     }
 
     /**
