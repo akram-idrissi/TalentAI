@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\Brief;
 
 use App\Enums\BriefStatus;
-use App\Enums\ContractType;
-use App\Enums\GenderPref;
 use App\Http\Controllers\Controller;
 use App\Models\Brief;
 use App\Services\ActivityLogger;
@@ -139,6 +137,21 @@ class BriefController extends Controller
             return Inertia::render('Briefs/Index', [
                 'briefs' => $briefs,
                 'filters' => $filters ?? [],
+                'params' => $this->params->getAll([
+                    'sectors',
+                    'education_levels',
+                    'experience_options',
+                    'contract_types',
+                    'gender_prefs',
+                    'age_ranges',
+                    'languages',
+                    'seniority_levels',
+
+                ]),
+                'brief_statuses' => array_map(
+                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
+                    BriefStatus::cases()
+                ),
             ]);
 
         } catch (\Throwable $e) {
@@ -176,14 +189,7 @@ class BriefController extends Controller
             );
 
             return Inertia::render('Briefs/Create', [
-                // 'contractTypes' => array_map(
-                //     fn ($case) => ['value' => $case->value, 'label' => $case->label()],
-                //     ContractType::cases()
-                // ),
-                // 'genderPrefs' => array_map(
-                //     fn ($case) => ['value' => $case->value, 'label' => $case->label()],
-                //     GenderPref::cases()
-                // ),
+
                 'params' => $this->params->getAll([
                     'sectors',
                     'education_levels',
@@ -284,6 +290,16 @@ class BriefController extends Controller
                 'brief' => array_merge($brief->toArray(), [
                     'created_by' => $brief->creator?->name,
                 ]),
+                'params' => $this->params->getAll([
+                    'sectors',
+                    'education_levels',
+                    'experience_options',
+                    'age_ranges',
+                    'languages',
+                    'seniority_levels',
+                    'contract_types',
+                    'gender_prefs',
+                ]),
             ]);
         } catch (\Throwable $e) {
             $logger->log(
@@ -320,18 +336,16 @@ class BriefController extends Controller
 
             return Inertia::render('Briefs/Edit', [
                 'brief' => $brief,
-                'contractTypes' => array_map(
-                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
-                    ContractType::cases()
-                ),
-                'genderPrefs' => array_map(
-                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
-                    GenderPref::cases()
-                ),
-                'statuses' => array_map(
-                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
-                    BriefStatus::cases()
-                ),
+                'params' => $this->params->getAll([
+                    'sectors',
+                    'education_levels',
+                    'experience_options',
+                    'age_ranges',
+                    'languages',
+                    'seniority_levels',
+                    'contract_types',
+                    'gender_prefs',
+                ]),
             ]);
         } catch (\Throwable $e) {
             $logger->log(

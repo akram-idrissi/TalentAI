@@ -5,7 +5,7 @@ import { useI18n } from '@/hooks/useI18n';
 import { usePermission } from '@/hooks/usePermission';
 import AppLayout from '@/layouts/app-layout';
 import type { Brief, IndexBriefProps } from '@/types/brief';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -125,7 +125,7 @@ function Pagination({ meta, search }: { meta: PaginationMeta; search: string }) 
     );
 }
 
-export default function Index({ briefs, filters }: IndexBriefProps) {
+export default function Index({ briefs, filters, params, brief_statuses }: IndexBriefProps) {
     const { t } = useI18n();
     const [search] = useState('');
     const { can, isSuperAdmin } = usePermission();
@@ -135,14 +135,6 @@ export default function Index({ briefs, filters }: IndexBriefProps) {
     const [loading, setLoading] = useState(false);
     const [activeFilters, setActiveFilters] = useState<FilterEntry[]>(Array.isArray(filters) ? filters : []);
 
-    type BriefTranslations = { briefs?: { index?: { filters?: Record<string, Record<string, string>> } } };
-    const { translations } = usePage<{ translations?: BriefTranslations }>().props;
-    const filterTr = translations?.briefs?.index?.filters ?? {};
-
-    function trOptions(bag: Record<string, string>) {
-        return Object.entries(bag ?? {}).map(([v, l]) => ({ value: v, label: l as string }));
-    }
-
     const FILTER_FIELDS = [
         { key: 'title', label: t('briefs.index.filters.fields.title'), type: 'text' as const },
         {
@@ -150,14 +142,14 @@ export default function Index({ briefs, filters }: IndexBriefProps) {
             label: t('briefs.index.filters.fields.sector'),
             type: 'select' as const,
             multi: true,
-            options: trOptions(filterTr.sector_options),
+            options: params.sectors,
         },
         {
             key: 'contract_type',
             label: t('briefs.index.filters.fields.contract_type'),
             type: 'select' as const,
             multi: true,
-            options: trOptions(filterTr.contract_options),
+            options: params.contract_types,
         },
         { key: 'location', label: t('briefs.index.filters.fields.location'), type: 'text' as const },
         { key: 'min_experience_years', label: t('briefs.index.filters.fields.min_experience_years'), type: 'number' as const },
@@ -166,14 +158,14 @@ export default function Index({ briefs, filters }: IndexBriefProps) {
             label: t('briefs.index.filters.fields.education_level'),
             type: 'select' as const,
             multi: true,
-            options: trOptions(filterTr.education_options),
+            options: params.education_levels,
         },
         {
             key: 'status',
             label: t('briefs.index.filters.fields.status'),
             type: 'select' as const,
             multi: true,
-            options: trOptions(filterTr.status_options),
+            options: brief_statuses,
         },
     ];
 
