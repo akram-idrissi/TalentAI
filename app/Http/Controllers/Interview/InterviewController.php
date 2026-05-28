@@ -80,12 +80,57 @@ class InterviewController extends Controller
     public function index(): Response
     {
         $this->authorize('interviews.view');
+
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
         try {
-            $interviews = Interview::with(['candidate', 'brief', 'transcription'])
-                ->where('interviewer_id', auth()->id())
+
+            $filters = json_decode(request('filters', '[]'), true);
+
+            $query = Interview::with(['candidate', 'brief', 'transcription'])
+                ->where('interviewer_id', auth()->id());
+
+            foreach ($filters as $filter) {
+
+                if ($filter['field'] === 'candidate') {
+                    $query->whereHas('candidate', function ($q) use ($filter) {
+                        $q->where(
+                            'full_name',
+                            'like',
+                            '%'.$filter['value'].'%',
+                        );
+                    });
+                }
+
+                if ($filter['field'] === 'brief') {
+                    $query->whereHas('brief', function ($q) use ($filter) {
+                        $q->where(
+                            'title',
+                            'like',
+                            '%'.$filter['value'].'%',
+                        );
+                    });
+                }
+
+                if ($filter['field'] === 'platform') {
+                    $query->where(
+                        'platform',
+                        $filter['value'],
+                    );
+                }
+
+                if ($filter['field'] === 'status') {
+                    $query->whereHas('transcription', function ($q) use ($filter) {
+                        $q->where(
+                            'status',
+                            $filter['value'],
+                        );
+                    });
+                }
+            }
+
+            $interviews = $query
                 ->latest('scheduled_at')
                 ->paginate(10)
                 ->through(fn ($i) => [
@@ -99,21 +144,29 @@ class InterviewController extends Controller
                     'analysis_status' => $i->transcription?->analysis_status ?? 'none',
                 ]);
 
-            $logger->log('interview.list', 'Liste des entretiens consultée.', [], [Interview::class]);
+            $logger->log(
+                'interview.list',
+                'Liste des entretiens consultée.',
+                [],
+                [Interview::class]
+            );
 
             return Inertia::render('Interview/Index', [
                 'interviews' => $interviews,
+                'filters' => $filters,
             ]);
+
         } catch (\Throwable $e) {
+
             $logger->log(
                 'interview.list.error',
-                'Erreur lors de la liste des entretiens : '.$e->getMessage(),
+                'Erreur lors de la récupération des entretiens : '.$e->getMessage(),
                 ['exception' => $e->getMessage()],
                 [Interview::class]
             );
 
             return Inertia::render('Fallback', [
-                'error' => 'Impossible d\'afficher la liste des entretiens.',
+                'error' => 'Impossible de charger les entretiens.',
             ]);
         }
     }
