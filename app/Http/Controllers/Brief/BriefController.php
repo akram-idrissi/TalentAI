@@ -3,11 +3,10 @@
 namespace App\Http\Controllers\Brief;
 
 use App\Enums\BriefStatus;
-use App\Enums\ContractType;
-use App\Enums\GenderPref;
 use App\Http\Controllers\Controller;
 use App\Models\Brief;
 use App\Services\ActivityLogger;
+use App\Services\ParameterService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,6 +17,8 @@ use Inertia\Response;
 
 class BriefController extends Controller
 {
+    public function __construct(private readonly ParameterService $params) {}
+
     /**
      * Return the validation rules shared by store() and update().
      *
@@ -65,17 +66,17 @@ class BriefController extends Controller
     {
         return [
             'title' => 'required|string|max:255',
-            'sector' => 'required|string|max:255',
-            'contract_type' => ['required', Rule::enum(ContractType::class)],
+            'sector' => ['required', Rule::in($this->params->getGroup('sectors')->pluck('value'))],
+            'contract_type' => ['required', Rule::in($this->params->getGroup('contract_types')->pluck('value'))],
             'location' => 'required|string|max:255',
             'salary_range' => 'nullable|string|max:255',
-            'min_experience_years' => 'required|integer|min:0',
-            'education_level' => 'required|string|max:255',
+            'min_experience_years' => ['required', Rule::in($this->params->getGroup('experience_options')->pluck('value'))],
+            'education_level' => ['required', Rule::in($this->params->getGroup('education_levels')->pluck('value'))],
             'languages' => 'nullable|string',
-            'seniority_level' => 'nullable|string|in:intern,entry,mid,senior,manager,director,executive',
+            'seniority_level' => ['nullable', Rule::in($this->params->getGroup('seniority_levels')->pluck('value'))],
             'target_companies' => 'nullable|string',
-            'gender_pref' => ['nullable', Rule::enum(GenderPref::class)],
-            'age_range' => 'nullable|string|max:50',
+            'gender_pref' => ['nullable', Rule::in($this->params->getGroup('gender_prefs')->pluck('value'))],
+            'age_range' => ['nullable', Rule::in($this->params->getGroup('age_ranges')->pluck('value'))],
             'mission_description' => 'required|string',
             'required_skills' => 'required|string',
             'soft_skills' => 'nullable|string',
@@ -136,6 +137,21 @@ class BriefController extends Controller
             return Inertia::render('Briefs/Index', [
                 'briefs' => $briefs,
                 'filters' => $filters ?? [],
+                'params' => $this->params->getAll([
+                    'sectors',
+                    'education_levels',
+                    'experience_options',
+                    'contract_types',
+                    'gender_prefs',
+                    'age_ranges',
+                    'languages',
+                    'seniority_levels',
+
+                ]),
+                'brief_statuses' => array_map(
+                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
+                    BriefStatus::cases()
+                ),
             ]);
 
         } catch (\Throwable $e) {
@@ -173,14 +189,17 @@ class BriefController extends Controller
             );
 
             return Inertia::render('Briefs/Create', [
-                'contractTypes' => array_map(
-                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
-                    ContractType::cases()
-                ),
-                'genderPrefs' => array_map(
-                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
-                    GenderPref::cases()
-                ),
+
+                'params' => $this->params->getAll([
+                    'sectors',
+                    'education_levels',
+                    'experience_options',
+                    'age_ranges',
+                    'languages',
+                    'seniority_levels',
+                    'contract_types',
+                    'gender_prefs',
+                ]),
 
             ]);
         } catch (\Throwable $e) {
@@ -271,6 +290,16 @@ class BriefController extends Controller
                 'brief' => array_merge($brief->toArray(), [
                     'created_by' => $brief->creator?->name,
                 ]),
+                'params' => $this->params->getAll([
+                    'sectors',
+                    'education_levels',
+                    'experience_options',
+                    'age_ranges',
+                    'languages',
+                    'seniority_levels',
+                    'contract_types',
+                    'gender_prefs',
+                ]),
             ]);
         } catch (\Throwable $e) {
             $logger->log(
@@ -307,18 +336,16 @@ class BriefController extends Controller
 
             return Inertia::render('Briefs/Edit', [
                 'brief' => $brief,
-                'contractTypes' => array_map(
-                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
-                    ContractType::cases()
-                ),
-                'genderPrefs' => array_map(
-                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
-                    GenderPref::cases()
-                ),
-                'statuses' => array_map(
-                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
-                    BriefStatus::cases()
-                ),
+                'params' => $this->params->getAll([
+                    'sectors',
+                    'education_levels',
+                    'experience_options',
+                    'age_ranges',
+                    'languages',
+                    'seniority_levels',
+                    'contract_types',
+                    'gender_prefs',
+                ]),
             ]);
         } catch (\Throwable $e) {
             $logger->log(

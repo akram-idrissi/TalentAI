@@ -65,6 +65,7 @@ return [
         'settings' => 'Settings',
         'classement' => 'Ranking',
         'activity_logs' => 'Activity Logs',
+        'parameters' => 'Parameters',
     ],
 
     'actions' => [

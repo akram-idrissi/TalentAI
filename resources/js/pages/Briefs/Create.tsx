@@ -10,63 +10,8 @@ import { ChevronLeft } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import ReactSelect from 'react-select';
 
-const SECTORS: SelectOption[] = [
-    { value: 'commerce', label: 'Commerce & Vente' },
-    { value: 'tech', label: 'Tech & Digital' },
-    { value: 'finance', label: 'Finance & Audit' },
-    { value: 'rh', label: 'RH & Formation' },
-    { value: 'marketing', label: 'Marketing' },
-    { value: 'operations', label: 'Opérations & Logistique' },
-    { value: 'juridique', label: 'Juridique' },
-    { value: 'sante', label: 'Santé' },
-];
-
-const EDUCATION_LEVELS: SelectOption[] = [
-    { value: 'bac', label: 'Bac' },
-    { value: 'bac2', label: 'Bac+2' },
-    { value: 'bac3', label: 'Bac+3 (Licence)' },
-    { value: 'bac5', label: 'Bac+5 (Master)' },
-    { value: 'bac5_grande_ecole', label: 'Bac+5 Grande École' },
-    { value: 'doctorat', label: 'Doctorat' },
-];
-
-const EXPERIENCE_OPTIONS: SelectOption[] = [
-    { value: '0', label: 'Débutant (0 an)' },
-    { value: '2', label: '2 ans' },
-    { value: '3', label: '3 ans' },
-    { value: '5', label: '5 ans' },
-    { value: '8', label: '8 ans' },
-    { value: '10', label: '10 ans' },
-    { value: '15', label: '15 ans+' },
-];
-
-const AGE_RANGE_OPTIONS: SelectOption[] = [
-    { value: '20-30', label: '20 – 30 ans' },
-    { value: '25-35', label: '25 – 35 ans' },
-    { value: '28-40', label: '28 – 40 ans' },
-    { value: '32-48', label: '32 – 48 ans' },
-    { value: '35-55', label: '35 – 55 ans' },
-];
-
-const LANGUAGE_OPTIONS: SelectOption[] = [
-    { value: 'Arabe', label: 'Arabe' },
-    { value: 'Français', label: 'Français' },
-    { value: 'Anglais', label: 'Anglais' },
-    { value: 'Espagnol', label: 'Espagnol' },
-    { value: 'Amazigh', label: 'Amazigh' },
-];
-
-const SENIORITY_OPTIONS: SelectOption[] = [
-    { value: 'intern', label: 'Stage / Alternance' },
-    { value: 'entry', label: 'Débutant (0-2 ans)' },
-    { value: 'mid', label: 'Intermédiaire (2-5 ans)' },
-    { value: 'senior', label: 'Senior (5+ ans)' },
-    { value: 'manager', label: 'Manager' },
-    { value: 'director', label: 'Directeur' },
-    { value: 'executive', label: 'Cadre dirigeant' },
-];
-
-export default function CreateBrief({ contractTypes, genderPrefs }: CreateBriefProps) {
+export default function CreateBrief({ params }: CreateBriefProps) {
+    const { sectors, education_levels, experience_options, age_ranges, languages, seniority_levels, contract_types, gender_prefs } = params;
     const { t } = useI18n();
     const statusRef = useRef<'active' | 'draft'>('active');
 
@@ -167,8 +112,8 @@ export default function CreateBrief({ contractTypes, genderPrefs }: CreateBriefP
                                     <FormField label={t('briefs.create_briefs.fields.sector')} required error={errors.sector}>
                                         <ReactSelect
                                             classNamePrefix="rs"
-                                            options={SECTORS}
-                                            value={toOption(data.sector, SECTORS)}
+                                            options={sectors}
+                                            value={toOption(data.sector, sectors)}
                                             onChange={(opt) => setData('sector', opt?.value ?? '')}
                                             placeholder={t('briefs.create_briefs.fields.sector_placeholder')}
                                         />
@@ -177,8 +122,8 @@ export default function CreateBrief({ contractTypes, genderPrefs }: CreateBriefP
                                     <FormField label={t('briefs.create_briefs.fields.contract_type')} required error={errors.contract_type}>
                                         <ReactSelect
                                             classNamePrefix="rs"
-                                            options={contractTypes}
-                                            value={toOption(data.contract_type, contractTypes)}
+                                            options={contract_types}
+                                            value={toOption(data.contract_type, contract_types)}
                                             onChange={(opt) => setData('contract_type', opt?.value ?? '')}
                                             placeholder={t('briefs.create_briefs.fields.contract_type_placeholder')}
                                         />
@@ -216,8 +161,8 @@ export default function CreateBrief({ contractTypes, genderPrefs }: CreateBriefP
                                     >
                                         <ReactSelect
                                             classNamePrefix="rs"
-                                            options={EXPERIENCE_OPTIONS}
-                                            value={toOption(data.min_experience_years, EXPERIENCE_OPTIONS)}
+                                            options={experience_options}
+                                            value={toOption(data.min_experience_years, experience_options)}
                                             onChange={(opt) => setData('min_experience_years', opt?.value ?? '')}
                                             placeholder={t('briefs.create_briefs.fields.min_experience_years_placeholder')}
                                         />
@@ -226,8 +171,8 @@ export default function CreateBrief({ contractTypes, genderPrefs }: CreateBriefP
                                     <FormField label={t('briefs.create_briefs.fields.education_level')} required error={errors.education_level}>
                                         <ReactSelect
                                             classNamePrefix="rs"
-                                            options={EDUCATION_LEVELS}
-                                            value={toOption(data.education_level, EDUCATION_LEVELS)}
+                                            options={education_levels}
+                                            value={toOption(data.education_level, education_levels)}
                                             onChange={(opt) => setData('education_level', opt?.value ?? '')}
                                             placeholder={t('briefs.create_briefs.fields.education_level_placeholder')}
                                         />
@@ -236,8 +181,8 @@ export default function CreateBrief({ contractTypes, genderPrefs }: CreateBriefP
                                     <FormField label={t('briefs.create_briefs.fields.gender_pref')} error={errors.gender_pref}>
                                         <ReactSelect
                                             classNamePrefix="rs"
-                                            options={genderPrefs}
-                                            value={toOption(data.gender_pref, genderPrefs)}
+                                            options={gender_prefs}
+                                            value={toOption(data.gender_pref, gender_prefs)}
                                             onChange={(opt) => setData('gender_pref', opt?.value ?? '')}
                                             placeholder={t('briefs.create_briefs.fields.gender_pref_placeholder')}
                                             isClearable
@@ -247,8 +192,8 @@ export default function CreateBrief({ contractTypes, genderPrefs }: CreateBriefP
                                     <FormField label={t('briefs.create_briefs.fields.age_range')} error={errors.age_range}>
                                         <ReactSelect
                                             classNamePrefix="rs"
-                                            options={AGE_RANGE_OPTIONS}
-                                            value={toOption(data.age_range, AGE_RANGE_OPTIONS)}
+                                            options={age_ranges}
+                                            value={toOption(data.age_range, age_ranges)}
                                             onChange={(opt) => setData('age_range', opt?.value ?? '')}
                                             placeholder={t('briefs.create_briefs.fields.age_range_placeholder')}
                                             isClearable
@@ -260,8 +205,8 @@ export default function CreateBrief({ contractTypes, genderPrefs }: CreateBriefP
                                     <ReactSelect
                                         classNamePrefix="rs"
                                         isMulti
-                                        options={LANGUAGE_OPTIONS}
-                                        value={toMultiOptions(data.languages, LANGUAGE_OPTIONS)}
+                                        options={languages}
+                                        value={toMultiOptions(data.languages, languages)}
                                         onChange={(opts) => setData('languages', opts.map((o) => o.value).join(', '))}
                                         placeholder={t('briefs.create_briefs.fields.languages_placeholder')}
                                     />
@@ -270,8 +215,8 @@ export default function CreateBrief({ contractTypes, genderPrefs }: CreateBriefP
                                 <FormField label="Niveau de séniorité" error={errors.seniority_level}>
                                     <ReactSelect
                                         classNamePrefix="rs"
-                                        options={SENIORITY_OPTIONS}
-                                        value={toOption(data.seniority_level, SENIORITY_OPTIONS)}
+                                        options={seniority_levels}
+                                        value={toOption(data.seniority_level, seniority_levels)}
                                         onChange={(opt) => setData('seniority_level', opt?.value ?? '')}
                                         placeholder="Choisir un niveau…"
                                         isClearable

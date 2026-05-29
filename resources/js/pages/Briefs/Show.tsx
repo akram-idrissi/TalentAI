@@ -1,18 +1,10 @@
 import DeleteModal from '@/components/ui/DeleteModal';
 import { useI18n } from '@/hooks/useI18n';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
-import type { ShowBriefProps } from '@/types/brief';
+import type { SelectOption, ShowBriefProps } from '@/types/brief';
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowLeft, CheckCircle, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-
-const EDUCATION_LABELS: Record<string, string> = {
-    bac: 'Bac',
-    bac2: 'Bac+2',
-    bac3: 'Bac+3 (Licence)',
-    bac5: 'Bac+5 (Master)',
-    bac5_grande_ecole: 'Bac+5 Grande École',
-};
 
 const SCORING_COLORS = ['bg-[#6C63FF]', 'bg-[#34D399]', 'bg-[#F59E0B]', 'bg-[#38BDF8]', 'bg-[#F87171]'];
 
@@ -41,10 +33,26 @@ function BadgeList({ value }: { value?: string }) {
     );
 }
 
-export default function ShowBrief({ brief }: ShowBriefProps) {
+export default function ShowBrief({ brief, params }: ShowBriefProps) {
     const { t } = useI18n();
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [descExpanded, setDescExpanded] = useState(false);
+    function optionLabel(options: SelectOption[] | undefined, value?: string | number | null) {
+        if (value === null || value === undefined || value === '') return '—';
+
+        const stringValue = String(value);
+
+        return options?.find((option) => String(option.value) === stringValue)?.label ?? stringValue;
+    }
+    const labels = {
+        sector: optionLabel(params.sectors, brief.sector),
+        contractType: optionLabel(params.contract_types, brief.contract_type),
+        experience: optionLabel(params.experience_options, brief.min_experience_years),
+        education: optionLabel(params.education_levels, brief.education_level),
+        ageRange: optionLabel(params.age_ranges, brief.age_range),
+        seniority: optionLabel(params.seniority_levels, brief.seniority_level),
+        gender: optionLabel(params.gender_prefs, brief.gender_pref),
+    };
 
     const cardClass = 'bg-ds-surface rounded-xl border border-ds-border p-5';
     const labelClass = 'text-xs text-ds-text3 mb-1';
@@ -60,8 +68,6 @@ export default function ShowBrief({ brief }: ShowBriefProps) {
         router.delete(route('dashboard.briefs.destroy', brief.id));
         setShowDeleteModal(false);
     }
-
-    const val = (v?: string) => (v?.trim() ? v : <span className="text-gray-400">—</span>);
 
     return (
         <>
@@ -129,11 +135,11 @@ export default function ShowBrief({ brief }: ShowBriefProps) {
                                     </div>
                                     <div>
                                         <p className={labelClass}>{t('briefs.show_brief.fields.sector')}</p>
-                                        <p className={valueClass}>{brief.sector}</p>
+                                        <p className={valueClass}>{labels.sector}</p>
                                     </div>
                                     <div>
                                         <p className={labelClass}>{t('briefs.show_brief.fields.contract_type')}</p>
-                                        <p className={valueClass}>{brief.contract_type}</p>
+                                        <p className={valueClass}>{labels.contractType}</p>
                                     </div>
                                     <div>
                                         <p className={labelClass}>{t('briefs.show_brief.fields.location')}</p>
@@ -170,15 +176,16 @@ export default function ShowBrief({ brief }: ShowBriefProps) {
                                     </div>
                                     <div>
                                         <p className={labelClass}>{t('briefs.show_brief.fields.education_level')}</p>
-                                        <p className={valueClass}>{EDUCATION_LABELS[brief.education_level] ?? brief.education_level}</p>
+
+                                        <p className={valueClass}>{labels.education}</p>
                                     </div>
                                     <div>
                                         <p className={labelClass}>{t('briefs.show_brief.fields.age_range')}</p>
-                                        <p className={valueClass}>{val(brief.age_range)}</p>
+                                        <p className={valueClass}>{labels.ageRange}</p>
                                     </div>
                                     <div>
                                         <p className={labelClass}>{t('briefs.show_brief.fields.gender_pref')}</p>
-                                        <p className={valueClass}>{val(brief.gender_pref)}</p>
+                                        <p className={valueClass}>{labels.gender}</p>
                                     </div>
                                 </div>
                                 <div className="mt-4">

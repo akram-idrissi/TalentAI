@@ -30,9 +30,31 @@ export type SelectOption = {
     label: string;
 };
 
-export type CreateBriefProps = {
-    contractTypes: SelectOption[];
-    genderPrefs: SelectOption[];
+export interface CreateBriefProps {
+    params: {
+        sectors: SelectOption[];
+        education_levels: SelectOption[];
+        experience_options: SelectOption[];
+        age_ranges: SelectOption[];
+        languages: SelectOption[];
+        seniority_levels: SelectOption[];
+        contract_types: SelectOption[];
+        gender_prefs: SelectOption[];
+    };
+}
+
+export type EditBriefProps = {
+    brief: Brief;
+    params: {
+        sectors: SelectOption[];
+        education_levels: SelectOption[];
+        experience_options: SelectOption[];
+        age_ranges: SelectOption[];
+        languages: SelectOption[];
+        seniority_levels: SelectOption[];
+        contract_types: SelectOption[];
+        gender_prefs: SelectOption[];
+    };
 };
 
 export type Brief = {
@@ -57,11 +79,6 @@ export type Brief = {
     created_at: string;
     created_by: string | null;
 };
-export type EditBriefProps = {
-    brief: Brief;
-    contractTypes: SelectOption[];
-    genderPrefs: SelectOption[];
-};
 
 type Filters = {
     search?: string;
@@ -77,6 +94,17 @@ export type IndexBriefProps = {
         total: number;
     };
     filters: Filters;
+    brief_statuses: SelectOption[];
+    params: {
+        sectors: SelectOption[];
+        education_levels: SelectOption[];
+        experience_options: SelectOption[];
+        age_ranges: SelectOption[];
+        languages: SelectOption[];
+        seniority_levels: SelectOption[];
+        contract_types: SelectOption[];
+        gender_prefs: SelectOption[];
+    };
 };
 
 export type DeleteBriefModalProps = {
@@ -86,4 +114,14 @@ export type DeleteBriefModalProps = {
 };
 export type ShowBriefProps = {
     brief: Brief;
+    params: {
+        sectors: SelectOption[];
+        education_levels: SelectOption[];
+        experience_options: SelectOption[];
+        age_ranges: SelectOption[];
+        languages: SelectOption[];
+        seniority_levels: SelectOption[];
+        contract_types: SelectOption[];
+        gender_prefs: SelectOption[];
+    };
 };

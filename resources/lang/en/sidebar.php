@@ -34,5 +34,6 @@ return [
         'users' => 'Users',
         'roles' => 'Roles',
         'activity_logs' => 'Activity Log',
+        'parameters' => 'Parameters',
     ],
 ];
