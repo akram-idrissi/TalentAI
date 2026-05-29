@@ -475,32 +475,45 @@ class InterviewController extends Controller
     {
         $this->authorize('interviews.view');
 
-        $transcription = $interview->transcription;
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
 
-        if (! $transcription || ! $transcription->audio_path) {
-            abort(404);
+        try {
+            $transcription = $interview->transcription;
+
+            if (! $transcription || ! $transcription->audio_path) {
+                abort(404);
+            }
+
+            if (! Storage::disk('s3')->exists($transcription->audio_path)) {
+                abort(404);
+            }
+
+            $path = $transcription->audio_path;
+            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+            $mime = match ($ext) {
+                'mp4' => 'audio/mp4',
+                'm4a' => 'audio/mp4',
+                'wav' => 'audio/wav',
+                default => 'audio/mpeg',
+            };
+
+            $id = (int) $interview->getKey();
+            $logger->log('interview.audio', "Streaming audio pour l'entretien (ID : {$id}).", ['interview_id' => $id], [Interview::class]);
+
+            /** @var AwsS3V3Adapter $s3 */
+            $s3 = Storage::disk('s3');
+
+            return $s3->response($path, basename($path), [
+                'Content-Type' => $mime,
+                'Cache-Control' => 'no-store',
+            ]);
+        } catch (\Throwable $e) {
+            $interviewId = (int) $interview->getKey();
+            $logger->log('interview.audio.error', "Erreur lors du streaming audio (ID : {$interviewId}) : ".$e->getMessage(), ['interview_id' => $interviewId, 'exception' => $e->getMessage()], [Interview::class]);
+
+            abort(500);
         }
-
-        if (! Storage::disk('s3')->exists($transcription->audio_path)) {
-            abort(404);
-        }
-
-        $path = $transcription->audio_path;
-        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        $mime = match ($ext) {
-            'mp4' => 'audio/mp4',
-            'm4a' => 'audio/mp4',
-            'wav' => 'audio/wav',
-            default => 'audio/mpeg',
-        };
-
-        /** @var AwsS3V3Adapter $s3 */
-        $s3 = Storage::disk('s3');
-
-        return $s3->response($path, basename($path), [
-            'Content-Type' => $mime,
-            'Cache-Control' => 'no-store',
-        ]);
     }
 
     /**
