@@ -24,7 +24,11 @@ class ParameterService
             $group = ParameterGroup::where('key', $key)
                 ->where('is_active', true)
                 ->with('activeValues')
-                ->firstOrFail();
+                ->first();
+
+            if (! $group) {
+                return collect();
+            }
 
             return $group->activeValues->map(fn (ParameterValue $v) => $v->toSelectOption());
         });

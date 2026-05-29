@@ -14,10 +14,11 @@ class UsersSeeder extends Seeder
     {
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        $password = Hash::make('Password123!');
+        $password = Hash::make('password');
 
         $usersByRole = [
             'super_admin' => [
+                ['name' => 'Super admin', 'email' => 'super@admin.com'],
                 ['name' => 'Amine Benali', 'email' => 'amine.benali@talentai.test'],
                 ['name' => 'Sara El Mansouri', 'email' => 'sara.elmansouri@talentai.test'],
             ],
