@@ -5,6 +5,7 @@ export type Status = 'idle' | 'uploading' | 'pending' | 'processing' | 'done' | 
 export interface InterviewRecord {
     id: number;
     candidate_name: string;
+    brief_id: number | null;
     brief_title: string;
     duration_minutes: number | null;
     platform: string;
@@ -12,6 +13,7 @@ export interface InterviewRecord {
     transcription_status: string;
     transcription_id: number | null;
     analysis_status: string;
+    audio_url: string | null;
 }
 
 interface Candidate {
@@ -64,6 +66,8 @@ interface TranscriptionData {
     red_flags: string[];
     key_excerpts: KeyExcerpt[];
     diarized_transcript: DiarizedSegment[];
+    summary: string | null;
+    recommendation: string | null;
 }
 
 export interface InterviewData {
@@ -73,11 +77,21 @@ export interface InterviewData {
     platform: string;
     scheduled_at: string;
     interviewer: string;
+    duration_minutes: number | null;
+}
+
+export interface PeerInterview {
+    id: number;
+    candidate_name: string;
+    global_score: number | null;
+    verdict: string | null;
+    criteria: Record<string, Criterion>;
 }
 
 export interface ShowInterviewProps {
     interview: InterviewData;
     transcription: TranscriptionData | null;
+    peers: PeerInterview[];
 }
 
 interface PaginatedInterviews {
