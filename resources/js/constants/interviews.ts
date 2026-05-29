@@ -78,6 +78,15 @@ export const selectStyles: StylesConfig<Option, false> = {
     }),
 };
 
+export const CRITERIA_COLORS: Record<string, { bar: string; text: string }> = {
+    communication_clarte: { bar: 'bg-emerald-400', text: 'text-emerald-400' },
+    vision_strategique: { bar: 'bg-violet-500', text: 'text-violet-400' },
+    leadership_managerial: { bar: 'bg-cyan-400', text: 'text-cyan-400' },
+    gestion_equipe: { bar: 'bg-yellow-400', text: 'text-yellow-400' },
+    adequation_culturelle: { bar: 'bg-slate-400', text: 'text-slate-400' },
+    coherence_salariale: { bar: 'bg-rose-400', text: 'text-rose-400' },
+};
+
 export const CRITERIA_LABELS: Record<string, string> = {
     communication_clarte: 'Communication',
     vision_strategique: 'Vision stratégique',
@@ -88,10 +97,22 @@ export const CRITERIA_LABELS: Record<string, string> = {
 };
 
 export const VERDICT_CONFIG: Record<string, { cls: string; label: string }> = {
-    Recommandé: { cls: 'bg-emerald-50 text-emerald-800 border-emerald-200', label: 'Recommandé' },
-    'Candidature solide': { cls: 'bg-violet-50 text-violet-700 border-violet-200', label: 'Candidature solide' },
-    'À approfondir': { cls: 'bg-amber-50 text-amber-800 border-amber-200', label: 'À approfondir' },
-    Écarté: { cls: 'bg-red-50 text-red-800 border-red-200', label: 'Écarté' },
+    Recommandé: {
+        cls: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
+        label: 'Recommandé',
+    },
+    'Candidature solide': {
+        cls: 'bg-violet-50 dark:bg-violet-950/60 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-800',
+        label: 'Candidature solide',
+    },
+    'À approfondir': {
+        cls: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+        label: 'À approfondir',
+    },
+    Écarté: {
+        cls: 'bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
+        label: 'Écarté',
+    },
 };
 
 export const STATUSES = ['done', 'processing', 'pending', 'failed', 'none'] as const;

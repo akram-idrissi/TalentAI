@@ -3,15 +3,21 @@
 return [
     'index' => [
         'title' => 'Gestion des entretiens',
-        'subtitle' => 'Gérez vos entretiens et accédez à leurs transcriptions.',
+        'subtitle' => 'Uploadez vos enregistrements · L\'IA transcrit et analyse automatiquement',
+        'breadcrumb' => 'Entretiens',
         'form' => [
             'title' => 'Importer un entretien',
+            'candidate_label' => 'Candidat associé',
             'candidate_placeholder' => 'Sélectionnez un candidat…',
+            'brief_label' => 'Brief de poste',
             'brief_placeholder' => 'Sélectionnez un brief…',
+            'platform_label' => 'Type d\'entretien',
         ],
         'actions' => [
             'upload' => 'Téléverser',
             'uploading' => 'Téléversement…',
+            'analyse' => 'Analyser avec l\'IA →',
+            'processing' => 'Traitement en cours…',
             'reset' => 'Réinitialiser',
             'copy' => 'Copier',
             'copied' => 'Copié !',
@@ -22,14 +28,38 @@ return [
             'title' => 'Aucun fichier sélectionné',
             'description' => 'Déposez un fichier audio ou cliquez pour parcourir vos fichiers.',
         ],
-        'history_title' => 'Entretiens récents',
+        'history_title' => 'Entretiens analysés récemment',
         'history_empty' => 'Aucun entretien trouvé',
         'history_description' => 'Vos entretiens traités apparaîtront ici.',
 
         'dropzone' => [
-            'prompt' => 'Déposez votre fichier audio ou :link',
+            'prompt' => 'Déposez l\'enregistrement ici',
             'link' => 'parcourez',
-            'formats' => 'MP3 · WAV · M4A — max 80 Mo',
+            'formats' => 'MP4, M4A, WAV, MP3 · Max 500 MB',
+        ],
+
+        'stepper' => [
+            'heading' => 'Traitement en cours',
+            'upload' => 'Envoi du fichier audio',
+            'queue' => 'En file d\'attente',
+            'transcribe' => 'Transcription en cours',
+            'analyse' => 'Analyse IA en cours',
+            'done' => 'Analyse terminée',
+        ],
+
+        'done' => [
+            'title' => 'Analyse terminée avec succès',
+            'description' => 'Vous pouvez soumettre un nouvel entretien.',
+        ],
+
+        'toast' => [
+            'success' => 'Analyse terminée avec succès !',
+            'failed' => 'Échec de la transcription.',
+            'connection_lost' => 'Connexion perdue lors du suivi.',
+            'no_job_id' => 'Le serveur n\'a pas retourné d\'identifiant.',
+            'unsupported_format' => 'Format non supporté. Utilisez MP3, WAV, M4A ou MP4.',
+            'file_too_large' => 'Le fichier dépasse 500 Mo.',
+            'upload_failed' => 'Échec de l\'envoi.',
         ],
 
         'progress' => [
@@ -60,10 +90,45 @@ return [
             'upload_failed' => 'Échec de l\'envoi.',
         ],
     ],
+    'show' => [
+        'breadcrumb' => 'Rapport IA',
+        'title' => 'Rapport d\'entretien',
+        'duration' => '{{count}} min',
+        'interview_date' => 'Entretien du {{date}}',
+        'score_label' => 'Score entretien',
+        'criteria_title' => 'Évaluation par critère',
+        'strengths_title' => 'Points forts identifiés',
+        'red_flags_title' => 'Axes de vigilance',
+        'excerpts_title' => 'Extraits clés de l\'entretien',
+        'export_pdf' => 'Exporter PDF',
+        'make_offer' => 'Faire une offre →',
+        'back' => 'Retour aux entretiens',
+        'ranking_title' => 'CLASSEMENT COMPARATIF DES {{count}} ENTRETIENS',
+        'ranking_rank' => 'RANG',
+        'ranking_candidate' => 'CANDIDAT',
+        'ranking_score' => 'SCORE GLOBAL',
+        'ranking_communication' => 'COMMUNICATION',
+        'ranking_leadership' => 'LEADERSHIP',
+        'ranking_adequation' => 'ADÉQUATION',
+        'ranking_verdict' => 'VERDICT',
+        'ai_recommendation' => 'Recommandation générale IA',
+        'waiting_title' => 'Analyse en cours',
+        'waiting_desc' => 'Le rapport IA sera disponible dans quelques instants.',
+    ],
     'list' => [
         'title' => 'Tous les entretiens',
         'subtitle' => 'Obtenez des insights de vos entretiens et prenez des décisions de recrutement éclairées.',
         'new' => '+ Nouvel entretien',
+
+        'columns' => [
+            'candidate' => 'Candidat',
+            'brief' => 'Brief',
+            'date' => 'Date',
+            'platform' => 'Plateforme',
+            'duration' => 'Durée',
+            'status' => 'Statut',
+            'actions' => 'Actions',
+        ],
 
         'filters' => [
             'search' => 'Rechercher un candidat ou un brief…',

@@ -29,7 +29,7 @@ return new class extends Migration
             $table->string('analysis_verdict')->nullable();
             $table->json('analysis_result')->nullable();
             $table->text('analysis_error')->nullable();
-            $table->string('assemblyai_transcript_id')->nullable()->after('audio_path');
+            $table->string('assemblyai_transcript_id')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

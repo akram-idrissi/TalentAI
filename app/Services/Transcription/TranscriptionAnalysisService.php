@@ -179,7 +179,9 @@ contient des horodatages, inclus-les ; sinon laisse "timestamp" à null.
       "timestamp": "<string or null>",
       "criterion": "<criterion key>"
     }
-  ]
+  ],
+  "summary": "<1-2 phrases résumant le profil du candidat>",
+  "recommendation": "<2-3 phrases de recommandation concrète pour le recruteur>"
 }
 PROMPT;
     }
@@ -219,6 +221,8 @@ PROMPT;
             'strengths' => $data['strengths'] ?? [],
             'red_flags' => $data['red_flags'] ?? [],
             'key_excerpts' => $data['key_excerpts'] ?? [],
+            'summary' => isset($data['summary']) ? (string) $data['summary'] : null,
+            'recommendation' => isset($data['recommendation']) ? (string) $data['recommendation'] : null,
             'raw' => $raw,
         ];
     }
