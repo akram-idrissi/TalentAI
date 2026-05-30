@@ -34,5 +34,21 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    'apify' => [
+        'token' => env('APIFY_TOKEN'),
+    ],
+    'anthropic' => [
+        'key' => env('ANTHROPIC_KEY'),
+    ],
+    'openrouter' => [
+        'key' => env('OPEN_ROUTER_KEY'),
+    ],
+    'assemblyai' => [
+        'key' => env('ASSEMBLYAI_API_KEY'),
+        'webhook_secret' => env('ASSEMBLYAI_WEBHOOK_SECRET'),
+    ],
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+    ],
 
 ];

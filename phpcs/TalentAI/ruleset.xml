@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<ruleset name="TalentAI">
+    <description>TalentAI custom sniffs for controller method standards.</description>
+</ruleset>

@@ -1,0 +1,439 @@
+<?php
+
+namespace App\Http\Controllers\Candidat;
+
+use App\Enums\CandidatStatus;
+use App\Http\Controllers\Controller;
+use App\Models\Candidat;
+use App\Services\ActivityLogger;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class CandidatController extends Controller
+{
+    /**
+     * Return the validation rules shared by store() and update().
+     *
+     * @return array<string, mixed>
+     */
+    private function applyFilters(Builder $query, array $filters): void
+    {
+        $textFields = [
+            'full_name', 'headline', 'location', 'current_company',
+            'current_title', 'education_level', 'sector', 'source', 'status',
+        ];
+        $numberFields = ['experience_years'];
+        $booleanFields = ['open_to_work'];
+
+        foreach ($filters as $filter) {
+            if (
+                ! is_array($filter) ||
+                empty($filter['field']) ||
+                ! isset($filter['value']) ||
+                $filter['value'] === ''
+            ) {
+                continue;
+            }
+
+            $field = $filter['field'];
+            $value = $filter['value'];
+
+            if (in_array($field, $textFields)) {
+                $keywords = preg_split('/\s+/', trim($value));
+                $query->where(function ($q) use ($field, $keywords) {
+                    foreach ($keywords as $keyword) {
+                        $q->orWhere($field, 'LIKE', '%'.$keyword.'%');
+                    }
+                });
+
+                continue;
+            }
+
+            if (in_array($field, $numberFields)) {
+                $query->where($field, '>=', (int) $value);
+
+                continue;
+            }
+
+            if (in_array($field, $booleanFields)) {
+                $query->where($field, filter_var($value, FILTER_VALIDATE_BOOLEAN));
+
+                continue;
+            }
+        }
+    }
+
+    private function rules(): array
+    {
+        return [
+            'full_name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'phone' => 'nullable|string|max:50',
+            'current_title' => 'nullable|string|max:255',
+            'current_company' => 'nullable|string|max:255',
+            'location' => 'nullable|string|max:255',
+            'experience_years' => 'nullable|numeric|min:0',
+            'education_level' => 'nullable|string|max:255',
+            'source' => 'nullable|string|max:255',
+            'source_url' => 'nullable|url|max:500',
+            'status' => ['required', Rule::enum(CandidatStatus::class)],
+            'linkedin_url' => 'nullable|url|max:500',
+            'headline' => 'nullable|string|max:255',
+            'summary' => 'nullable|string',
+            'skills' => 'nullable|array',
+            'skills.*' => 'string|max:100',
+            'open_to_work' => 'boolean',
+            'raw_data' => 'nullable|array',
+        ];
+    }
+
+    /**
+     * Display a paginated list of candidats, optionally filtered by search term and/or status.
+     *
+     * @param  Request  $request  Supports query params: `search` (string), `status` (CandidatStatus value)
+     * @return Response Inertia page — Candidats/Index — or Candidats/Fallback on failure
+     */
+    public function index(Request $request): Response
+    {
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+
+            $query = Candidat::query()
+                ->with([
+                    'briefs' => fn ($q) => $q->orderByDesc('brief_candidat.sourced_at')->limit(1),
+                ]);
+            $filters = $request->input('filters', []);
+
+            if (is_string($filters)) {
+                $filters = json_decode($filters, true);
+            }
+
+            $filters = is_array($filters) ? $filters : [];
+            $this->applyFilters($query, $filters);
+            $candidats = $query
+                ->latest()
+                ->paginate(10)
+                ->through(fn ($candidat) => [
+
+                    'id' => $candidat->id,
+                    'full_name' => $candidat->full_name,
+                    'email' => $candidat->email,
+                    'phone' => $candidat->phone,
+                    'headline' => $candidat->headline,
+                    'location' => $candidat->location,
+                    'current_title' => $candidat->current_title,
+                    'current_company' => $candidat->current_company,
+                    'experience_years' => $candidat->experience_years,
+                    'education_level' => $candidat->education_level,
+                    'sector' => $candidat->sector,
+                    'source' => $candidat->source,
+                    'linkedin_url' => $candidat->linkedin_url,
+                    'status' => $candidat->status,
+                    'open_to_work' => $candidat->open_to_work,
+
+                    'created_at' => $candidat->created_at?->toDateTimeString(),
+
+                    'brief_title' => $candidat->briefs->first()?->title,
+
+                    'score_cv' => $candidat->briefs->first()?->pivot?->score
+                        ? round($candidat->briefs->first()->pivot->score)
+                        : null,
+                ]);
+            $logger->log(
+                'candidat.index',
+                'Consultation de la liste des candidats.',
+                [
+                    'filters' => $filters,
+                ],
+                [Candidat::class]
+            );
+
+            return Inertia::render('Candidats/Index', [
+                'candidats' => $candidats,
+                'filters' => $filters,
+            ]);
+
+        } catch (\Throwable $e) {
+
+            $logger->log(
+
+                'candidat.index.error',
+                'Erreur lors de la récupération des candidats.',
+                [
+                    'exception' => $e->getMessage(),
+                ],
+                [Candidat::class]
+            );
+
+            return Inertia::render('Fallback', [
+                'error' => 'Impossible de charger les candidats.',
+            ]);
+        }
+    }
+
+    /**
+     * Show the form for creating a new candidat.
+     *
+     * @return Response Inertia page — Candidats/Create — or Candidats/Fallback on failure
+     */
+    public function create(): Response
+    {
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $logger->log(
+                'candidat.create',
+                'Affichage du formulaire de création d\'un candidat.',
+                [],
+                [Candidat::class]
+            );
+
+            return Inertia::render('Candidats/Create', [
+                'statuses' => array_map(
+                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
+                    CandidatStatus::cases()
+                ),
+            ]);
+        } catch (\Throwable $e) {
+            $logger->log(
+                'candidat.create.error',
+                'Erreur lors de l\'affichage du formulaire de création : '.$e->getMessage(),
+                ['exception' => $e->getMessage()],
+                [Candidat::class]
+            );
+
+            return Inertia::render('Fallback', [
+                'error' => 'Impossible d\'afficher le formulaire de création.',
+            ]);
+        }
+    }
+
+    /**
+     * Validate and persist a newly created candidat.
+     *
+     * @param  Request  $request  Must contain all fields defined in rules()
+     * @return RedirectResponse|Response Redirects to candidats.index on success, or renders Candidats/Fallback on unexpected failure
+     *
+     * @throws ValidationException If validation fails (auto-handled by Laravel)
+     */
+    public function store(Request $request): RedirectResponse|Response
+    {
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $validated = $request->validate($this->rules());
+
+            $candidat = Candidat::create($validated);
+
+            try {
+                $logger->log(
+                    'candidat.store',
+                    "Création du candidat « {$candidat->full_name} » (ID : {$candidat->id}).",
+                    ['candidat_id' => $candidat->id, 'full_name' => $candidat->full_name],
+                    [Candidat::class]
+                );
+            } catch (\Throwable) {
+            }
+
+            return redirect()->route('dashboard.candidats.index')
+                ->with('success', 'Candidat créé avec succès.');
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            $logger->log(
+                'candidat.store.error',
+                'Erreur lors de la création du candidat : '.$e->getMessage(),
+                ['exception' => $e->getMessage()],
+                [Candidat::class]
+            );
+
+            return Inertia::render('Fallback', [
+                'error' => 'Impossible de créer le candidat.',
+            ]);
+        }
+    }
+
+    /**
+     * Display the specified candidat.
+     *
+     * @param  Candidat  $candidat  Route-model-bound Candidat instance
+     * @return Response Inertia page — Candidats/Show — or Candidats/Fallback on failure
+     */
+    public function show(Candidat $candidat): Response
+    {
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $logger->log(
+                'candidat.show',
+                "Consultation du candidat « {$candidat->full_name} » (ID : {$candidat->id}).",
+                ['candidat_id' => $candidat->id],
+                [Candidat::class]
+            );
+
+            return Inertia::render('Candidats/Show', [
+                'candidat' => $candidat,
+            ]);
+        } catch (\Throwable $e) {
+            $logger->log(
+                'candidat.show.error',
+                "Erreur lors de la consultation du candidat (ID : {$candidat->id}) : ".$e->getMessage(),
+                ['candidat_id' => $candidat->id, 'exception' => $e->getMessage()],
+                [Candidat::class]
+            );
+
+            return Inertia::render('Fallback', [
+                'error' => 'Impossible d\'afficher ce candidat.',
+            ]);
+        }
+    }
+
+    /**
+     * Show the form for editing the specified candidat.
+     *
+     * @param  Candidat  $candidat  Route-model-bound Candidat instance to edit
+     * @return Response Inertia page — Candidats/Edit — or Candidats/Fallback on failure
+     */
+    public function edit(Candidat $candidat): Response
+    {
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $logger->log(
+                'candidat.edit',
+                "Affichage du formulaire d'édition du candidat « {$candidat->full_name} » (ID : {$candidat->id}).",
+                ['candidat_id' => $candidat->id],
+                [Candidat::class]
+            );
+
+            return Inertia::render('Candidats/Edit', [
+                'candidat' => $candidat,
+                'statuses' => array_map(
+                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
+                    CandidatStatus::cases()
+                ),
+            ]);
+        } catch (\Throwable $e) {
+            $logger->log(
+                'candidat.edit.error',
+                "Erreur lors de l'affichage du formulaire d'édition (ID : {$candidat->id}) : ".$e->getMessage(),
+                ['candidat_id' => $candidat->id, 'exception' => $e->getMessage()],
+                [Candidat::class]
+            );
+
+            return Inertia::render('Fallback', [
+                'error' => 'Impossible d\'afficher le formulaire d\'édition.',
+            ]);
+        }
+    }
+
+    /**
+     * Validate and apply updates to the specified candidat, logging each modified field.
+     *
+     * @param  Request  $request  Must contain all fields defined in rules()
+     * @param  Candidat  $candidat  Route-model-bound Candidat instance to update
+     * @return RedirectResponse|Response Redirects to candidats.index on success, or renders Candidats/Fallback on unexpected failure
+     *
+     * @throws ValidationException If validation fails (auto-handled by Laravel)
+     */
+    public function update(Request $request, Candidat $candidat): RedirectResponse|Response
+    {
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $validated = $request->validate($this->rules());
+
+            $modifications = collect($validated)
+                ->filter(fn ($newValue, $key) => $candidat->getAttribute($key) != $newValue)
+                ->map(fn ($newValue, $key) => [
+                    'avant' => $candidat->getAttribute($key),
+                    'après' => $newValue,
+                ])
+                ->toArray();
+
+            $statutAvant = $candidat->status;
+
+            $candidat->update($validated);
+
+            try {
+                $champsModifiés = implode(', ', array_keys($modifications));
+                $descriptionBase = "Mise à jour du candidat « {$candidat->full_name} » (ID : {$candidat->id}).";
+                $descriptionDetail = count($modifications)
+                    ? " Champs modifiés : {$champsModifiés}."
+                    : ' Aucune modification détectée.';
+                $transitionStatut = $statutAvant !== $candidat->status
+                    ? " Changement de statut : « {$statutAvant} » → « {$candidat->status} »."
+                    : '';
+                $logger->log(
+                    'candidat.update',
+                    $descriptionBase.$descriptionDetail.$transitionStatut,
+                    ['candidat_id' => $candidat->id, 'modifications' => $modifications],
+                    [Candidat::class]
+                );
+            } catch (\Throwable) {
+            }
+
+            return redirect()->route('dashboard.candidats.index')
+                ->with('success', 'Candidat mis à jour avec succès.');
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return Inertia::render('Fallback', [
+                'error' => 'Impossible de mettre à jour ce candidat.',
+                'candidat' => $candidat,
+            ]);
+        }
+    }
+
+    /**
+     * Remove the specified candidat from storage.
+     *
+     * @param  Candidat  $candidat  Route-model-bound Candidat instance to delete
+     * @return RedirectResponse|Response Redirects to candidats.index on success, or renders Candidats/Fallback on failure
+     */
+    public function destroy(Candidat $candidat): RedirectResponse|Response
+    {
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $candidatId = $candidat->id;
+            $candidatName = $candidat->full_name;
+
+            $candidat->delete();
+
+            $logger->log(
+                'candidat.destroy',
+                "Suppression du candidat « {$candidatName} » (ID : {$candidatId}).",
+                ['candidat_id' => $candidatId, 'full_name' => $candidatName],
+                [Candidat::class]
+            );
+
+            return redirect()->route('dashboard.candidats.index')
+                ->with('success', 'Candidat supprimé avec succès.');
+        } catch (\Throwable $e) {
+            $logger->log(
+                'candidat.destroy.error',
+                "Erreur lors de la suppression du candidat (ID : {$candidat->id}) : ".$e->getMessage(),
+                ['candidat_id' => $candidat->id, 'exception' => $e->getMessage()],
+                [Candidat::class]
+            );
+
+            return Inertia::render('Fallback', [
+                'error' => 'Impossible de supprimer ce candidat.',
+            ]);
+        }
+    }
+}

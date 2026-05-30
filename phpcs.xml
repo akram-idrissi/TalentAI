@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<ruleset name="TalentAI Controller Standards">
+
+    <description>
+        Enforces PHPDoc comments, ActivityLogger calls, and try/catch blocks
+        on every public method inside app/Http/Controllers.
+    </description>
+
+    <!-- Scope: controllers only -->
+    <file>app/Http/Controllers</file>
+    <arg name="extensions" value="php"/>
+
+    <!-- Output -->
+    <arg name="colors"/>
+    <arg value="sp"/>
+
+    <!-- Custom sniff: PHPDoc + ActivityLogger + try/catch -->
+    <!-- Referenced by file path — no installed_paths config needed -->
+    <rule ref="phpcs/TalentAI/Sniffs/Controllers/ControllerMethodStandardsSniff.php"/>
+
+</ruleset>

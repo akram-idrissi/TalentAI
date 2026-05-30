@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
@@ -17,9 +18,27 @@ class PasswordResetLinkController extends Controller
      */
     public function create(Request $request): Response
     {
-        return Inertia::render('auth/forgot-password', [
-            'status' => $request->session()->get('status'),
-        ]);
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $logger->log(
+                'password.reset_link.create',
+                'Affichage de la page de demande de lien de réinitialisation.',
+            );
+
+            return Inertia::render('auth/forgot-password', [
+                'status' => $request->session()->get('status'),
+            ]);
+        } catch (\Throwable $e) {
+            $logger->log(
+                'password.reset_link.create.error',
+                'Erreur lors de l\'affichage de la page de réinitialisation : '.$e->getMessage(),
+                ['exception' => $e->getMessage()]
+            );
+
+            throw $e;
+        }
     }
 
     /**
@@ -29,14 +48,33 @@ class PasswordResetLinkController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
-            'email' => 'required|email',
-        ]);
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
 
-        Password::sendResetLink(
-            $request->only('email')
-        );
+        try {
+            $request->validate([
+                'email' => 'required|email',
+            ]);
 
-        return back()->with('status', __('A reset link will be sent if the account exists.'));
+            Password::sendResetLink($request->only('email'));
+
+            $logger->log(
+                'password.reset_link.store',
+                'Demande de lien de réinitialisation traitée.',
+                ['email' => $request->email]
+            );
+
+            return back()->with('status', __('A reset link will be sent if the account exists.'));
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            $logger->log(
+                'password.reset_link.store.error',
+                'Erreur lors de l\'envoi du lien de réinitialisation : '.$e->getMessage(),
+                ['email' => $request->email, 'exception' => $e->getMessage()]
+            );
+
+            throw $e;
+        }
     }
 }

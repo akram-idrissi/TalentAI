@@ -1,0 +1,36 @@
+name: Controller Quality Check
+
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  controller-quality:
+    name: PHPDoc · ActivityLogger · try/catch
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: phpcs
+          coverage: none
+
+      - name: Run controller quality check
+        run: |
+          phpcs --standard=phpcs.xml app/Http/Controllers/
+
+      - name: Annotate violations (on failure)
+        if: failure()
+        run: |
+          echo "::error::Controller quality check failed."
+          echo "Every public controller method must have:"
+          echo "  1. A PHPDoc comment block"
+          echo "  2. A try/catch block"
+          echo "  3. A call to ActivityLogger->log()"

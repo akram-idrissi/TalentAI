@@ -1,5 +1,5 @@
 #!/bin/sh
-# Auto-format code before pushing to main or dev
+# Auto-format code and enforce controller quality before pushing to main or dev
 
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
@@ -17,3 +17,33 @@ if ! git diff --quiet; then
     git commit -m "style: auto-format code"
     echo "Formatting changes committed."
 fi
+
+# ---------------------------------------------------------------------------
+# Controller quality check — PHPDoc + try/catch + ActivityLogger
+# ---------------------------------------------------------------------------
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+echo ""
+echo "┌─────────────────────────────────────────────────────┐"
+echo "│   TalentAI · Controller Quality Check (pre-push)    │"
+echo "└─────────────────────────────────────────────────────┘"
+
+if ! command -v phpcs >/dev/null 2>&1; then
+    echo "✖  phpcs not found. Run: composer global require squizlabs/php_codesniffer"
+    echo "   Then add Composer global bin to your PATH."
+    exit 1
+fi
+
+phpcs --standard="$REPO_ROOT/phpcs.xml" "$REPO_ROOT/app/Http/Controllers"
+EXIT_CODE=$?
+
+echo ""
+if [ $EXIT_CODE -ne 0 ]; then
+    echo "✖  Push blocked: fix the violations above before pushing."
+    echo ""
+    exit 1
+fi
+
+echo "✔  All controller checks passed."
+echo ""

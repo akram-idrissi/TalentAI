@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Services\ActivityLogger;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,10 +22,29 @@ class NewPasswordController extends Controller
      */
     public function create(Request $request): Response
     {
-        return Inertia::render('auth/reset-password', [
-            'email' => $request->email,
-            'token' => $request->route('token'),
-        ]);
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $logger->log(
+                'password.new.create',
+                'Affichage de la page de réinitialisation du mot de passe.',
+                ['email' => $request->email]
+            );
+
+            return Inertia::render('auth/reset-password', [
+                'email' => $request->email,
+                'token' => $request->route('token'),
+            ]);
+        } catch (\Throwable $e) {
+            $logger->log(
+                'password.new.create.error',
+                'Erreur lors de l\'affichage de la page de réinitialisation : '.$e->getMessage(),
+                ['exception' => $e->getMessage()]
+            );
+
+            throw $e;
+        }
     }
 
     /**
@@ -34,36 +54,57 @@ class NewPasswordController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
-            'token' => 'required',
-            'email' => 'required|email',
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-        ]);
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
 
-        // Here we will attempt to reset the user's password. If it is successful we
-        // will update the password on an actual user model and persist it to the
-        // database. Otherwise we will parse the error and return the response.
-        $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
-            function ($user) use ($request) {
-                $user->forceFill([
-                    'password' => Hash::make($request->password),
-                    'remember_token' => Str::random(60),
-                ])->save();
+        try {
+            $request->validate([
+                'token' => 'required',
+                'email' => 'required|email',
+                'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            ]);
 
-                event(new PasswordReset($user));
+            $status = Password::reset(
+                $request->only('email', 'password', 'password_confirmation', 'token'),
+                function ($user) use ($request) {
+                    $user->forceFill([
+                        'password' => Hash::make($request->password),
+                        'remember_token' => Str::random(60),
+                    ])->save();
+
+                    event(new PasswordReset($user));
+                }
+            );
+
+            if ($status == Password::PasswordReset) {
+                $logger->log(
+                    'password.new.store',
+                    'Mot de passe réinitialisé avec succès.',
+                    ['email' => $request->email]
+                );
+
+                return to_route('login')->with('status', __($status));
             }
-        );
 
-        // If the password was successfully reset, we will redirect the user back to
-        // the application's home authenticated view. If there is an error we can
-        // redirect them back to where they came from with their error message.
-        if ($status == Password::PasswordReset) {
-            return to_route('login')->with('status', __($status));
+            $logger->log(
+                'password.new.store.failed',
+                'Échec de la réinitialisation du mot de passe.',
+                ['email' => $request->email, 'status' => $status]
+            );
+
+            throw ValidationException::withMessages([
+                'email' => [__($status)],
+            ]);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            $logger->log(
+                'password.new.store.error',
+                'Erreur lors de la réinitialisation du mot de passe : '.$e->getMessage(),
+                ['email' => $request->email, 'exception' => $e->getMessage()]
+            );
+
+            throw $e;
         }
-
-        throw ValidationException::withMessages([
-            'email' => [__($status)],
-        ]);
     }
 }
