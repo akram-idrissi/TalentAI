@@ -6,8 +6,8 @@ use App\Enums\BriefStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Brief;
 use App\Services\ActivityLogger;
+use App\Services\BriefService;
 use App\Services\ParameterService;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -17,51 +17,21 @@ use Inertia\Response;
 
 class BriefController extends Controller
 {
-    public function __construct(private readonly ParameterService $params) {}
+    public function __construct(
+        private readonly ActivityLogger $logger,
+        private readonly BriefService $briefService,
+        private readonly ParameterService $params,
+    ) {}
+
+    // -------------------------------------------------------------------------
+    //  Shared helpers
+    // -------------------------------------------------------------------------
 
     /**
-     * Return the validation rules shared by store() and update().
+     * Validation rules shared by store() and update().
      *
      * @return array<string, mixed>
      */
-    private function applyFilters(Builder $query, array $filters): void
-    {
-        $allowedFields = [
-            'title',
-            'sector',
-            'contract_type',
-            'location',
-            'salary_range',
-            'min_experience_years',
-            'education_level',
-            'languages',
-            'seniority_level',
-            'target_companies',
-            'gender_pref',
-            'age_range',
-            'status',
-        ];
-
-        foreach ($filters as $filter) {
-            if (
-                ! is_array($filter) ||
-                empty($filter['field']) ||
-                ! isset($filter['value']) ||
-                $filter['value'] === ''
-            ) {
-                continue;
-            }
-
-            $field = in_array($filter['field'], $allowedFields) ? $filter['field'] : null;
-
-            if (! $field) {
-                continue;
-            }
-
-            $query->where($field, 'like', '%'.$filter['value'].'%');
-        }
-    }
-
     private function rules(): array
     {
         return [
@@ -91,52 +61,63 @@ class BriefController extends Controller
     }
 
     /**
-     * Display a paginated list of briefs, optionally filtered by search term and/or status.
+     * Parameter groups needed by every create / edit / show form.
+     */
+    private function formParams(): array
+    {
+        return $this->params->getAll([
+            'sectors',
+            'education_levels',
+            'experience_options',
+            'age_ranges',
+            'languages',
+            'seniority_levels',
+            'contract_types',
+            'gender_prefs',
+        ]);
+    }
+
+    /**
+     * Normalise the raw `filters` request input into a clean array.
+     */
+    private function parseFilters(Request $request): array
+    {
+        $filters = $request->input('filters');
+
+        if (is_string($filters)) {
+            $filters = json_decode($filters, true);
+        }
+
+        return is_array($filters) ? $filters : [];
+    }
+
+    // -------------------------------------------------------------------------
+    //  CRUD actions
+    // -------------------------------------------------------------------------
+
+    /**
+     * Display a paginated list of briefs, optionally filtered.
      *
-     * @param  Request  $request  Supports query params: `search` (string), `status` (BriefStatus value)
+     * @param  Request  $request  Supports query param `filters` (JSON array or PHP array)
      * @return Response Inertia page — Briefs/Index — or Briefs/Fallback on failure
      */
     public function index(Request $request): Response
     {
-        /** @var ActivityLogger $logger */
-        $logger = app(ActivityLogger::class);
+        $this->authorize('briefs.view');
         try {
+            $filters = $this->parseFilters($request);
+            $briefs = $this->briefService->getPaginatedBriefs($filters);
 
-            $query = Brief::with('creator');
-            $filters = $request->input('filters');
-            if (is_string($filters)) {
-                $filters = json_decode($filters, true);
-            }
-            $filters = is_array($filters) ? $filters : [];
-            $this->applyFilters($query, $filters);
-            $briefs = $query
-                ->latest()
-                ->paginate(10)
-                ->through(fn ($brief) => [
-                    'id' => $brief->id,
-                    'title' => $brief->title,
-                    'sector' => $brief->sector,
-                    'contract_type' => $brief->contract_type,
-                    'location' => $brief->location,
-                    'min_experience_years' => $brief->min_experience_years,
-                    'education_level' => $brief->education_level,
-                    'gender_pref' => $brief->gender_pref,
-                    'status' => $brief->status,
-                    'created_by' => $brief->creator?->name,
-                    'created_at' => $brief->created_at->toDateTimeString(),
-                ]);
-            $logger->log(
+            $this->logger->log(
                 'brief.index',
                 'Consultation de la liste des briefs.',
-                [
-                    'filters' => $filters ?? [],
-                ],
+                ['filters' => $filters],
                 [Brief::class]
             );
 
             return Inertia::render('Briefs/Index', [
                 'briefs' => $briefs,
-                'filters' => $filters ?? [],
+                'filters' => $filters,
                 'params' => $this->params->getAll([
                     'sectors',
                     'education_levels',
@@ -146,17 +127,11 @@ class BriefController extends Controller
                     'age_ranges',
                     'languages',
                     'seniority_levels',
-
                 ]),
-                'brief_statuses' => array_map(
-                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
-                    BriefStatus::cases()
-                ),
+                'brief_statuses' => BriefStatus::toSelectArray(),
             ]);
-
         } catch (\Throwable $e) {
-
-            $logger->log(
+            $this->logger->log(
                 'brief.index.error',
                 'Erreur lors de la récupération des briefs : '.$e->getMessage(),
                 ['exception' => $e->getMessage()],
@@ -176,12 +151,9 @@ class BriefController extends Controller
      */
     public function create(): Response
     {
-        /** @var ActivityLogger $logger */
-        $logger = app(ActivityLogger::class);
-
+        $this->authorize('briefs.create');
         try {
-
-            $logger->log(
+            $this->logger->log(
                 'brief.create',
                 'Affichage du formulaire de création d\'un brief.',
                 [],
@@ -189,21 +161,10 @@ class BriefController extends Controller
             );
 
             return Inertia::render('Briefs/Create', [
-
-                'params' => $this->params->getAll([
-                    'sectors',
-                    'education_levels',
-                    'experience_options',
-                    'age_ranges',
-                    'languages',
-                    'seniority_levels',
-                    'contract_types',
-                    'gender_prefs',
-                ]),
-
+                'params' => $this->formParams(),
             ]);
         } catch (\Throwable $e) {
-            $logger->log(
+            $this->logger->log(
                 'brief.create.error',
                 'Erreur lors de l\'affichage du formulaire de création : '.$e->getMessage(),
                 ['exception' => $e->getMessage()],
@@ -220,30 +181,26 @@ class BriefController extends Controller
      * Validate and persist a newly created brief.
      *
      * @param  Request  $request  Must contain all fields defined in rules()
-     * @return RedirectResponse|Response Redirects to briefs.index on success, or renders Briefs/Fallback on unexpected failure
+     * @return RedirectResponse|Response Redirects to briefs.index on success, or Briefs/Fallback on unexpected failure
      *
      * @throws ValidationException If validation fails (auto-handled by Laravel)
      */
     public function store(Request $request): RedirectResponse|Response
     {
-        /** @var ActivityLogger $logger */
-        $logger = app(ActivityLogger::class);
-
+        $this->authorize('briefs.create');
         try {
             $validated = $request->validate($this->rules());
-
-            $brief = new Brief($validated);
-            $brief->created_by = auth()->id();
-            $brief->save();
+            $brief = $this->briefService->createBrief($validated, auth()->id());
 
             try {
-                $logger->log(
+                $this->logger->log(
                     'brief.store',
                     "Création du brief « {$brief->title} » (ID : {$brief->id}).",
                     [$request->all()],
                     [Brief::class]
                 );
             } catch (\Throwable) {
+                // Logging must never break the happy path.
             }
 
             return redirect()->route('dashboard.briefs.index')
@@ -251,8 +208,7 @@ class BriefController extends Controller
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Throwable $e) {
-
-            $logger->log(
+            $this->logger->log(
                 'brief.store.error',
                 'Erreur lors de la création du brief : '.$e->getMessage(),
                 ['exception' => $e->getMessage()],
@@ -273,36 +229,25 @@ class BriefController extends Controller
      */
     public function show(Brief $brief): Response
     {
-        /** @var ActivityLogger $logger */
-        $logger = app(ActivityLogger::class);
-
+        $this->authorize('briefs.view');
         try {
-            $logger->log(
+            $brief->load('creator');
+
+            $this->logger->log(
                 'brief.show',
                 "Consultation du brief « {$brief->title} » (ID : {$brief->id}).",
                 ['brief_id' => $brief->id],
                 [Brief::class]
             );
 
-            $brief->load('creator');
-
             return Inertia::render('Briefs/Show', [
                 'brief' => array_merge($brief->toArray(), [
                     'created_by' => $brief->creator?->name,
                 ]),
-                'params' => $this->params->getAll([
-                    'sectors',
-                    'education_levels',
-                    'experience_options',
-                    'age_ranges',
-                    'languages',
-                    'seniority_levels',
-                    'contract_types',
-                    'gender_prefs',
-                ]),
+                'params' => $this->formParams(),
             ]);
         } catch (\Throwable $e) {
-            $logger->log(
+            $this->logger->log(
                 'brief.show.error',
                 "Erreur lors de la consultation du brief (ID : {$brief->id}) : ".$e->getMessage(),
                 ['brief_id' => $brief->id, 'exception' => $e->getMessage()],
@@ -323,11 +268,9 @@ class BriefController extends Controller
      */
     public function edit(Brief $brief): Response
     {
-        /** @var ActivityLogger $logger */
-        $logger = app(ActivityLogger::class);
-
+        $this->authorize('briefs.edit');
         try {
-            $logger->log(
+            $this->logger->log(
                 'brief.edit',
                 "Affichage du formulaire d'édition du brief « {$brief->title} » (ID : {$brief->id}).",
                 ['brief_id' => $brief->id],
@@ -336,19 +279,10 @@ class BriefController extends Controller
 
             return Inertia::render('Briefs/Edit', [
                 'brief' => $brief,
-                'params' => $this->params->getAll([
-                    'sectors',
-                    'education_levels',
-                    'experience_options',
-                    'age_ranges',
-                    'languages',
-                    'seniority_levels',
-                    'contract_types',
-                    'gender_prefs',
-                ]),
+                'params' => $this->formParams(),
             ]);
         } catch (\Throwable $e) {
-            $logger->log(
+            $this->logger->log(
                 'brief.edit.error',
                 "Erreur lors de l'affichage du formulaire d'édition (ID : {$brief->id}) : ".$e->getMessage(),
                 ['brief_id' => $brief->id, 'exception' => $e->getMessage()],
@@ -366,46 +300,37 @@ class BriefController extends Controller
      *
      * @param  Request  $request  Must contain all fields defined in rules()
      * @param  Brief  $brief  Route-model-bound Brief instance to update
-     * @return RedirectResponse|Response Redirects to briefs.index on success, or renders Briefs/Fallback on unexpected failure
+     * @return RedirectResponse|Response Redirects to briefs.index on success, or Briefs/Fallback on unexpected failure
      *
      * @throws ValidationException If validation fails (auto-handled by Laravel)
      */
     public function update(Request $request, Brief $brief): RedirectResponse|Response
     {
-        /** @var ActivityLogger $logger */
-        $logger = app(ActivityLogger::class);
-
+        $this->authorize('briefs.edit');
         try {
             $validated = $request->validate($this->rules());
-
-            $modifications = collect($validated)
-                ->filter(fn ($newValue, $key) => $brief->getAttribute($key) != $newValue)
-                ->map(fn ($newValue, $key) => [
-                    'avant' => $brief->getAttribute($key),
-                    'après' => $newValue,
-                ])
-                ->toArray();
-
             $statutAvant = $brief->status;
 
-            $brief->update($validated);
+            ['brief' => $brief, 'modifications' => $modifications]
+                = $this->briefService->updateBrief($brief, $validated);
 
             try {
-                $champsModifiés = implode(', ', array_keys($modifications));
-                $descriptionBase = "Mise à jour du brief « {$brief->title} » (ID : {$brief->id}).";
-                $descriptionDetail = count($modifications)
-                    ? " Champs modifiés : {$champsModifiés}."
+                $changedFields = implode(', ', array_keys($modifications));
+                $detailSuffix = count($modifications)
+                    ? " Champs modifiés : {$changedFields}."
                     : ' Aucune modification détectée.';
-                $transitionStatut = $statutAvant !== $brief->status
+                $statusSuffix = $statutAvant !== $brief->status
                     ? " Changement de statut : « {$statutAvant} » → « {$brief->status} »."
                     : '';
-                $logger->log(
+
+                $this->logger->log(
                     'brief.update',
-                    $descriptionBase.$descriptionDetail.$transitionStatut,
+                    "Mise à jour du brief « {$brief->title} » (ID : {$brief->id}).{$detailSuffix}{$statusSuffix}",
                     ['brief_id' => $brief->id, 'modifications' => $modifications],
                     [Brief::class]
                 );
             } catch (\Throwable) {
+                // Logging must never break the happy path.
             }
 
             return redirect()->route('dashboard.briefs.index')
@@ -413,6 +338,13 @@ class BriefController extends Controller
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Throwable $e) {
+            $this->logger->log(
+                'brief.update.error',
+                "Erreur lors de la mise à jour du brief (ID : {$brief->id}) : ".$e->getMessage(),
+                ['brief_id' => $brief->id, 'exception' => $e->getMessage()],
+                [Brief::class]
+            );
+
             return Inertia::render('Fallback', [
                 'error' => 'Impossible de mettre à jour ce brief.',
                 'brief' => $brief,
@@ -424,20 +356,18 @@ class BriefController extends Controller
      * Remove the specified brief from storage.
      *
      * @param  Brief  $brief  Route-model-bound Brief instance to delete
-     * @return RedirectResponse|Response Redirects to briefs.index on success, or renders Briefs/Fallback on failure
+     * @return RedirectResponse|Response Redirects to briefs.index on success, or Briefs/Fallback on failure
      */
     public function destroy(Brief $brief): RedirectResponse|Response
     {
-        /** @var ActivityLogger $logger */
-        $logger = app(ActivityLogger::class);
-
+        $this->authorize('briefs.delete');
         try {
             $briefId = $brief->id;
             $briefTitle = $brief->title;
 
             $brief->delete();
 
-            $logger->log(
+            $this->logger->log(
                 'brief.destroy',
                 "Suppression du brief « {$briefTitle} » (ID : {$briefId}).",
                 ['brief_id' => $briefId, 'title' => $briefTitle],
@@ -447,7 +377,7 @@ class BriefController extends Controller
             return redirect()->route('dashboard.briefs.index')
                 ->with('success', 'Brief supprimé avec succès.');
         } catch (\Throwable $e) {
-            $logger->log(
+            $this->logger->log(
                 'brief.destroy.error',
                 "Erreur lors de la suppression du brief (ID : {$brief->id}) : ".$e->getMessage(),
                 ['brief_id' => $brief->id, 'exception' => $e->getMessage()],
@@ -461,17 +391,18 @@ class BriefController extends Controller
     }
 
     /**
-     * Activate the brief (sourcing is now triggered from the Sourcing page).
+     * Activate the brief (sourcing is triggered separately from the Sourcing page).
+     *
+     * @param  Brief  $brief  Route-model-bound Brief instance to activate
+     * @return RedirectResponse|Response Redirects to briefs.show on success, or Briefs/Fallback on failure
      */
     public function activate(Brief $brief): RedirectResponse|Response
     {
-        /** @var ActivityLogger $logger */
-        $logger = app(ActivityLogger::class);
-
+        $this->authorize('briefs.edit');
         try {
-            $brief->update(['status' => BriefStatus::Active]);
+            $this->briefService->activateBrief($brief);
 
-            $logger->log(
+            $this->logger->log(
                 'brief.activate',
                 "Activation du brief « {$brief->title} » (ID : {$brief->id}).",
                 ['brief_id' => $brief->id],
@@ -481,7 +412,7 @@ class BriefController extends Controller
             return redirect()->route('dashboard.briefs.show', $brief->id)
                 ->with('success', 'Brief activé.');
         } catch (\Throwable $e) {
-            $logger->log(
+            $this->logger->log(
                 'brief.activate.error',
                 "Erreur lors de l'activation du brief (ID : {$brief->id}) : ".$e->getMessage(),
                 ['brief_id' => $brief->id, 'exception' => $e->getMessage()],

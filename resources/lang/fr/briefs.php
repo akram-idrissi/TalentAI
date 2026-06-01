@@ -63,6 +63,22 @@ return [
         ],
     ],
 
+    'form' => [
+        'sections' => [
+            'position' => 'Informations du poste',
+            'candidate' => 'Critères du candidat',
+            'description' => 'Description',
+            'scoring' => 'Pondération IA',
+        ],
+
+        'fields' => [
+            'seniority_level' => 'Niveau de séniorité',
+            'seniority_level_placeholder' => 'Choisir un niveau de séniorité',
+            'target_companies' => 'Entreprises cibles',
+            'target_companies_placeholder' => 'ex. Google, Meta, Amazon, séparées par des virgules',
+        ],
+    ],
+
     'validation' => [
         'required' => 'Ce champ est obligatoire.',
         'min_length' => 'Ce champ doit contenir au moins :min caractères.',

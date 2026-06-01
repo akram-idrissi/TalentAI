@@ -62,6 +62,21 @@ return [
             'back' => 'Back',
         ],
     ],
+    'form' => [
+        'sections' => [
+            'position' => 'Position information',
+            'candidate' => 'Candidate criteria',
+            'description' => 'Description',
+            'scoring' => 'AI scoring weights',
+        ],
+
+        'fields' => [
+            'seniority_level' => 'Seniority level',
+            'seniority_level_placeholder' => 'Select a seniority level',
+            'target_companies' => 'Target companies',
+            'target_companies_placeholder' => 'e.g. Google, Meta, Amazon, separated by commas',
+        ],
+    ],
 
     'validation' => [
         'required' => 'This field is required.',

@@ -20,7 +20,6 @@ class RolesAndPermissionsSeeder extends Seeder
             'briefs.create',
             'briefs.edit',
             'briefs.delete',
-            'briefs.approve',
 
             // Sourcing
             'sourcing.view',

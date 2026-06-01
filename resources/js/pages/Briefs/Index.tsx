@@ -68,13 +68,13 @@ interface PaginationMeta {
     total: number;
 }
 
-function Pagination({ meta, search }: { meta: PaginationMeta; search: string }) {
+function Pagination({ meta, filters }: { meta: PaginationMeta; filters: string }) {
     const { current_page, last_page, from, to, total } = meta;
 
     if (last_page <= 1) return null;
 
     function goTo(page: number) {
-        router.get(route('dashboard.briefs.index'), { page, ...(search ? { search } : {}) }, { preserveState: true, preserveScroll: false });
+        router.get(route('dashboard.briefs.index'), { page, ...(filters ? { filters } : {}) }, { preserveState: true, preserveScroll: false });
     }
 
     const pages = Array.from({ length: last_page }, (_, i) => i + 1);
@@ -127,7 +127,6 @@ function Pagination({ meta, search }: { meta: PaginationMeta; search: string }) 
 
 export default function Index({ briefs, filters, params, brief_statuses }: IndexBriefProps) {
     const { t } = useI18n();
-    const [search] = useState('');
     const { can, isSuperAdmin } = usePermission();
     const canCreateBriefs = isSuperAdmin() || can('briefs.create');
 
@@ -332,7 +331,14 @@ export default function Index({ briefs, filters, params, brief_statuses }: Index
 
                             {/* ── Pagination ── */}
                             <div className="px-4 pb-4">
-                                <Pagination meta={briefs} search={search} />
+                                <Pagination
+                                    meta={briefs}
+                                    filters={JSON.stringify(
+                                        activeFilters
+                                            .filter((f) => (Array.isArray(f.value) ? f.value.length > 0 : f.value?.toString().trim() !== ''))
+                                            .map((f) => ({ field: f.field, value: Array.isArray(f.value) ? f.value.join(',') : f.value })),
+                                    )}
+                                />
                             </div>
                         </div>
                     )}
