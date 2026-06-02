@@ -11,8 +11,10 @@ import {
     Mic,
     PanelLeftClose,
     PanelLeftOpen,
+    Plug,
     Search,
     Settings,
+    Settings2,
     Shield,
     Trophy,
     Users,
@@ -220,8 +222,8 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                         can('integrations.view') && {
                             id: 'integrations',
                             label: t('sidebar.settings.integrations'),
-                            icon: Settings,
-                            route: 'dashboard.integrations.index',
+                            icon: Plug, // import Plug from lucide-react
+                            route: 'dashboard.integrations.index', // user tokens page
                         },
                     ],
                 },
@@ -251,6 +253,12 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                             label: t('sidebar.administration.parameters'),
                             icon: Hash,
                             route: 'dashboard.parameters.index',
+                        },
+                        can('integrations.manage') && {
+                            id: 'admin-integrations',
+                            label: t('sidebar.administration.integrations_catalogue'),
+                            icon: Settings2, // import Settings2 from lucide-react
+                            route: 'dashboard.admin.integrations.index', // admin catalogue page
                         },
                     ],
                 },

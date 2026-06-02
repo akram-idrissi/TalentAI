@@ -9,33 +9,20 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('integrations', function (Blueprint $table) {
-            $table->unsignedBigInteger('id')->primary();
-
-            $table->unsignedBigInteger('user_id');
-
-            $table->enum('provider', [
-                'linkedin',
-                'indeed',
-                'facebook',
-                'whisper',
-                'claude',
-                'google_calendar',
-            ]);
-
-            $table->text('api_token');
-
-            $table->integer('credits_used')->default(0);
-
-            $table->integer('credits_limit')->nullable();
-
-            $table->timestamp('token_expires_at')->nullable();
-
-            $table->boolean('active')->default(true);
-
-            $table->foreign('user_id')
-                ->references('id')
-                ->on('users');
-
+            $table->id();
+            $table->string('provider')->unique();
+            $table->string('label');
+            $table->string('category');
+            $table->string('icon');
+            $table->text('description');
+            $table->string('token_label');
+            $table->string('placeholder')->nullable();
+            $table->string('env_key')->nullable();
+            $table->string('test_url')->nullable();
+            $table->string('docs_url')->nullable();
+            $table->boolean('oauth')->default(false);
+            $table->boolean('is_active')->default(true);
+            $table->boolean('is_system')->default(false);
             $table->timestamps();
             $table->softDeletes();
         });

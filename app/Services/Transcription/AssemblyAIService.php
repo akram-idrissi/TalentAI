@@ -2,6 +2,7 @@
 
 namespace App\Services\Transcription;
 
+use App\Models\UserApiToken;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -11,8 +12,14 @@ class AssemblyAIService
 
     private function headers(): array
     {
+        $tokenRecord = UserApiToken::where('user_id', auth()->id())
+            ->where('provider', 'assemblyai')
+            ->first();
+
+        $token = $tokenRecord?->token ?? config('services.assemblyai.key');
+
         return [
-            'Authorization' => config('services.assemblyai.key'),
+            'Authorization' => $token,
             'Content-Type' => 'application/json',
         ];
     }

@@ -54,6 +54,7 @@ class RolesAndPermissionsSeeder extends Seeder
             // Integrations
             'integrations.view',
             'integrations.manage',
+            'integrations.connect',
 
             // Classement
             'classement.view',
@@ -152,6 +153,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'reports.export',
             'integrations.view',
             'integrations.manage',
+            'integrations.connect',
             'classement.view',
             'classement.manage',
             'users.view',
@@ -203,6 +205,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'reports.view',
             'classement.view',
             'classement.manage',
+            'integrations.view',
+            'integrations.connect',
+
         ]);
 
         // Hiring Manager — view & approve, limited edit

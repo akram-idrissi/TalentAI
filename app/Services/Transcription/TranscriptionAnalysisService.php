@@ -2,6 +2,7 @@
 
 namespace App\Services\Transcription;
 
+use App\Models\UserApiToken;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -20,7 +21,12 @@ class TranscriptionAnalysisService
 
     public function __construct()
     {
-        $this->apiKey = config('services.openrouter.key');
+        $tokenRecord = UserApiToken::where('user_id', auth()->id())
+            ->where('provider', 'openrouter')
+            ->first();
+
+        $token = $tokenRecord?->token ?? config('services.openrouter.key');
+        $this->apiKey = $token;
         $this->apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
     }
 

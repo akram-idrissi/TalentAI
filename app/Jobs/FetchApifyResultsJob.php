@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\ApifyRun;
+use App\Models\UserApiToken;
 use App\Services\Recruitment\ApifyCandidateImporter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -47,7 +48,13 @@ class FetchApifyResultsJob implements ShouldQueue
         }
 
         try {
-            $response = Http::withToken(config('services.apify.token'))
+            $tokenRecord = UserApiToken::where('user_id', auth()->id())
+                ->where('provider', 'apify')
+                ->first();
+
+            $token = $tokenRecord?->token ?? config('services.apify.token');
+
+            $response = Http::withToken($token)
                 ->get("https://api.apify.com/v2/actor-runs/{$run->run_id}");
 
             if ($response->status() === 429) {

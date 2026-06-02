@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Integration;
 
 use App\Http\Controllers\Controller;
+use App\Models\Integration;
 use App\Models\UserApiToken;
 use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
@@ -23,11 +24,14 @@ class ApiTokenController extends Controller
      */
     public function index(): Response
     {
+
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
         try {
-            $providers = config('integrations');
+            $providers = Integration::where('is_active', true)
+                ->get()
+                ->keyBy('provider');
             $userTokens = auth()->user()->apiTokens()->get()->keyBy('provider');
 
             $categoryLabels = collect($providers)
@@ -35,22 +39,22 @@ class ApiTokenController extends Controller
                 ->unique()
                 ->mapWithKeys(fn ($cat) => [$cat => __("integrations.categories.{$cat}")]);
 
-            $integrations = collect($providers)->map(function ($config, $key) use ($userTokens) {
+            $integrations = $providers->map(function ($integration, $key) use ($userTokens) {
                 $record = $userTokens->get($key);
 
                 return [
                     'provider' => $key,
-                    'label' => $config['label'],
-                    'category' => $config['category'],
-                    'icon' => $config['icon'],
-                    'description' => $config['description'],
-                    'token_label' => $config['token_label'],
-                    'placeholder' => $config['placeholder'],
-                    'docs_url' => $config['docs_url'],
-                    'oauth' => $config['oauth'],
+                    'label' => $integration->label,
+                    'category' => $integration->category,
+                    'icon' => $integration->icon,
+                    'description' => $integration->description,
+                    'token_label' => $integration->token_label,
+                    'placeholder' => $integration->placeholder,
+                    'docs_url' => $integration->docs_url,
+                    'oauth' => $integration->oauth,
                     'has_token' => (bool) $record,
                     'masked_token' => $record ? $this->mask($record->token) : null,
-                    'has_env_fallback' => ! empty($config['env_key']) && env($config['env_key']),
+                    'has_env_fallback' => $integration->env_key && env($integration->env_key),
                 ];
             });
 
@@ -91,15 +95,14 @@ class ApiTokenController extends Controller
     {
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
-
         try {
             $request->validate([
-                'provider' => ['required', 'string', Rule::in(array_keys(config('integrations')))],
+                Rule::in(Integration::pluck('provider')->toArray()),
                 'token' => ['required', 'string', 'min:8'],
                 'secondary_token' => ['nullable', 'string'],
             ]);
 
-            $this->testToken($request->provider, $request->token);
+            // $this->testToken($request->provider, $request->token);
 
             UserApiToken::updateOrCreate(
                 ['user_id' => auth()->id(), 'provider' => $request->provider],
@@ -220,20 +223,16 @@ class ApiTokenController extends Controller
 
     private function testToken(string $provider, string $token): bool
     {
-        $url = config("integrations.{$provider}.test_url");
+        $integration = Integration::where('provider', $provider)->firstOrFail();
+        $url = $integration->test_url;
+
         if (! $url) {
             return true;
         }
 
         $response = Http::withToken($token)->timeout(5)->get($url);
-        logger()->info("Testing token for {$provider}", [
-            'url' => $url,
-            'status' => $response->status(),
-            'response' => $response->body(),
-        ]);
 
         if (! $response->successful()) {
-            logger()->error("Token test failed for {$provider}", ['response' => $response->body()]);
             throw new \Exception("Token invalide pour {$provider}");
         }
 

@@ -35,5 +35,6 @@ return [
         'roles' => 'Roles',
         'activity_logs' => 'Activity Log',
         'parameters' => 'Parameters',
+        'integrations_catalogue' => 'Integrations Catalogue',
     ],
 ];

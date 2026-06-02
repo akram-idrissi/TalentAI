@@ -4,6 +4,7 @@ namespace App\Services\Recruitment;
 
 use App\Models\Brief;
 use App\Models\Candidat;
+use App\Models\UserApiToken;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -299,8 +300,13 @@ class CandidateScoringService
                 'model' => 'meta-llama/llama-3.1-8b-instruct',
                 'candidate_count' => $candidates->count(),
             ]);
+            $tokenRecord = UserApiToken::where('user_id', auth()->id())
+                ->where('provider', 'openrouter')
+                ->first();
+
+            $token = $tokenRecord?->token ?? config('services.openrouter.key');
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer '.config('services.openrouter.key'),
+                'Authorization' => 'Bearer '.$token,
                 'HTTP-Referer' => 'http://localhost',
                 'X-Title' => 'TalentAI',
             ])->post('https://openrouter.ai/api/v1/chat/completions', [

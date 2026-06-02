@@ -35,7 +35,7 @@ return [
         ],
     ],
     'apify' => [
-        'token' => env('APIFY_TOKEN'),
+        'token' => env('APIFY_API_TOKEN'),
     ],
     'anthropic' => [
         'key' => env('ANTHROPIC_KEY'),

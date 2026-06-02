@@ -4,6 +4,7 @@ namespace App\Services\Recruitment;
 
 use App\Models\ApifyRun;
 use App\Models\Candidat;
+use App\Models\UserApiToken;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
@@ -406,7 +407,13 @@ class ApifyCandidateImporter
      */
     private function fetchDataset(string $datasetId, ?string $token = null): array
     {
-        $response = Http::withToken($token ?? config('services.apify.token'))
+        $tokenRecord = UserApiToken::where('user_id', auth()->id())
+            ->where('provider', 'apify')
+            ->first();
+
+        $token = $tokenRecord?->token ?? config('services.apify.token');
+
+        $response = Http::withToken($token)
             ->get("https://api.apify.com/v2/datasets/{$datasetId}/items", [
                 'format' => 'json',
                 'clean' => true,

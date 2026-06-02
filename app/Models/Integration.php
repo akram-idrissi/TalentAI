@@ -9,37 +9,15 @@ class Integration extends Model
 {
     use SoftDeletes;
 
-    protected $table = 'integrations';
-
     protected $fillable = [
-        'user_id',
-        'provider',
-        'api_token',
-        'credits_used',
-        'credits_limit',
-        'token_expires_at',
-        'active',
-        'created_at',
+        'provider', 'label', 'category', 'icon', 'description',
+        'token_label', 'placeholder', 'env_key', 'test_url',
+        'docs_url', 'oauth', 'is_active', 'is_system',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'active' => 'boolean',
-            'credits_used' => 'integer',
-            'credits_limit' => 'integer',
-            'token_expires_at' => 'datetime',
-            'created_at' => 'datetime',
-        ];
-    }
-
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'user_id');
-    }
+    protected $casts = [
+        'oauth' => 'boolean',
+        'is_active' => 'boolean',
+        'is_system' => 'boolean',
+    ];
 }

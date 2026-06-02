@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             ParameterSeeder::class,
             BriefsSeeder::class,
             CandidatsSeeder::class,
+            IntegrationSeeder::class,
         ]);
     }
 }

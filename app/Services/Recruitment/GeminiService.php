@@ -3,6 +3,7 @@
 namespace App\Services\Recruitment;
 
 use App\Models\Brief;
+use App\Models\UserApiToken;
 use App\Services\ActivityLogger;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -114,10 +115,14 @@ class GeminiService
             PROMPT;
 
             Log::info('PROMPT READY');
+            $tokenRecord = UserApiToken::where('user_id', auth()->id())
+                ->where('provider', 'gemini')
+                ->first();
 
+            $token = $tokenRecord?->token ?? config('services.gemini.key');
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
-                'X-goog-api-key' => config('services.gemini.key'),
+                'X-goog-api-key' => $token,
             ])->post(
                 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
                 [

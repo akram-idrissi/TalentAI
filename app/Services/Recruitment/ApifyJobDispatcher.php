@@ -4,6 +4,7 @@ namespace App\Services\Recruitment;
 
 use App\Models\ApifyRun;
 use App\Models\Brief;
+use App\Models\UserApiToken;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 
@@ -26,7 +27,12 @@ class ApifyJobDispatcher
      */
     public function dispatch(Brief $brief, array $actorInput, ?string $token = null): ApifyRun
     {
-        $response = Http::withToken($token ?? config('services.apify.token'))
+        $tokenRecord = UserApiToken::where('user_id', auth()->id())
+            ->where('provider', 'apify')
+            ->first();
+
+        $token = $tokenRecord?->token ?? config('services.apify.token');
+        $response = Http::withToken($token)
             ->timeout(20)
             ->post('https://api.apify.com/v2/acts/'.self::ACTOR_ID.'/runs', $actorInput);
 
