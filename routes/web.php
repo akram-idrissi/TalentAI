@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('welcome');
+    return Inertia::render('landingPage/LandingPage');
 })->name('home');
 
 Route::post('/locale', function (Request $request) {
