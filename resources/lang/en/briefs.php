@@ -285,6 +285,15 @@ return [
             'cancel' => 'Cancel',
             'confirm' => 'Yes, delete',
         ],
+        'sortable_columns' => [
+            'title' => 'Target position',
+            'sector' => 'Sector',
+            'contract_type' => 'Contract',
+            'min_experience_years' => 'Experience',
+            'location' => 'Location',
+            'status' => 'Status',
+            'created_at' => 'Created',
+        ],
     ],
 
 ];

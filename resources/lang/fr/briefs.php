@@ -287,6 +287,15 @@ return [
             'cancel' => 'Annuler',
             'confirm' => 'Oui, supprimer',
         ],
+        'sortable_columns' => [
+            'title' => 'Poste visé',
+            'sector' => 'Secteur',
+            'contract_type' => 'Contrat',
+            'min_experience_years' => 'Expérience',
+            'location' => 'Localisation',
+            'status' => 'Statut',
+            'created_at' => 'Créé',
+        ],
     ],
 
 ];

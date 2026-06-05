@@ -4,22 +4,48 @@ use App\Http\Controllers\Brief\BriefController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('can:briefs.create')->group(function () {
-    Route::get('/briefs/create', [BriefController::class, 'create'])->name('briefs.create');
-    Route::post('/briefs', [BriefController::class, 'store'])->name('briefs.store');
+    Route::get('/briefs/create', [BriefController::class, 'create'])
+        ->name('briefs.create');
+
+    Route::post('/briefs', [BriefController::class, 'store'])
+        ->name('briefs.store');
+
+    Route::post('/briefs/{brief}/duplicate', [BriefController::class, 'duplicate'])
+        ->name('briefs.duplicate');
 });
 
 Route::middleware('can:briefs.view')->group(function () {
-    Route::get('/briefs', [BriefController::class, 'index'])->name('briefs.index');
-    Route::get('/briefs/{brief}', [BriefController::class, 'show'])->name('briefs.show');
+    Route::get('/briefs', [BriefController::class, 'index'])
+        ->name('briefs.index');
+
+    Route::get('/briefs/{brief}', [BriefController::class, 'show'])
+        ->name('briefs.show');
 });
 
 Route::middleware('can:briefs.edit')->group(function () {
-    Route::get('/briefs/{brief}/edit', [BriefController::class, 'edit'])->name('briefs.edit');
-    Route::put('/briefs/{brief}', [BriefController::class, 'update'])->name('briefs.update');
+    Route::get('/briefs/{brief}/edit', [BriefController::class, 'edit'])
+        ->name('briefs.edit');
+
+    Route::put('/briefs/{brief}', [BriefController::class, 'update'])
+        ->name('briefs.update');
+
+    // Bulk status change must be before /briefs/{brief}/status
+    Route::patch('/briefs/bulk/status', [BriefController::class, 'bulkUpdateStatus'])
+        ->name('briefs.bulk-update-status');
+
+    Route::patch('/briefs/{brief}/status', [BriefController::class, 'updateStatus'])
+        ->name('briefs.update-status');
 });
 
-Route::delete('/briefs/{brief}', [BriefController::class, 'destroy'])
-    ->name('briefs.destroy')
-    ->middleware('can:briefs.delete');
+Route::middleware('can:briefs.delete')->group(function () {
+    // Bulk delete must be before /briefs/{brief}
+    Route::delete('/briefs/bulk/destroy', [BriefController::class, 'bulkDestroy'])
+        ->name('briefs.bulk-destroy');
 
-Route::post('/briefs/{brief}/activate', [BriefController::class, 'activate'])->name('briefs.activate')->middleware('can:briefs.approve');
+    Route::delete('/briefs/{brief}', [BriefController::class, 'destroy'])
+        ->name('briefs.destroy');
+});
+
+Route::post('/briefs/{brief}/activate', [BriefController::class, 'activate'])
+    ->name('briefs.activate')
+    ->middleware('can:briefs.approve');

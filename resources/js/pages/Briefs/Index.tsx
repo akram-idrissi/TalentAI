@@ -1,148 +1,240 @@
+import BriefAvatar from '@/components/briefs/BriefAvatar';
+import BulkActionBar from '@/components/briefs/BulkActionBar';
+import ContractBadge from '@/components/briefs/ContractBadge';
+import FilterChips from '@/components/briefs/FilterChips';
+import MobileBriefCard from '@/components/briefs/MobileBriefCard';
+import Pagination from '@/components/briefs/Pagination';
+import SortableHeader from '@/components/briefs/SortableHeader';
+import StatusBadge from '@/components/briefs/StatusBadge';
 import DeleteModal from '@/components/ui/DeleteModal';
 import FilterPanel, { FilterEntry } from '@/components/ui/FilterPanel';
 import SkeletonTable from '@/components/ui/SkeletonTable';
+import { STATUS_CONFIG } from '@/constants/briefs';
 import { useI18n } from '@/hooks/useI18n';
 import { usePermission } from '@/hooks/usePermission';
 import AppLayout from '@/layouts/app-layout';
-import type { Brief, IndexBriefProps } from '@/types/brief';
+import type { Brief, IndexBriefProps, SortDir } from '@/types/brief';
 import { Head, Link, router } from '@inertiajs/react';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import { ChevronLeft, ChevronRight, Edit2, Eye, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { CheckSquare, Copy, Edit2, Eye, Plus, Square, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-
 dayjs.extend(relativeTime);
 dayjs.locale('fr');
 
-const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-    active: { label: 'Actif', className: 'bg-badge-active-bg text-badge-active-text border border-badge-active-text/20' },
-    draft: { label: 'Brouillon', className: 'bg-ds-accent/10 text-ds-accent2 border border-ds-accent/20' },
-    sourcing: { label: 'En sourcing', className: 'bg-badge-sourcing-bg text-badge-sourcing-text border border-badge-sourcing-text/20' },
-    interview: { label: 'Entretiens', className: 'bg-badge-interview-bg text-badge-interview-text border border-badge-interview-text/20' },
-};
-
-function BriefStatusBadge({ status }: { status: string }) {
-    const cfg = STATUS_CONFIG[status] ?? { label: status, className: 'bg-ds-bg3 text-ds-text2 border border-ds-border' };
-    return <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${cfg.className}`}>{cfg.label}</span>;
-}
-
-const AVATAR_COLORS = [
-    'from-[#6C63FF] to-[#38BDF8]',
-    'from-[#34D399] to-[#38BDF8]',
-    'from-[#FBBF24] to-[#F87171]',
-    'from-[#A78BFA] to-[#6C63FF]',
-    'from-[#F87171] to-[#FBBF24]',
-];
-
-function BriefAvatar({ title, index }: { title: string; index: number }) {
-    const initials = title
-        .split(' ')
-        .slice(0, 2)
-        .map((w) => w[0])
-        .join('')
-        .toUpperCase();
-    return (
-        <div
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${AVATAR_COLORS[index % AVATAR_COLORS.length]} text-[11px] font-bold text-white`}
-        >
-            {initials}
-        </div>
-    );
-}
-
-function ContractBadge({ type }: { type: string }) {
-    return (
-        <span className="border-ds-accent/20 bg-ds-accent/10 text-ds-accent2 inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold">
-            {type}
-        </span>
-    );
-}
-
-interface PaginationMeta {
-    current_page: number;
-    last_page: number;
-    from: number | null;
-    to: number | null;
-    total: number;
-}
-
-function Pagination({ meta, filters }: { meta: PaginationMeta; filters: string }) {
-    const { current_page, last_page, from, to, total } = meta;
-
-    if (last_page <= 1) return null;
-
-    function goTo(page: number) {
-        router.get(route('dashboard.briefs.index'), { page, ...(filters ? { filters } : {}) }, { preserveState: true, preserveScroll: false });
-    }
-
-    const pages = Array.from({ length: last_page }, (_, i) => i + 1);
-    const visible = pages.filter((p) => p === 1 || p === last_page || Math.abs(p - current_page) <= 2);
-
-    const btnBase = 'flex h-7 min-w-[28px] items-center justify-center rounded-lg border px-2 text-[12px] transition';
-    const btnIdle = 'border-ds-border text-ds-text2 hover:border-ds-border2 hover:text-ds-text';
-    const btnActive = 'border-ds-accent bg-ds-accent text-white';
-    const btnDisabled = 'border-ds-border text-ds-text3 cursor-not-allowed opacity-50';
-
-    return (
-        <div className="mt-4 flex items-center justify-between text-[13px]">
-            <p className="text-ds-text3">{from != null && to != null ? `${from}–${to} sur ${total} briefs` : `${total} briefs`}</p>
-
-            <div className="flex items-center gap-1">
-                <button
-                    onClick={() => goTo(current_page - 1)}
-                    disabled={current_page === 1}
-                    className={`${btnBase} ${current_page === 1 ? btnDisabled : btnIdle}`}
-                    aria-label="Page précédente"
-                >
-                    <ChevronLeft size={13} />
-                </button>
-
-                {visible.map((p, i) => (
-                    <span key={p} className="flex items-center gap-1">
-                        {i > 0 && visible[i - 1] !== p - 1 && <span className="text-ds-text3 px-0.5">…</span>}
-                        <button
-                            onClick={() => goTo(p)}
-                            className={`${btnBase} ${p === current_page ? btnActive : btnIdle}`}
-                            aria-current={p === current_page ? 'page' : undefined}
-                        >
-                            {p}
-                        </button>
-                    </span>
-                ))}
-
-                <button
-                    onClick={() => goTo(current_page + 1)}
-                    disabled={current_page === last_page}
-                    className={`${btnBase} ${current_page === last_page ? btnDisabled : btnIdle}`}
-                    aria-label="Page suivante"
-                >
-                    <ChevronRight size={13} />
-                </button>
-            </div>
-        </div>
-    );
-}
-
-export default function Index({ briefs, filters, params, brief_statuses }: IndexBriefProps) {
+export default function Index({
+    briefs: initialBriefs,
+    filters,
+    params,
+    brief_statuses,
+    sort_by: initialSortBy = 'created_at',
+    sort_dir: initialSortDir = 'desc',
+}: IndexBriefProps & { sort_by?: string; sort_dir?: string }) {
     const { t } = useI18n();
     const { can, isSuperAdmin } = usePermission();
     const canCreateBriefs = isSuperAdmin() || can('briefs.create');
+    const canEditBriefs = isSuperAdmin() || can('briefs.edit');
+    const canDeleteBriefs = isSuperAdmin() || can('briefs.delete');
 
     const [deletingBrief, setDeletingBrief] = useState<Brief | null>(null);
+    const [duplicatingId, setDuplicatingId] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [activeFilters, setActiveFilters] = useState<FilterEntry[]>(Array.isArray(filters) ? filters : []);
+    const [briefs, setBriefs] = useState(initialBriefs);
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    const [bulkLoading, setBulkLoading] = useState(false);
+    const [sortBy, setSortBy] = useState(initialSortBy);
+    const [sortDir, setSortDir] = useState<SortDir>(initialSortDir as SortDir);
+
+    useEffect(() => {
+        setBriefs(initialBriefs);
+    }, [initialBriefs]);
+
+    useEffect(() => {
+        setSelectedIds(new Set());
+    }, [initialBriefs]);
+
+    function handleSort(col: string) {
+        const newDir: SortDir = sortBy === col && sortDir === 'asc' ? 'desc' : 'asc';
+        setSortBy(col);
+        setSortDir(newDir);
+
+        const cleanFilters = activeFilters
+            .filter((f) => (Array.isArray(f.value) ? f.value.length > 0 : f.value?.toString().trim() !== ''))
+            .map((f) => ({ field: f.field, value: Array.isArray(f.value) ? f.value.join(',') : f.value }));
+
+        router.get(
+            route('dashboard.briefs.index'),
+            {
+                sort_by: col,
+                sort_dir: newDir,
+                ...(cleanFilters.length ? { filters: JSON.stringify(cleanFilters) } : {}),
+            },
+            { preserveState: true, preserveScroll: true },
+        );
+    }
+
+    function handleStatusChanged(briefId: number, newStatus: string) {
+        setBriefs((prev) => ({
+            ...prev,
+            data: prev.data.map((b) => (b.id === briefId ? { ...b, status: newStatus } : b)),
+        }));
+    }
+
+    function toggleSelect(id: number) {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+
+            return next;
+        });
+    }
+
+    function toggleSelectAll() {
+        if (selectedIds.size === briefs.data.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(briefs.data.map((b) => b.id)));
+        }
+    }
+
+    const allSelected = briefs.data.length > 0 && selectedIds.size === briefs.data.length;
+    const someSelected = selectedIds.size > 0 && !allSelected;
+
+    async function handleBulkStatusChange(newStatus: string) {
+        if (selectedIds.size === 0 || bulkLoading) return;
+        setBulkLoading(true);
+
+        const ids = Array.from(selectedIds);
+        const previousStates = Object.fromEntries(briefs.data.filter((b) => ids.includes(b.id)).map((b) => [b.id, b.status]));
+
+        setBriefs((prev) => ({
+            ...prev,
+            data: prev.data.map((b) => (ids.includes(b.id) ? { ...b, status: newStatus } : b)),
+        }));
+
+        try {
+            const res = await fetch(route('dashboard.briefs.bulk-update-status'), {
+                method: 'PATCH',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({ ids, status: newStatus }),
+            });
+
+            const data = await res.json().catch(() => null);
+            if (!res.ok) {
+                throw new Error('Server error');
+            }
+
+            const label = STATUS_CONFIG[newStatus]?.label ?? newStatus;
+
+            toast.success(
+                (t) => (
+                    <span className="flex items-center gap-3">
+                        <span>
+                            {data.updated} brief(s) → <strong>{label}</strong>
+                        </span>
+                        <button
+                            onClick={() => {
+                                toast.dismiss(t.id);
+                                // Revert all to their previous statuses individually
+                                setBriefs((prev) => ({
+                                    ...prev,
+                                    data: prev.data.map((b) =>
+                                        ids.includes(b.id) && previousStates[b.id] ? { ...b, status: previousStates[b.id] } : b,
+                                    ),
+                                }));
+
+                                ids.forEach((id) => {
+                                    if (!previousStates[id]) return;
+                                    fetch(route('dashboard.briefs.update-status', id), {
+                                        method: 'PATCH',
+                                        credentials: 'same-origin',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            Accept: 'application/json',
+                                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '',
+                                            'X-Requested-With': 'XMLHttpRequest',
+                                        },
+                                        body: JSON.stringify({ status: previousStates[id] }),
+                                    }).catch(() => {});
+                                });
+                                toast.success('Action annulée.');
+                            }}
+                            className="text-ds-accent ml-1 shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold underline-offset-2 hover:underline"
+                        >
+                            Annuler
+                        </button>
+                    </span>
+                ),
+                { duration: 5000 },
+            );
+
+            setSelectedIds(new Set());
+        } catch {
+            setBriefs((prev) => ({
+                ...prev,
+                data: prev.data.map((b) => (ids.includes(b.id) && previousStates[b.id] ? { ...b, status: previousStates[b.id] } : b)),
+            }));
+            toast.error('Impossible de mettre à jour les briefs.');
+        } finally {
+            setBulkLoading(false);
+        }
+    }
+
+    async function handleBulkDelete() {
+        if (selectedIds.size === 0 || bulkLoading) return;
+
+        const ids = Array.from(selectedIds);
+        const count = ids.length;
+        const label = `${count} brief${count > 1 ? 's' : ''}`;
+
+        if (!window.confirm(`Supprimer ${label} ? Cette action est irréversible.`)) return;
+
+        setBulkLoading(true);
+
+        try {
+            const res = await fetch(route('dashboard.briefs.bulk-destroy'), {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '',
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({ ids }),
+            });
+
+            if (!res.ok) throw new Error('Server error');
+
+            setBriefs((prev) => ({
+                ...prev,
+                data: prev.data.filter((b) => !ids.includes(b.id)),
+                total: Math.max(0, (prev.total ?? 0) - count),
+            }));
+            setSelectedIds(new Set());
+            toast.success(`${label} supprimé${count > 1 ? 's' : ''}.`);
+        } catch {
+            toast.error('Impossible de supprimer les briefs.');
+        } finally {
+            setBulkLoading(false);
+        }
+    }
 
     const FILTER_FIELDS = [
         { key: 'title', label: t('briefs.index.filters.fields.title'), type: 'text' as const },
-        {
-            key: 'sector',
-            label: t('briefs.index.filters.fields.sector'),
-            type: 'select' as const,
-            multi: true,
-            options: params.sectors,
-        },
+        { key: 'sector', label: t('briefs.index.filters.fields.sector'), type: 'select' as const, multi: true, options: params.sectors },
         {
             key: 'contract_type',
             label: t('briefs.index.filters.fields.contract_type'),
@@ -159,20 +251,40 @@ export default function Index({ briefs, filters, params, brief_statuses }: Index
             multi: true,
             options: params.education_levels,
         },
-        {
-            key: 'status',
-            label: t('briefs.index.filters.fields.status'),
-            type: 'select' as const,
-            multi: true,
-            options: brief_statuses,
-        },
+        { key: 'status', label: t('briefs.index.filters.fields.status'), type: 'select' as const, multi: true, options: brief_statuses },
     ];
+
+    const FILTER_FIELD_LABELS = Object.fromEntries(FILTER_FIELDS.map((f) => [f.key, f.label]));
+
+    function removeFilter(field: string) {
+        const next = activeFilters.filter((f) => f.field !== field);
+        setActiveFilters(next);
+        handleSearch(next);
+    }
+
+    function clearAllFilters() {
+        setActiveFilters([]);
+        handleSearch([]);
+    }
 
     function handleDelete() {
         if (!deletingBrief) return;
         router.delete(route('dashboard.briefs.destroy', deletingBrief.id), {
             onSuccess: () => setDeletingBrief(null),
         });
+    }
+
+    function handleDuplicate(brief: Brief) {
+        if (duplicatingId !== null) return;
+        setDuplicatingId(brief.id);
+        router.post(
+            route('dashboard.briefs.duplicate', brief.id),
+            {},
+            {
+                onFinish: () => setDuplicatingId(null),
+                onError: () => toast.error('Impossible de dupliquer ce brief.'),
+            },
+        );
     }
 
     function handleSearch(filtersOverride?: FilterEntry[]) {
@@ -183,7 +295,11 @@ export default function Index({ briefs, filters, params, brief_statuses }: Index
 
         router.get(
             route('dashboard.briefs.index'),
-            { filters: JSON.stringify(cleanFilters) },
+            {
+                filters: JSON.stringify(cleanFilters),
+                sort_by: sortBy !== 'created_at' ? sortBy : undefined,
+                sort_dir: sortDir !== 'desc' ? sortDir : undefined,
+            },
             {
                 preserveState: true,
                 preserveScroll: true,
@@ -198,19 +314,35 @@ export default function Index({ briefs, filters, params, brief_statuses }: Index
         );
     }
 
+    const serialisedFilters = JSON.stringify(
+        activeFilters
+            .filter((f) => (Array.isArray(f.value) ? f.value.length > 0 : f.value?.toString().trim() !== ''))
+            .map((f) => ({ field: f.field, value: Array.isArray(f.value) ? f.value.join(',') : f.value })),
+    );
+
+    const SORTABLE_COLS = [
+        { col: 'title', label: t('briefs.index.sortable_columns.title') },
+        { col: 'sector', label: t('briefs.index.sortable_columns.sector') },
+        { col: 'contract_type', label: t('briefs.index.sortable_columns.contract_type') },
+        { col: 'min_experience_years', label: t('briefs.index.sortable_columns.min_experience_years') },
+        { col: 'location', label: t('briefs.index.sortable_columns.location') },
+        { col: 'status', label: t('briefs.index.sortable_columns.status') },
+        { col: 'created_at', label: t('briefs.index.sortable_columns.created_at') },
+    ];
+
     return (
         <>
             <Head title={t('briefs.index.title')} />
             <AppLayout>
-                <div className="bg-ds-bg min-h-screen px-6">
+                <div className="bg-ds-bg min-h-screen px-4 sm:px-6">
                     {/* Header */}
-                    <div className="mb-6">
-                        <h1 className="font-heading text-ds-text text-[26px] font-bold">{t('briefs.index.title')}</h1>
-                        <p className="text-ds-text2 mt-1 text-[14px]">{t('briefs.index.subtitle')}</p>
+                    <div className="mb-6 pt-2">
+                        <h1 className="font-heading text-ds-text text-[22px] font-bold sm:text-[26px]">{t('briefs.index.title')}</h1>
+                        <p className="text-ds-text2 mt-1 text-[13px] sm:text-[14px]">{t('briefs.index.subtitle')}</p>
                     </div>
 
                     {/* Toolbar */}
-                    <div className="mb-5 flex items-start gap-3">
+                    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start">
                         <div className="flex-1">
                             <FilterPanel
                                 fields={FILTER_FIELDS}
@@ -223,7 +355,7 @@ export default function Index({ briefs, filters, params, brief_statuses }: Index
                         {canCreateBriefs && (
                             <Link
                                 href={route('dashboard.briefs.create')}
-                                className="bg-ds-accent flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-semibold text-white transition hover:opacity-90"
+                                className="bg-ds-accent flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-semibold text-white transition hover:opacity-90 sm:shrink-0 sm:justify-start"
                             >
                                 <Plus size={14} />
                                 {t('briefs.index.actions.create')}
@@ -231,12 +363,15 @@ export default function Index({ briefs, filters, params, brief_statuses }: Index
                         )}
                     </div>
 
-                    {/* Skeleton while loading */}
+                    {/* Filter chips */}
+                    <FilterChips filters={activeFilters} fieldLabels={FILTER_FIELD_LABELS} onRemove={removeFilter} onClearAll={clearAllFilters} />
+
+                    {/* Skeleton */}
                     {loading && <SkeletonTable cols={8} rows={8} />}
 
                     {/* Empty state */}
                     {!loading && briefs.data.length === 0 && (
-                        <div className="border-ds-border bg-ds-surface flex flex-col items-center justify-center rounded-xl border py-24 text-center">
+                        <div className="border-ds-border bg-ds-surface flex flex-col items-center justify-center rounded-xl border py-20 text-center">
                             <div className="bg-ds-accent/10 mb-4 flex h-14 w-14 items-center justify-center rounded-2xl">
                                 <span className="text-2xl">📋</span>
                             </div>
@@ -245,7 +380,7 @@ export default function Index({ briefs, filters, params, brief_statuses }: Index
                             {canCreateBriefs && (
                                 <Link
                                     href={route('dashboard.briefs.create')}
-                                    className="bg-ds-accent mt-5 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#7C74FF]"
+                                    className="bg-ds-accent mt-5 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-[13px] font-semibold text-white transition hover:opacity-90"
                                 >
                                     <Plus size={14} />
                                     {t('briefs.index.actions.create')}
@@ -254,95 +389,177 @@ export default function Index({ briefs, filters, params, brief_statuses }: Index
                         </div>
                     )}
 
-                    {/* Table */}
+                    {/* Desktop table */}
                     {!loading && briefs.data.length > 0 && (
-                        <div className="border-ds-border bg-ds-surface overflow-hidden rounded-xl border">
-                            <div className="overflow-x-auto">
-                                <table className="w-full border-collapse text-[13px]">
-                                    <thead>
-                                        <tr className="border-ds-border border-b">
-                                            {['POSTE VISÉ', 'SECTEUR', 'CONTRAT', 'EXPÉRIENCE', 'LOCALISATION', 'STATUT', 'CRÉÉ', ''].map((col) => (
-                                                <th
-                                                    key={col}
-                                                    className="text-ds-text3 px-4 py-3 text-left text-[10px] font-semibold tracking-[0.8px] uppercase"
-                                                >
-                                                    {col}
+                        <>
+                            <div className="border-ds-border bg-ds-surface hidden overflow-hidden rounded-xl border md:block">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse text-[13px]">
+                                        <thead>
+                                            <tr className="border-ds-border border-b">
+                                                {/* Select-all checkbox */}
+                                                <th className="px-4 py-3 text-left">
+                                                    <button
+                                                        onClick={toggleSelectAll}
+                                                        aria-label={allSelected ? 'Désélectionner tout' : 'Sélectionner tout'}
+                                                        className="text-ds-text3 hover:text-ds-accent flex items-center transition"
+                                                    >
+                                                        {allSelected ? (
+                                                            <CheckSquare size={15} className="text-ds-accent" />
+                                                        ) : someSelected ? (
+                                                            <span className="border-ds-accent bg-ds-accent/20 flex h-[15px] w-[15px] items-center justify-center rounded-sm border">
+                                                                <span className="bg-ds-accent h-[7px] w-[7px] rounded-sm" />
+                                                            </span>
+                                                        ) : (
+                                                            <Square size={15} />
+                                                        )}
+                                                    </button>
                                                 </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {briefs.data.map((brief, index) => (
-                                            <tr
-                                                key={brief.id}
-                                                className="border-ds-border hover:bg-ds-bg3/40 border-b transition-colors last:border-0"
-                                            >
-                                                <td className="px-4 py-3.5">
-                                                    <div className="flex items-center gap-3">
-                                                        <BriefAvatar title={brief.title} index={index} />
-                                                        <div className="min-w-0">
-                                                            <p className="font-heading text-ds-text truncate font-semibold">{brief.title}</p>
-                                                            <p className="text-ds-text3 truncate text-[11px]">
-                                                                {brief.location} · {brief.min_experience_years} ans exp.
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="text-ds-text2 px-4 py-3.5">{brief.sector}</td>
-                                                <td className="px-4 py-3.5">
-                                                    <ContractBadge type={brief.contract_type} />
-                                                </td>
-                                                <td className="text-ds-text2 px-4 py-3.5">{brief.min_experience_years} ans</td>
-                                                <td className="text-ds-text2 px-4 py-3.5">{brief.location}</td>
-                                                <td className="px-4 py-3.5">
-                                                    <BriefStatusBadge status={brief.status} />
-                                                </td>
-                                                <td className="text-ds-text3 px-4 py-3.5 text-[12px]">{dayjs(brief.created_at).fromNow()}</td>
-                                                <td className="px-4 py-3.5">
-                                                    <div className="flex items-center justify-end gap-1">
-                                                        <Link
-                                                            href={route('dashboard.briefs.show', brief.id)}
-                                                            className="border-ds-border text-ds-text3 hover:border-ds-border2 hover:text-ds-text flex h-7 w-7 items-center justify-center rounded-lg border transition"
-                                                            title={t('briefs.index.actions.view')}
-                                                        >
-                                                            <Eye size={13} />
-                                                        </Link>
-                                                        <Link
-                                                            href={route('dashboard.briefs.edit', brief.id)}
-                                                            className="border-ds-border text-ds-text3 hover:border-ds-amber/40 hover:text-ds-amber flex h-7 w-7 items-center justify-center rounded-lg border transition"
-                                                            title={t('briefs.index.actions.edit')}
-                                                        >
-                                                            <Edit2 size={13} />
-                                                        </Link>
-                                                        <button
-                                                            onClick={() => setDeletingBrief(brief)}
-                                                            className="border-ds-border text-ds-text3 hover:border-ds-red/40 hover:text-ds-red flex h-7 w-7 items-center justify-center rounded-lg border transition"
-                                                            title={t('briefs.index.actions.delete')}
-                                                        >
-                                                            <Trash2 size={13} />
-                                                        </button>
-                                                    </div>
-                                                </td>
+
+                                                {SORTABLE_COLS.map(({ col, label }) => (
+                                                    <th key={col} className="px-4 py-3 text-left">
+                                                        <SortableHeader
+                                                            col={col}
+                                                            label={label}
+                                                            sortBy={sortBy}
+                                                            sortDir={sortDir}
+                                                            onSort={handleSort}
+                                                        />
+                                                    </th>
+                                                ))}
+
+                                                {/* Actions column — not sortable */}
+                                                <th className="text-ds-text3 px-4 py-3 text-left text-[10px] font-semibold tracking-[0.8px] uppercase" />
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            {briefs.data.map((brief, index) => {
+                                                const isSelected = selectedIds.has(brief.id);
+                                                return (
+                                                    <tr
+                                                        key={brief.id}
+                                                        className={[
+                                                            'border-ds-border border-b transition-colors last:border-0',
+                                                            isSelected ? 'bg-ds-accent/5' : 'hover:bg-ds-bg3/40',
+                                                        ].join(' ')}
+                                                    >
+                                                        {/* Row checkbox */}
+                                                        <td className="px-4 py-3.5">
+                                                            <button
+                                                                onClick={() => toggleSelect(brief.id)}
+                                                                aria-label={isSelected ? 'Désélectionner' : 'Sélectionner'}
+                                                                className="text-ds-text3 hover:text-ds-accent flex items-center transition"
+                                                            >
+                                                                {isSelected ? (
+                                                                    <CheckSquare size={15} className="text-ds-accent" />
+                                                                ) : (
+                                                                    <Square size={15} />
+                                                                )}
+                                                            </button>
+                                                        </td>
+
+                                                        <td className="px-4 py-3.5">
+                                                            <div className="flex items-center gap-3">
+                                                                <BriefAvatar title={brief.title} index={index} />
+                                                                <div className="min-w-0">
+                                                                    <p className="font-heading text-ds-text max-w-[200px] truncate font-semibold">
+                                                                        {brief.title}
+                                                                    </p>
+                                                                    <p className="text-ds-text3 truncate text-[11px]">
+                                                                        {brief.location} · {brief.min_experience_years} ans exp.
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="text-ds-text2 px-4 py-3.5">{brief.sector}</td>
+                                                        <td className="px-4 py-3.5">
+                                                            <ContractBadge type={brief.contract_type} />
+                                                        </td>
+                                                        <td className="text-ds-text2 px-4 py-3.5">{brief.min_experience_years} ans</td>
+                                                        <td className="text-ds-text2 px-4 py-3.5">{brief.location}</td>
+                                                        <td className="px-4 py-3.5">
+                                                            <StatusBadge
+                                                                brief={brief}
+                                                                onStatusChanged={handleStatusChanged}
+                                                                canEdit={canEditBriefs}
+                                                            />
+                                                        </td>
+                                                        <td className="text-ds-text3 px-4 py-3.5 text-[12px]">{dayjs(brief.created_at).fromNow()}</td>
+                                                        <td className="px-4 py-3.5">
+                                                            <div className="flex items-center justify-end gap-1">
+                                                                <Link
+                                                                    href={route('dashboard.briefs.show', brief.id)}
+                                                                    aria-label={t('briefs.index.actions.view')}
+                                                                    title={t('briefs.index.actions.view')}
+                                                                    className="border-ds-border text-ds-text3 hover:border-ds-border2 hover:text-ds-text flex h-7 w-7 items-center justify-center rounded-lg border transition"
+                                                                >
+                                                                    <Eye size={13} />
+                                                                </Link>
+                                                                {canEditBriefs && (
+                                                                    <Link
+                                                                        href={route('dashboard.briefs.edit', brief.id)}
+                                                                        aria-label={t('briefs.index.actions.edit')}
+                                                                        title={t('briefs.index.actions.edit')}
+                                                                        className="border-ds-border text-ds-text3 hover:border-ds-amber/40 hover:text-ds-amber flex h-7 w-7 items-center justify-center rounded-lg border transition"
+                                                                    >
+                                                                        <Edit2 size={13} />
+                                                                    </Link>
+                                                                )}
+                                                                {canCreateBriefs && (
+                                                                    <button
+                                                                        onClick={() => handleDuplicate(brief)}
+                                                                        disabled={duplicatingId === brief.id}
+                                                                        aria-label="Dupliquer ce brief"
+                                                                        title="Dupliquer ce brief"
+                                                                        className={`border-ds-border text-ds-text3 hover:border-ds-accent/40 hover:text-ds-accent flex h-7 w-7 items-center justify-center rounded-lg border transition ${duplicatingId === brief.id ? 'animate-pulse cursor-wait opacity-60' : ''}`}
+                                                                    >
+                                                                        <Copy size={13} />
+                                                                    </button>
+                                                                )}
+                                                                <button
+                                                                    onClick={() => setDeletingBrief(brief)}
+                                                                    aria-label={t('briefs.index.actions.delete')}
+                                                                    title={t('briefs.index.actions.delete')}
+                                                                    className="border-ds-border text-ds-text3 hover:border-ds-red/40 hover:text-ds-red flex h-7 w-7 items-center justify-center rounded-lg border transition"
+                                                                >
+                                                                    <Trash2 size={13} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="px-4 pb-4">
+                                    <Pagination meta={briefs} filters={serialisedFilters} sortBy={sortBy} sortDir={sortDir} />
+                                </div>
                             </div>
 
-                            {/* ── Pagination ── */}
-                            <div className="px-4 pb-4">
-                                <Pagination
-                                    meta={briefs}
-                                    filters={JSON.stringify(
-                                        activeFilters
-                                            .filter((f) => (Array.isArray(f.value) ? f.value.length > 0 : f.value?.toString().trim() !== ''))
-                                            .map((f) => ({ field: f.field, value: Array.isArray(f.value) ? f.value.join(',') : f.value })),
-                                    )}
-                                />
+                            {/* Mobile card list */}
+                            <div className="md:hidden">
+                                {briefs.data.map((brief, index) => (
+                                    <MobileBriefCard
+                                        key={brief.id}
+                                        brief={brief}
+                                        index={index}
+                                        canEdit={canEditBriefs}
+                                        canCreate={canCreateBriefs}
+                                        selected={selectedIds.has(brief.id)}
+                                        onToggleSelect={toggleSelect}
+                                        onStatusChanged={handleStatusChanged}
+                                        onDelete={setDeletingBrief}
+                                        onDuplicate={handleDuplicate}
+                                        duplicating={duplicatingId === brief.id}
+                                    />
+                                ))}
+                                <Pagination meta={briefs} filters={serialisedFilters} sortBy={sortBy} sortDir={sortDir} />
                             </div>
-                        </div>
+                        </>
                     )}
 
+                    {/* Delete modal — single */}
                     {deletingBrief && (
                         <DeleteModal
                             label={deletingBrief.title}
@@ -352,6 +569,16 @@ export default function Index({ briefs, filters, params, brief_statuses }: Index
                         />
                     )}
                 </div>
+
+                {/* Floating bulk action bar */}
+                <BulkActionBar
+                    count={selectedIds.size}
+                    canEdit={canEditBriefs}
+                    canDelete={canDeleteBriefs}
+                    onStatusChange={handleBulkStatusChange}
+                    onDelete={handleBulkDelete}
+                    onClear={() => setSelectedIds(new Set())}
+                />
             </AppLayout>
         </>
     );

@@ -125,3 +125,13 @@ export type ShowBriefProps = {
         gender_prefs: SelectOption[];
     };
 };
+
+export type SortDir = 'asc' | 'desc';
+
+export interface PaginationMeta {
+    current_page: number;
+    last_page: number;
+    from: number | null;
+    to: number | null;
+    total: number;
+}
