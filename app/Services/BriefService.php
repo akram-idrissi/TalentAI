@@ -50,18 +50,23 @@ class BriefService
     }
 
     /**
-     * Return a paginated, shape-normalised list of briefs with filters applied.
+     * Return a paginated, shape-normalised list of briefs with filters and sorting applied.
      *
      * @param  array  $filters  Validated filter pairs from the request
+     * @param  string  $sortBy  Column to sort by (already whitelisted by the controller)
+     * @param  string  $sortDir  'asc' or 'desc'
      */
-    public function getPaginatedBriefs(array $filters): LengthAwarePaginator
-    {
+    public function getPaginatedBriefs(
+        array $filters,
+        string $sortBy = 'created_at',
+        string $sortDir = 'desc',
+    ): LengthAwarePaginator {
         $query = Brief::with('creator');
 
         $this->applyFilters($query, $filters);
 
         return $query
-            ->latest()
+            ->orderBy($sortBy, $sortDir)
             ->paginate(10)
             ->through(fn (Brief $brief) => [
                 'id' => $brief->id,

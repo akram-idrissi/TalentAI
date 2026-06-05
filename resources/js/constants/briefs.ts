@@ -16,3 +16,19 @@ export const AVATAR_COLORS = [
     'from-[#A78BFA] to-[#6C63FF]',
     'from-[#F87171] to-[#FBBF24]',
 ];
+
+export const STORAGE_KEY = 'briefs_visible_columns';
+
+export const ALL_COLUMNS = [
+    { key: 'title', label: 'POSTE VISÉ' },
+    { key: 'sector', label: 'SECTEUR' },
+    { key: 'contract_type', label: 'CONTRAT' },
+    { key: 'min_experience_years', label: 'EXPÉRIENCE' },
+    { key: 'location', label: 'LOCALISATION' },
+    { key: 'status', label: 'STATUT' },
+    { key: 'created_at', label: 'CRÉÉ' },
+] as const;
+
+export type ColKey = (typeof ALL_COLUMNS)[number]['key'];
+
+export const TOGGLEABLE_COLUMNS = ALL_COLUMNS.filter((c) => c.key !== 'title');

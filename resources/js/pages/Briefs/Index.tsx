@@ -1,5 +1,6 @@
 import BriefAvatar from '@/components/briefs/BriefAvatar';
 import BulkActionBar from '@/components/briefs/BulkActionBar';
+import ColumnVisibilityToggle from '@/components/briefs/ColumnVisibilityToggle';
 import ContractBadge from '@/components/briefs/ContractBadge';
 import FilterChips from '@/components/briefs/FilterChips';
 import MobileBriefCard from '@/components/briefs/MobileBriefCard';
@@ -9,11 +10,13 @@ import StatusBadge from '@/components/briefs/StatusBadge';
 import DeleteModal from '@/components/ui/DeleteModal';
 import FilterPanel, { FilterEntry } from '@/components/ui/FilterPanel';
 import SkeletonTable from '@/components/ui/SkeletonTable';
-import { STATUS_CONFIG } from '@/constants/briefs';
+import type { ColKey } from '@/constants/briefs';
+import { ALL_COLUMNS, STATUS_CONFIG, TOGGLEABLE_COLUMNS } from '@/constants/briefs';
 import { useI18n } from '@/hooks/useI18n';
 import { usePermission } from '@/hooks/usePermission';
 import AppLayout from '@/layouts/app-layout';
 import type { Brief, IndexBriefProps, SortDir } from '@/types/brief';
+import { loadVisibleCols, saveVisibleCols } from '@/utils/briefs';
 import { Head, Link, router } from '@inertiajs/react';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
@@ -21,6 +24,7 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import { CheckSquare, Copy, Edit2, Eye, Plus, Square, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
+
 dayjs.extend(relativeTime);
 dayjs.locale('fr');
 
@@ -47,18 +51,45 @@ export default function Index({
     const [bulkLoading, setBulkLoading] = useState(false);
     const [sortBy, setSortBy] = useState(initialSortBy);
     const [sortDir, setSortDir] = useState<SortDir>(initialSortDir as SortDir);
+    const [visibleCols, setVisibleCols] = useState<Set<ColKey>>(loadVisibleCols);
+
+    const translatedToggleableColumns = TOGGLEABLE_COLUMNS.map((column) => ({
+        ...column,
+        label: t(`briefs.index.column_visibility.columns.${column.key}`),
+    }));
 
     useEffect(() => {
         setBriefs(initialBriefs);
     }, [initialBriefs]);
-
     useEffect(() => {
         setSelectedIds(new Set());
     }, [initialBriefs]);
 
-    function handleSort(col: string) {
-        const newDir: SortDir = sortBy === col && sortDir === 'asc' ? 'desc' : 'asc';
-        setSortBy(col);
+    // ── Column visibility ─────────────────────────────────────────────────────
+
+    function handleColVisibilityChange(key: string, checked: boolean) {
+        setVisibleCols((prev) => {
+            const next = new Set(prev) as Set<ColKey>;
+            if (checked) {
+                next.add(key as ColKey);
+            } else {
+                if (key !== 'title') next.delete(key as ColKey);
+            }
+            saveVisibleCols(next);
+            return next;
+        });
+    }
+
+    // Shorthand used in the tbody — returns true if the column should render
+    function col(key: ColKey): boolean {
+        return visibleCols.has(key);
+    }
+
+    // ── Sort ──────────────────────────────────────────────────────────────────
+
+    function handleSort(column: string) {
+        const newDir: SortDir = sortBy === column && sortDir === 'asc' ? 'desc' : 'asc';
+        setSortBy(column);
         setSortDir(newDir);
 
         const cleanFilters = activeFilters
@@ -68,7 +99,7 @@ export default function Index({
         router.get(
             route('dashboard.briefs.index'),
             {
-                sort_by: col,
+                sort_by: column,
                 sort_dir: newDir,
                 ...(cleanFilters.length ? { filters: JSON.stringify(cleanFilters) } : {}),
             },
@@ -76,12 +107,16 @@ export default function Index({
         );
     }
 
+    // ── Status change (optimistic) ────────────────────────────────────────────
+
     function handleStatusChanged(briefId: number, newStatus: string) {
         setBriefs((prev) => ({
             ...prev,
             data: prev.data.map((b) => (b.id === briefId ? { ...b, status: newStatus } : b)),
         }));
     }
+
+    // ── Selection ─────────────────────────────────────────────────────────────
 
     function toggleSelect(id: number) {
         setSelectedIds((prev) => {
@@ -98,15 +133,13 @@ export default function Index({
     }
 
     function toggleSelectAll() {
-        if (selectedIds.size === briefs.data.length) {
-            setSelectedIds(new Set());
-        } else {
-            setSelectedIds(new Set(briefs.data.map((b) => b.id)));
-        }
+        setSelectedIds(selectedIds.size === briefs.data.length ? new Set() : new Set(briefs.data.map((b) => b.id)));
     }
 
     const allSelected = briefs.data.length > 0 && selectedIds.size === briefs.data.length;
     const someSelected = selectedIds.size > 0 && !allSelected;
+
+    // ── Bulk status change ────────────────────────────────────────────────────
 
     async function handleBulkStatusChange(newStatus: string) {
         if (selectedIds.size === 0 || bulkLoading) return;
@@ -134,9 +167,7 @@ export default function Index({
             });
 
             const data = await res.json().catch(() => null);
-            if (!res.ok) {
-                throw new Error('Server error');
-            }
+            if (!res.ok) throw new Error('Server error');
 
             const label = STATUS_CONFIG[newStatus]?.label ?? newStatus;
 
@@ -149,14 +180,12 @@ export default function Index({
                         <button
                             onClick={() => {
                                 toast.dismiss(t.id);
-                                // Revert all to their previous statuses individually
                                 setBriefs((prev) => ({
                                     ...prev,
                                     data: prev.data.map((b) =>
                                         ids.includes(b.id) && previousStates[b.id] ? { ...b, status: previousStates[b.id] } : b,
                                     ),
                                 }));
-
                                 ids.forEach((id) => {
                                     if (!previousStates[id]) return;
                                     fetch(route('dashboard.briefs.update-status', id), {
@@ -194,6 +223,8 @@ export default function Index({
         }
     }
 
+    // ── Bulk delete ───────────────────────────────────────────────────────────
+
     async function handleBulkDelete() {
         if (selectedIds.size === 0 || bulkLoading) return;
 
@@ -210,7 +241,7 @@ export default function Index({
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '',
                     Accept: 'application/json',
                 },
                 body: JSON.stringify({ ids }),
@@ -231,6 +262,8 @@ export default function Index({
             setBulkLoading(false);
         }
     }
+
+    // ── Filters ───────────────────────────────────────────────────────────────
 
     const FILTER_FIELDS = [
         { key: 'title', label: t('briefs.index.filters.fields.title'), type: 'text' as const },
@@ -320,15 +353,12 @@ export default function Index({
             .map((f) => ({ field: f.field, value: Array.isArray(f.value) ? f.value.join(',') : f.value })),
     );
 
-    const SORTABLE_COLS = [
-        { col: 'title', label: t('briefs.index.sortable_columns.title') },
-        { col: 'sector', label: t('briefs.index.sortable_columns.sector') },
-        { col: 'contract_type', label: t('briefs.index.sortable_columns.contract_type') },
-        { col: 'min_experience_years', label: t('briefs.index.sortable_columns.min_experience_years') },
-        { col: 'location', label: t('briefs.index.sortable_columns.location') },
-        { col: 'status', label: t('briefs.index.sortable_columns.status') },
-        { col: 'created_at', label: t('briefs.index.sortable_columns.created_at') },
-    ];
+    const SORTABLE_COLS = ALL_COLUMNS.map((c) => ({
+        col: c.key,
+        label: t(`briefs.index.sortable_columns.${c.key}`),
+    }));
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     return (
         <>
@@ -352,6 +382,16 @@ export default function Index({
                                 loading={loading}
                             />
                         </div>
+
+                        {/* Column toggle — desktop only, sits between FilterPanel and create button */}
+                        <div className="hidden md:block">
+                            <ColumnVisibilityToggle
+                                columns={translatedToggleableColumns}
+                                visible={visibleCols}
+                                onChange={handleColVisibilityChange}
+                            />
+                        </div>
+
                         {canCreateBriefs && (
                             <Link
                                 href={route('dashboard.briefs.create')}
@@ -397,7 +437,7 @@ export default function Index({
                                     <table className="w-full border-collapse text-[13px]">
                                         <thead>
                                             <tr className="border-ds-border border-b">
-                                                {/* Select-all checkbox */}
+                                                {/* Select-all — always visible */}
                                                 <th className="px-4 py-3 text-left">
                                                     <button
                                                         onClick={toggleSelectAll}
@@ -416,22 +456,26 @@ export default function Index({
                                                     </button>
                                                 </th>
 
-                                                {SORTABLE_COLS.map(({ col, label }) => (
-                                                    <th key={col} className="px-4 py-3 text-left">
-                                                        <SortableHeader
-                                                            col={col}
-                                                            label={label}
-                                                            sortBy={sortBy}
-                                                            sortDir={sortDir}
-                                                            onSort={handleSort}
-                                                        />
-                                                    </th>
-                                                ))}
+                                                {/* Sortable headers — conditionally rendered per visibility */}
+                                                {SORTABLE_COLS.map(({ col: colKey, label }) =>
+                                                    visibleCols.has(colKey as ColKey) ? (
+                                                        <th key={colKey} className="px-4 py-3 text-left">
+                                                            <SortableHeader
+                                                                col={colKey}
+                                                                label={label}
+                                                                sortBy={sortBy}
+                                                                sortDir={sortDir}
+                                                                onSort={handleSort}
+                                                            />
+                                                        </th>
+                                                    ) : null,
+                                                )}
 
-                                                {/* Actions column — not sortable */}
-                                                <th className="text-ds-text3 px-4 py-3 text-left text-[10px] font-semibold tracking-[0.8px] uppercase" />
+                                                {/* Actions — always visible */}
+                                                <th className="px-4 py-3" />
                                             </tr>
                                         </thead>
+
                                         <tbody>
                                             {briefs.data.map((brief, index) => {
                                                 const isSelected = selectedIds.has(brief.id);
@@ -443,7 +487,7 @@ export default function Index({
                                                             isSelected ? 'bg-ds-accent/5' : 'hover:bg-ds-bg3/40',
                                                         ].join(' ')}
                                                     >
-                                                        {/* Row checkbox */}
+                                                        {/* Checkbox — always visible */}
                                                         <td className="px-4 py-3.5">
                                                             <button
                                                                 onClick={() => toggleSelect(brief.id)}
@@ -458,33 +502,54 @@ export default function Index({
                                                             </button>
                                                         </td>
 
-                                                        <td className="px-4 py-3.5">
-                                                            <div className="flex items-center gap-3">
-                                                                <BriefAvatar title={brief.title} index={index} />
-                                                                <div className="min-w-0">
-                                                                    <p className="font-heading text-ds-text max-w-[200px] truncate font-semibold">
-                                                                        {brief.title}
-                                                                    </p>
-                                                                    <p className="text-ds-text3 truncate text-[11px]">
-                                                                        {brief.location} · {brief.min_experience_years} ans exp.
-                                                                    </p>
+                                                        {/* title — always visible */}
+                                                        {col('title') && (
+                                                            <td className="px-4 py-3.5">
+                                                                <div className="flex items-center gap-3">
+                                                                    <BriefAvatar title={brief.title} index={index} />
+                                                                    <div className="min-w-0">
+                                                                        <p className="font-heading text-ds-text max-w-[200px] truncate font-semibold">
+                                                                            {brief.title}
+                                                                        </p>
+                                                                        <p className="text-ds-text3 truncate text-[11px]">
+                                                                            {brief.location} · {brief.min_experience_years} ans exp.
+                                                                        </p>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="text-ds-text2 px-4 py-3.5">{brief.sector}</td>
-                                                        <td className="px-4 py-3.5">
-                                                            <ContractBadge type={brief.contract_type} />
-                                                        </td>
-                                                        <td className="text-ds-text2 px-4 py-3.5">{brief.min_experience_years} ans</td>
-                                                        <td className="text-ds-text2 px-4 py-3.5">{brief.location}</td>
-                                                        <td className="px-4 py-3.5">
-                                                            <StatusBadge
-                                                                brief={brief}
-                                                                onStatusChanged={handleStatusChanged}
-                                                                canEdit={canEditBriefs}
-                                                            />
-                                                        </td>
-                                                        <td className="text-ds-text3 px-4 py-3.5 text-[12px]">{dayjs(brief.created_at).fromNow()}</td>
+                                                            </td>
+                                                        )}
+
+                                                        {col('sector') && <td className="text-ds-text2 px-4 py-3.5">{brief.sector}</td>}
+
+                                                        {col('contract_type') && (
+                                                            <td className="px-4 py-3.5">
+                                                                <ContractBadge type={brief.contract_type} />
+                                                            </td>
+                                                        )}
+
+                                                        {col('min_experience_years') && (
+                                                            <td className="text-ds-text2 px-4 py-3.5">{brief.min_experience_years} ans</td>
+                                                        )}
+
+                                                        {col('location') && <td className="text-ds-text2 px-4 py-3.5">{brief.location}</td>}
+
+                                                        {col('status') && (
+                                                            <td className="px-4 py-3.5">
+                                                                <StatusBadge
+                                                                    brief={brief}
+                                                                    onStatusChanged={handleStatusChanged}
+                                                                    canEdit={canEditBriefs}
+                                                                />
+                                                            </td>
+                                                        )}
+
+                                                        {col('created_at') && (
+                                                            <td className="text-ds-text3 px-4 py-3.5 text-[12px]">
+                                                                {dayjs(brief.created_at).fromNow()}
+                                                            </td>
+                                                        )}
+
+                                                        {/* Actions — always visible */}
                                                         <td className="px-4 py-3.5">
                                                             <div className="flex items-center justify-end gap-1">
                                                                 <Link
@@ -532,12 +597,13 @@ export default function Index({
                                         </tbody>
                                     </table>
                                 </div>
+
                                 <div className="px-4 pb-4">
                                     <Pagination meta={briefs} filters={serialisedFilters} sortBy={sortBy} sortDir={sortDir} />
                                 </div>
                             </div>
 
-                            {/* Mobile card list */}
+                            {/* Mobile card list — column visibility doesn't apply */}
                             <div className="md:hidden">
                                 {briefs.data.map((brief, index) => (
                                     <MobileBriefCard

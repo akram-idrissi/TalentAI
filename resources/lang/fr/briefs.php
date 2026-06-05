@@ -296,6 +296,22 @@ return [
             'status' => 'Statut',
             'created_at' => 'Créé',
         ],
+        'column_visibility' => [
+            'button_label' => 'Afficher / masquer les colonnes',
+            'button_title' => 'Colonnes visibles',
+            'button_text' => 'Colonnes',
+            'panel_heading' => 'Affichage des colonnes',
+            'show_all' => 'Tout afficher',
+
+            'columns' => [
+                'sector' => 'Secteur',
+                'contract_type' => 'Contrat',
+                'min_experience_years' => 'Expérience',
+                'location' => 'Localisation',
+                'status' => 'Statut',
+                'created_at' => 'Créé',
+            ],
+        ],
     ],
 
 ];

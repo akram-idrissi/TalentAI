@@ -294,6 +294,22 @@ return [
             'status' => 'Status',
             'created_at' => 'Created',
         ],
+        'column_visibility' => [
+            'button_label' => 'Show / hide columns',
+            'button_title' => 'Visible columns',
+            'button_text' => 'Columns',
+            'panel_heading' => 'Column display',
+            'show_all' => 'Show all',
+
+            'columns' => [
+                'sector' => 'Sector',
+                'contract_type' => 'Contract',
+                'min_experience_years' => 'Experience',
+                'location' => 'Location',
+                'status' => 'Status',
+                'created_at' => 'Created',
+            ],
+        ],
     ],
 
 ];
