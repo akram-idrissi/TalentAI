@@ -11,6 +11,7 @@ use App\Models\Transcription;
 use App\Services\ActivityLogger;
 use App\Services\Transcription\AssemblyAIService;
 use App\Services\Transcription\TranscriptionAnalysisService;
+use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InterviewController extends Controller
 {
@@ -80,40 +82,97 @@ class InterviewController extends Controller
     public function index(): Response
     {
         $this->authorize('interviews.view');
+
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
         try {
-            $interviews = Interview::with(['candidate', 'brief', 'transcription'])
-                ->where('interviewer_id', auth()->id())
+
+            $filters = json_decode(request('filters', '[]'), true);
+
+            $query = Interview::with(['candidate', 'brief', 'transcription'])
+                ->where('interviewer_id', auth()->id());
+
+            foreach ($filters as $filter) {
+
+                if ($filter['field'] === 'candidate') {
+                    $query->whereHas('candidate', function ($q) use ($filter) {
+                        $q->where(
+                            'full_name',
+                            'like',
+                            '%'.$filter['value'].'%',
+                        );
+                    });
+                }
+
+                if ($filter['field'] === 'brief') {
+                    $query->whereHas('brief', function ($q) use ($filter) {
+                        $q->where(
+                            'title',
+                            'like',
+                            '%'.$filter['value'].'%',
+                        );
+                    });
+                }
+
+                if ($filter['field'] === 'platform') {
+                    $query->where(
+                        'platform',
+                        $filter['value'],
+                    );
+                }
+
+                if ($filter['field'] === 'status') {
+                    $query->whereHas('transcription', function ($q) use ($filter) {
+                        $q->where(
+                            'status',
+                            $filter['value'],
+                        );
+                    });
+                }
+            }
+
+            $interviews = $query
                 ->latest('scheduled_at')
                 ->paginate(10)
                 ->through(fn ($i) => [
                     'id' => $i->id,
                     'candidate_name' => $i->candidate?->full_name ?? '—',
+                    'brief_id' => $i->brief?->id,
                     'brief_title' => $i->brief?->title ?? '—',
                     'platform' => $i->platform,
                     'scheduled_at' => $i->scheduled_at?->format('d M Y'),
                     'transcription_status' => $i->transcription?->status ?? 'none',
                     'transcription_id' => $i->transcription?->id,
                     'analysis_status' => $i->transcription?->analysis_status ?? 'none',
+                    'audio_url' => $i->transcription?->audio_path
+                        ? route('dashboard.interviews.audio', $i->id)
+                        : null,
                 ]);
 
-            $logger->log('interview.list', 'Liste des entretiens consultée.', [], [Interview::class]);
+            $logger->log(
+                'interview.list',
+                'Liste des entretiens consultée.',
+                [],
+                [Interview::class]
+            );
 
             return Inertia::render('Interview/Index', [
                 'interviews' => $interviews,
+                'filters' => $filters,
             ]);
+
         } catch (\Throwable $e) {
+
             $logger->log(
                 'interview.list.error',
-                'Erreur lors de la liste des entretiens : '.$e->getMessage(),
+                'Erreur lors de la récupération des entretiens : '.$e->getMessage(),
                 ['exception' => $e->getMessage()],
                 [Interview::class]
             );
 
             return Inertia::render('Fallback', [
-                'error' => 'Impossible d\'afficher la liste des entretiens.',
+                'error' => 'Impossible de charger les entretiens.',
             ]);
         }
     }
@@ -165,7 +224,9 @@ class InterviewController extends Controller
             ]);
 
             // Pre-signed URL valid for 1 hour — long enough for AssemblyAI to fetch the file
-            $presignedUrl = Storage::disk('s3')->temporaryUrl($path, now()->addHour());
+            /** @var AwsS3V3Adapter $s3 */
+            $s3 = Storage::disk('s3');
+            $presignedUrl = $s3->temporaryUrl($path, now()->addHour());
 
             $assemblyTranscriptId = $assemblyAI->submit($presignedUrl);
 
@@ -247,6 +308,25 @@ class InterviewController extends Controller
                 $diarized = [];
             }
 
+            // Peer interviews for the same brief (comparative ranking)
+            $peers = [];
+            if ($interview->brief_id) {
+                $peers = Interview::with(['candidate', 'transcription'])
+                    ->where('brief_id', $interview->brief_id)
+                    ->whereHas('transcription', fn ($q) => $q->where('analysis_status', 'done'))
+                    ->get()
+                    ->map(fn ($i) => [
+                        'id' => $i->id,
+                        'candidate_name' => $i->candidate?->full_name ?? '—',
+                        'global_score' => $i->transcription?->analysis_result['global_score'] ?? null,
+                        'verdict' => $i->transcription?->analysis_result['verdict'] ?? null,
+                        'criteria' => $i->transcription?->analysis_result['criteria'] ?? [],
+                    ])
+                    ->sortByDesc('global_score')
+                    ->values()
+                    ->all();
+            }
+
             return Inertia::render('Interview/Show', [
                 'interview' => [
                     'id' => $interview->id,
@@ -255,6 +335,7 @@ class InterviewController extends Controller
                     'platform' => $interview->platform,
                     'scheduled_at' => $interview->scheduled_at?->format('d M Y'),
                     'interviewer' => $interview->interviewer?->name ?? '—',
+                    'duration_minutes' => $interview->duration_seconds ? (int) round($interview->duration_seconds / 60) : null,
                 ],
                 'transcription' => $transcription ? [
                     'id' => $transcription->id,
@@ -269,7 +350,10 @@ class InterviewController extends Controller
                     'red_flags' => $analysis['red_flags'] ?? [],
                     'key_excerpts' => $analysis['key_excerpts'] ?? [],
                     'diarized_transcript' => $diarized ?? [],
+                    'summary' => $this->buildSummary($analysis),
+                    'recommendation' => $analysis['recommendation'] ?? null,
                 ] : null,
+                'peers' => $peers,
             ]);
         } catch (\Throwable $e) {
             $logger->log(
@@ -383,6 +467,75 @@ class InterviewController extends Controller
         }
     }
 
+    /**
+     * Stream the audio file for an interview directly from S3,
+     * bypassing browser CORS restrictions on presigned URLs.
+     */
+    public function audio(Interview $interview): StreamedResponse|\Illuminate\Http\Response
+    {
+        $this->authorize('interviews.view');
+
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $transcription = $interview->transcription;
+
+            if (! $transcription || ! $transcription->audio_path) {
+                abort(404);
+            }
+
+            if (! Storage::disk('s3')->exists($transcription->audio_path)) {
+                abort(404);
+            }
+
+            $path = $transcription->audio_path;
+            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+            $mime = match ($ext) {
+                'mp4' => 'audio/mp4',
+                'm4a' => 'audio/mp4',
+                'wav' => 'audio/wav',
+                default => 'audio/mpeg',
+            };
+
+            $id = (int) $interview->getKey();
+            $logger->log('interview.audio', "Streaming audio pour l'entretien (ID : {$id}).", ['interview_id' => $id], [Interview::class]);
+
+            /** @var AwsS3V3Adapter $s3 */
+            $s3 = Storage::disk('s3');
+
+            return $s3->response($path, basename($path), [
+                'Content-Type' => $mime,
+                'Cache-Control' => 'no-store',
+            ]);
+        } catch (\Throwable $e) {
+            $interviewId = (int) $interview->getKey();
+            $logger->log('interview.audio.error', "Erreur lors du streaming audio (ID : {$interviewId}) : ".$e->getMessage(), ['interview_id' => $interviewId, 'exception' => $e->getMessage()], [Interview::class]);
+
+            abort(500);
+        }
+    }
+
+    /**
+     * Return the AI-generated summary when available, or synthesise one from strengths.
+     */
+    private function buildSummary(array $analysis): ?string
+    {
+        if (! empty($analysis['summary'])) {
+            return (string) $analysis['summary'];
+        }
+
+        $strengths = $analysis['strengths'] ?? [];
+        if (empty($strengths)) {
+            return null;
+        }
+
+        // Compose a concise recap from the first two or three strengths.
+        $items = array_map(fn ($s) => rtrim($s, '. '), array_slice($strengths, 0, 3));
+
+        return implode('. ', $items).'.';
+    }
+
     private function formatBrief(Brief $brief, string $expectations): string
     {
         $skills = is_array($brief->required_skills) ? implode(', ', $brief->required_skills) : $brief->required_skills;
@@ -409,25 +562,25 @@ class InterviewController extends Controller
         $title = $brief->title;
 
         return <<<BRIEF
-Poste : {$title}
-Secteur : {$sector}
-Contrat : {$contract}
-Lieu : {$location}
-Salaire : {$salary}
-Expérience minimale : {$experience} an(s)
-Niveau d'études : {$education}
-Langues : {$langs}
-Séniorité : {$seniority}
-Préférence genre : {$gender}
-Tranche d'âge : {$age}
+            Poste : {$title}
+            Secteur : {$sector}
+            Contrat : {$contract}
+            Lieu : {$location}
+            Salaire : {$salary}
+            Expérience minimale : {$experience} an(s)
+            Niveau d'études : {$education}
+            Langues : {$langs}
+            Séniorité : {$seniority}
+            Préférence genre : {$gender}
+            Tranche d'âge : {$age}
 
-Mission :
-{$mission}
+            Mission :
+            {$mission}
 
-Compétences techniques requises : {$skills}
-Compétences comportementales : {$soft}
+            Compétences techniques requises : {$skills}
+            Compétences comportementales : {$soft}
 
-Pondération des critères d'évaluation : {$weights}{$expectationsSection}
-BRIEF;
+            Pondération des critères d'évaluation : {$weights}{$expectationsSection}
+            BRIEF;
     }
 }

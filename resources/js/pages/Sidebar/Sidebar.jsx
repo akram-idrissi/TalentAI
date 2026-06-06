@@ -186,6 +186,17 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                     ],
                 },
                 {
+                    title: t('sidebar.interviews.cv-analysis'),
+                    items: [
+                        can('cv-analysis.view') && {
+                            id: 'cv-analysis',
+                            label: t('sidebar.interviews.cv-analysis'),
+                            icon: FileText,
+                            route: 'dashboard.cv-analysis.index',
+                        },
+                    ],
+                },
+                {
                     title: t('sidebar.interviews.title'),
                     items: [
                         can('interviews.view') && {
@@ -200,12 +211,6 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                             label: t('sidebar.interviews.reports'),
                             icon: BarChart3,
                             route: 'dashboard.reports',
-                        },
-                        can('cv-analysis.view') && {
-                            id: 'cv-analysis',
-                            label: t('sidebar.interviews.cv-analysis'),
-                            icon: FileText,
-                            route: 'dashboard.cv-analysis.index',
                         },
                     ],
                 },

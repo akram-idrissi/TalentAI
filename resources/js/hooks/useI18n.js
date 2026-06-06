@@ -1,7 +1,7 @@
 import { usePage } from '@inertiajs/react';
 
 export function useI18n() {
-    const { translations } = usePage().props;
+    const { translations, locale } = usePage().props;
 
     const t = (path, options = {}) => {
         const { fallback, ...replacements } = options;
@@ -15,5 +15,5 @@ export function useI18n() {
         return Object.entries(replacements).reduce((text, [key, replacement]) => text.replaceAll(`{{${key}}}`, String(replacement)), value);
     };
 
-    return { t };
+    return { t, locale: locale ?? 'fr' };
 }
