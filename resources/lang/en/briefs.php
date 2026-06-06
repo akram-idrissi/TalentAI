@@ -311,5 +311,11 @@ return [
             ],
         ],
     ],
+    'autosave' => [
+        'restore_prompt' => 'You have an unsaved draft from the previous session.',
+        'restore' => 'Restore Draft',
+        'last_saved' => 'Draft Saved',
+        'unsaved' => 'Unsaved Changes',
+    ],
 
 ];

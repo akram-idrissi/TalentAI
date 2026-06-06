@@ -313,5 +313,11 @@ return [
             ],
         ],
     ],
+    'autosave' => [
+        'restore_prompt' => 'Vous avez un brouillon non enregistré de la session précédente.',
+        'restore' => 'Restaurer le brouillon',
+        'last_saved' => 'Brouillon enregistré',
+        'unsaved' => 'Modifications non enregistrées',
+    ],
 
 ];
