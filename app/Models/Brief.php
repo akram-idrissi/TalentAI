@@ -63,7 +63,7 @@ class Brief extends Model
     public function candidates(): BelongsToMany
     {
         return $this->belongsToMany(Candidat::class)
-            ->withPivot(['score', 'score_breakdown', 'sourced_at'])
+            ->withPivot(['score', 'score_breakdown', 'ai_analysis', 'sourced_at'])
             ->withTimestamps();
     }
 }

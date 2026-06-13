@@ -5,7 +5,7 @@ import { useI18n } from '@/hooks/useI18n';
 import AppLayout from '@/layouts/app-layout';
 import type { Candidat, IndexCandidatProps } from '@/types/candidat';
 import { Head, Link, router } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight, ExternalLink, Plus } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ExternalLink, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 
@@ -116,14 +116,43 @@ function Pagination({ meta, search }: { meta: PaginationMeta; search: string }) 
     );
 }
 
-export default function Index({ candidats, filters }: IndexCandidatProps) {
+export default function Index({ candidats, filters, briefs }: IndexCandidatProps) {
     const { t } = useI18n();
     const [search] = useState(filters.search ?? '');
     const [deletingCandidat, setDeletingCandidat] = useState<Candidat | null>(null);
     const [loading, setLoading] = useState(false);
     const [activeFilters, setActiveFilters] = useState<FilterEntry[]>(Array.isArray(filters) ? filters : []);
+    type SortKey = 'sourcing_score' | 'score_cv' | 'score_interview';
+    const [sortKey, setSortKey] = useState<SortKey | null>(null);
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+    function handleSort(key: SortKey) {
+        if (sortKey === key) {
+            setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
+        } else {
+            setSortKey(key);
+            setSortDir('desc');
+        }
+    }
+
+    const sortedData = [...candidats.data].sort((a, b) => {
+        if (!sortKey) return 0;
+        const valA = sortKey === 'score_interview' ? (a.ai_score ?? null) : (a[sortKey] ?? null);
+        const valB = sortKey === 'score_interview' ? (b.ai_score ?? null) : (b[sortKey] ?? null);
+        if (valA === null && valB === null) return 0;
+        if (valA === null) return 1;
+        if (valB === null) return -1;
+        return sortDir === 'desc' ? valB - valA : valA - valB;
+    });
 
     const FILTER_FIELDS = [
+        {
+            key: 'brief_id',
+            label: 'Brief',
+            type: 'select' as const,
+            multi: true,
+            options: briefs.map((b) => ({ value: String(b.id), label: b.title })),
+        },
         { key: 'full_name', label: t('candidats.index.filters.full_name'), type: 'text' as const },
         { key: 'headline', label: t('candidats.index.filters.headline'), type: 'text' as const },
         { key: 'location', label: t('candidats.index.filters.location'), type: 'text' as const },
@@ -214,7 +243,17 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
     }
 
     const totalLabel = `${candidats.total} profil${candidats.total !== 1 ? 's' : ''} actif${candidats.total !== 1 ? 's' : ''} · Toutes sources confondues`;
-    const COLUMNS = ['CANDIDAT', 'POSTE VISÉ', 'SOURCE', 'SCORE CV', 'SCORE ENTRETIEN', 'STATUT', ''];
+
+    function SortIcon({ col }: { col: SortKey }) {
+        if (sortKey !== col) return <ChevronDown size={11} className="text-ds-text3 opacity-40" />;
+        return sortDir === 'desc' ? <ChevronDown size={11} className="text-ds-accent" /> : <ChevronUp size={11} className="text-ds-accent" />;
+    }
+
+    const SORTABLE_COLS: { label: string; key: SortKey }[] = [
+        { label: 'SCORE SOURCING', key: 'sourcing_score' },
+        { label: 'SCORE CV', key: 'score_cv' },
+        { label: 'SCORE ENTRETIEN', key: 'score_interview' },
+    ];
 
     return (
         <>
@@ -272,7 +311,27 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
                                 <table className="w-full border-collapse text-[13px]">
                                     <thead>
                                         <tr className="border-ds-border border-b">
-                                            {COLUMNS.map((col, i) => (
+                                            {['CANDIDAT', 'POSTE VISÉ', 'SOURCE'].map((col, i) => (
+                                                <th
+                                                    key={i}
+                                                    className="text-ds-text3 px-5 py-3.5 text-left text-[10px] font-semibold tracking-[0.8px] uppercase"
+                                                >
+                                                    {col}
+                                                </th>
+                                            ))}
+                                            {SORTABLE_COLS.map(({ label, key }) => (
+                                                <th
+                                                    key={key}
+                                                    onClick={() => handleSort(key)}
+                                                    className="text-ds-text3 hover:text-ds-text cursor-pointer px-5 py-3.5 text-left text-[10px] font-semibold tracking-[0.8px] uppercase transition-colors select-none"
+                                                >
+                                                    <span className="flex items-center gap-1">
+                                                        {label}
+                                                        <SortIcon col={key} />
+                                                    </span>
+                                                </th>
+                                            ))}
+                                            {['STATUT', ''].map((col, i) => (
                                                 <th
                                                     key={i}
                                                     className="text-ds-text3 px-5 py-3.5 text-left text-[10px] font-semibold tracking-[0.8px] uppercase"
@@ -283,7 +342,7 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {candidats.data.map((candidat, index) => (
+                                        {sortedData.map((candidat, index) => (
                                             <tr
                                                 key={candidat.id}
                                                 className="border-ds-border hover:bg-ds-bg3/40 border-b transition-colors last:border-0"
@@ -342,6 +401,17 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
                                                     )}
                                                 </td>
 
+                                                {/* SCORE SOURCING */}
+                                                <td className="px-5 py-4">
+                                                    {candidat.sourcing_score != null ? (
+                                                        <span className={`text-[13px] font-bold ${scoreColor(candidat.sourcing_score)}`}>
+                                                            {candidat.sourcing_score}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-ds-text3">—</span>
+                                                    )}
+                                                </td>
+
                                                 {/* SCORE CV */}
                                                 <td className="px-5 py-4">
                                                     {candidat.score_cv != null ? (
@@ -355,7 +425,13 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
 
                                                 {/* SCORE ENTRETIEN */}
                                                 <td className="px-5 py-4">
-                                                    <span className="text-ds-text3">—</span>
+                                                    {candidat.ai_score != null ? (
+                                                        <span className={`text-[13px] font-bold ${scoreColor(candidat.ai_score)}`}>
+                                                            {candidat.ai_score}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-ds-text3">—</span>
+                                                    )}
                                                 </td>
 
                                                 {/* STATUT */}

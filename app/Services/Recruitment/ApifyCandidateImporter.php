@@ -102,6 +102,7 @@ class ApifyCandidateImporter
                     $candidate->id => [
                         'score' => $result['score'],
                         'score_breakdown' => json_encode($result['breakdown']),
+                        'ai_analysis' => $result['ai_analysis'] ?? null,
                         'sourced_at' => now(),
                     ],
                 ]);
@@ -180,6 +181,7 @@ class ApifyCandidateImporter
                     $candidate->id => [
                         'score' => $result['score'],
                         'score_breakdown' => json_encode($result['breakdown']),
+                        'ai_analysis' => $result['ai_analysis'] ?? null,
                         'sourced_at' => now(),
                     ],
                 ]);

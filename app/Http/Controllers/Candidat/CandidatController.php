@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Candidat;
 
 use App\Enums\CandidatStatus;
 use App\Http\Controllers\Controller;
+use App\Models\Brief;
 use App\Models\Candidat;
 use App\Services\ActivityLogger;
 use Illuminate\Database\Eloquent\Builder;
@@ -43,13 +44,29 @@ class CandidatController extends Controller
             $field = $filter['field'];
             $value = $filter['value'];
 
+            if ($field === 'brief_id') {
+                $ids = is_array($value) ? $value : explode(',', $value);
+                $ids = array_filter(array_map('intval', $ids));
+                if (! empty($ids)) {
+                    $query->whereHas('briefs', fn ($q) => $q->whereIn('briefs.id', $ids));
+                }
+
+                continue;
+            }
+
             if (in_array($field, $textFields)) {
-                $keywords = preg_split('/\s+/', trim($value));
-                $query->where(function ($q) use ($field, $keywords) {
-                    foreach ($keywords as $keyword) {
-                        $q->orWhere($field, 'LIKE', '%'.$keyword.'%');
-                    }
-                });
+                $values = is_array($value) ? $value : explode(',', $value);
+                $values = array_filter(array_map('trim', $values));
+                if (count($values) > 1) {
+                    $query->whereIn($field, $values);
+                } else {
+                    $keywords = preg_split('/\s+/', trim($values[0] ?? $value));
+                    $query->where(function ($q) use ($field, $keywords) {
+                        foreach ($keywords as $keyword) {
+                            $q->orWhere($field, 'LIKE', '%'.$keyword.'%');
+                        }
+                    });
+                }
 
                 continue;
             }
@@ -142,7 +159,7 @@ class CandidatController extends Controller
 
                     'brief_title' => $candidat->briefs->first()?->title,
 
-                    'score_cv' => $candidat->briefs->first()?->pivot?->score
+                    'sourcing_score' => $candidat->briefs->first()?->pivot?->score
                         ? round($candidat->briefs->first()->pivot->score)
                         : null,
                 ]);
@@ -155,9 +172,12 @@ class CandidatController extends Controller
                 [Candidat::class]
             );
 
+            $briefs = Brief::select('id', 'title')->latest()->get();
+
             return Inertia::render('Candidats/Index', [
                 'candidats' => $candidats,
                 'filters' => $filters,
+                'briefs' => $briefs,
             ]);
 
         } catch (\Throwable $e) {
