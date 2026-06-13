@@ -109,6 +109,11 @@ class BriefToQueryConverter
             }
         }
 
+        $mongoFilter = $this->buildMongoFilter($brief);
+        if ($mongoFilter) {
+            $input['postFilteringMongoDbQuery'] = $mongoFilter;
+        }
+
         logger()->info('Apify input', $input);
 
         return $input;

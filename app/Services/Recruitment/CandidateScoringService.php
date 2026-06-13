@@ -100,15 +100,17 @@ class CandidateScoringService
 
         foreach ($candidates as $i => $candidate) {
             $key = $candidate->linkedin_url ?? $i;
+            $aiEntry = $aiScores[$key] ?? $this->neutralAiDimensions();
+            $aiAnalysis = $aiEntry['ai_analysis'] ?? null;
             $dims = array_merge(
                 $deterministicScores[$key] ?? [],
-                $aiScores[$key] ?? $this->neutralAiDimensions(),
+                array_diff_key($aiEntry, ['ai_analysis' => null]),
             );
 
             $breakdown = [];
             foreach ($dims as $dimension => $raw) {
                 $weight = $weights[$dimension] ?? 0;
-                $breakdown[$dimension] = $raw * ($weight / $total);
+                $breakdown[$dimension] = (float) $raw * ($weight / $total);
             }
 
             $finalScore = round(array_sum($breakdown), 2);
@@ -122,6 +124,7 @@ class CandidateScoringService
             $results[$key] = [
                 'score' => round(array_sum($breakdown), 2),
                 'breakdown' => $breakdown,
+                'ai_analysis' => $aiAnalysis,
             ];
         }
         logger()->info('[Scorer] 🏁 scoreBatch complete', [
@@ -157,7 +160,7 @@ class CandidateScoringService
     private function scoreExperience(Brief $brief, Candidat $candidate): float
     {
         if (! $brief->min_experience_years || ! $candidate->experience_years) {
-            return 50.0;
+            return 0.0;
         }
 
         $ratio = $candidate->experience_years / $brief->min_experience_years;
@@ -185,7 +188,7 @@ class CandidateScoringService
     private function scoreEducation(Brief $brief, Candidat $candidate): float
     {
         if (! $brief->education_level || ! $candidate->education_level) {
-            return 50.0;
+            return 0.0;
         }
 
         $levels = [
@@ -222,7 +225,7 @@ class CandidateScoringService
     private function scoreLocation(Brief $brief, Candidat $candidate): float
     {
         if (! $brief->location || ! $candidate->location) {
-            return 50.0;
+            return 0.0;
         }
 
         $briefParts = collect(explode(',', $brief->location))
@@ -266,7 +269,7 @@ class CandidateScoringService
             'candidate_list_preview' => mb_substr($candidateList, 0, 500),
         ]);
         $prompt = <<<PROMPT
-            You are a recruitment scoring engine. Score each candidate 0–100 on three dimensions.
+            You are a recruitment scoring engine. Score each candidate 0–100 on three dimensions and write a short analysis in French.
 
             ## Job brief
             {$briefContext}
@@ -276,20 +279,16 @@ class CandidateScoringService
 
             ## Instructions
             Return ONLY a valid JSON object — no prose, no markdown fences.
-            Each key is the candidate index (integer). Each value has three integer fields.
+            Each key is the candidate index (integer). Each value has four fields:
+            - required_skills (integer 0–100): how many required skills does the candidate demonstrably have? 100 = all, 0 = none.
+            - soft_skills (integer 0–100): how well does headline + summary reflect the required soft skills? Consider synonyms and implied traits.
+            - sector (integer 0–100): how relevant is the candidate's background to the job sector? Resolve abbreviations (IT = Information Technology).
+            - analysis (string): 2–3 sentences in French summarising the candidate's strengths and weaknesses relative to this specific brief. Be concrete and specific to the brief requirements.
 
-            Scoring guidance:
-            - required_skills: how many required skills does the candidate demonstrably have? 100 = all, 0 = none.
-            - soft_skills: how well does headline + summary reflect the required soft skills? Consider synonyms and implied traits.
-            - sector: how relevant is the candidate's background to the job sector? Resolve abbreviations (IT = Information Technology).
-            Return ONLY valid JSON.
-            Do not include explanations.
-            Do not include markdown.
-            If unsure, return 0.
-            All values must be integers between 0 and 100.
-            Example output shape (indices are illustrative):
-            {"0":{"required_skills":85,"soft_skills":70,"sector":90},"1":{"required_skills":40,"soft_skills":60,"sector":75}}
-            
+            Return ONLY valid JSON. No markdown. No explanations outside the JSON.
+            Example output shape:
+            {"0":{"required_skills":85,"soft_skills":70,"sector":90,"analysis":"Profil solide avec une maîtrise de Java et Spring Boot. L'expérience en microservices correspond aux attentes du brief. Manque de visibilité sur les compétences en tests automatisés."},"1":{"required_skills":40,"soft_skills":60,"sector":75,"analysis":"Expérience pertinente dans le secteur mais compétences techniques insuffisantes par rapport au brief. Bonne orientation soft skills."}}
+
             PROMPT;
 
         try {
@@ -308,7 +307,7 @@ class CandidateScoringService
                 'messages' => [
                     ['role' => 'user', 'content' => trim($prompt)],
                 ],
-                'max_tokens' => 600,
+                'max_tokens' => 3000,
             ]);
             $text = $response->json('choices.0.message.content', '{}');
             logger()->info('[Scorer/AI] ✅ Response received from OpenRouter', [
@@ -392,8 +391,8 @@ class CandidateScoringService
      * Map the AI response (keyed by sequential index) back to linkedin_url keys
      * so the result aligns with the deterministic scores map.
      *
-     * @param  array<int, array{required_skills: int, soft_skills: int, sector: int}>  $parsed
-     * @return array<string, array{required_skills: float, soft_skills: float, sector: float}>
+     * @param  array<int, array{required_skills: int, soft_skills: int, sector: int, analysis: string}>  $parsed
+     * @return array<string, array{required_skills: float, soft_skills: float, sector: float, ai_analysis: string|null}>
      */
     private function mapAiResponseToKeys(Collection $candidates, array $parsed): array
     {
@@ -404,9 +403,10 @@ class CandidateScoringService
             $raw = $parsed[(string) $i] ?? $parsed[$i] ?? null;
 
             $result[$key] = $raw ? [
-                'required_skills' => (float) min(100, max(0, $raw['required_skills'] ?? 50)),
-                'soft_skills' => (float) min(100, max(0, $raw['soft_skills'] ?? 50)),
-                'sector' => (float) min(100, max(0, $raw['sector'] ?? 50)),
+                'required_skills' => (float) min(100, max(0, $raw['required_skills'] ?? 0)),
+                'soft_skills' => (float) min(100, max(0, $raw['soft_skills'] ?? 0)),
+                'sector' => (float) min(100, max(0, $raw['sector'] ?? 0)),
+                'ai_analysis' => isset($raw['analysis']) ? (string) $raw['analysis'] : null,
             ] : $this->neutralAiDimensions();
         }
 
@@ -421,7 +421,7 @@ class CandidateScoringService
      */
     private function neutralAiDimensions(): array
     {
-        return ['required_skills' => 50.0, 'soft_skills' => 50.0, 'sector' => 50.0];
+        return ['required_skills' => 0.0, 'soft_skills' => 0.0, 'sector' => 0.0, 'ai_analysis' => null];
     }
 
     /**

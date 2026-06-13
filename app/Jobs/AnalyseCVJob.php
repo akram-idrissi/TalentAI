@@ -174,6 +174,15 @@ class AnalyseCVJob implements ShouldQueue
             );
         }
 
+        $brief->candidates()->syncWithoutDetaching([
+            $candidate->id => [
+                'score' => $analysis['global_score'] ?? 0,
+                'score_breakdown' => json_encode($analysis['scores'] ?? []),
+                'ai_analysis' => $analysis['reasoning_fr'] ?? null,
+                'sourced_at' => now(),
+            ],
+        ]);
+
         $logger->log(
             'cv_job.success',
             'CV analysé avec succès.',
@@ -182,10 +191,6 @@ class AnalyseCVJob implements ShouldQueue
         );
 
         Log::info('CV ANALYSIS CREATED');
-
-        Log::error('CV ANALYSIS FAILED', [
-            'message' => 'An error occurred during CV analysis',
-        ]);
 
     }
 }
