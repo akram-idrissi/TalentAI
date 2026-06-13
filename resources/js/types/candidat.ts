@@ -22,6 +22,7 @@ export interface Candidat {
     created_at: string;
     updated_at: string;
     brief_title: string | null;
+    sourcing_score: number | null;
     score_cv: number | null;
     ai_score: number | null;
 }
@@ -45,4 +46,5 @@ export interface IndexCandidatFilters {
 export interface IndexCandidatProps {
     candidats: PaginatedCandidats;
     filters: IndexCandidatFilters;
+    briefs: { id: number; title: string }[];
 }
