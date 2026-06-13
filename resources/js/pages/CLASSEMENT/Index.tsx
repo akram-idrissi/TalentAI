@@ -31,7 +31,7 @@ interface Candidate {
     experience_years: number | null;
     linkedin_url: string | null;
     skills: string[];
-    summary: string | null;
+    ai_analysis: string | null;
     score: number;
     score_breakdown: ScoreBreakdown | null;
 }
@@ -134,12 +134,10 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates, f
 
     const selectedIndex = candidates.findIndex((c) => c.id === selected?.id);
 
-    const summary =
-        selected?.summary ??
-        'Profil solide avec une expérience pertinente pour ce poste. Les compétences techniques et le parcours correspondent aux exigences du brief. Candidat recommandé pour un entretien.';
-
-    const isTruncatable = summary.length > SUMMARY_LIMIT;
-    const displayedSummary = !expanded && isTruncatable ? summary.slice(0, SUMMARY_LIMIT).trimEnd() + '…' : summary;
+    const aiAnalysis = selected?.ai_analysis ?? null;
+    const isTruncatable = aiAnalysis !== null && aiAnalysis.length > SUMMARY_LIMIT;
+    const displayedSummary =
+        aiAnalysis === null ? null : !expanded && isTruncatable ? aiAnalysis.slice(0, SUMMARY_LIMIT).trimEnd() + '…' : aiAnalysis;
 
     return (
         <>
@@ -339,9 +337,14 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates, f
                                                         <div key={key} className="flex items-center gap-3">
                                                             <span className="text-ds-text2 w-24 shrink-0 text-xs">{meta.label}</span>
                                                             <div className="bg-ds-bg3 h-2 flex-1 overflow-hidden rounded-full">
-                                                                <div className={`h-full rounded-full ${meta.bar}`} style={{ width: `${value}%` }} />
+                                                                <div
+                                                                    className={`h-full rounded-full ${meta.bar}`}
+                                                                    style={{ width: `${Math.round(value)}%` }}
+                                                                />
                                                             </div>
-                                                            <span className={`w-8 shrink-0 text-right text-sm font-bold ${meta.text}`}>{value}</span>
+                                                            <span className={`w-8 shrink-0 text-right text-sm font-bold ${meta.text}`}>
+                                                                {Math.round(value)}
+                                                            </span>
                                                         </div>
                                                     );
                                                 })}
@@ -352,14 +355,20 @@ export default function ClassementIndex({ briefs, selectedBriefId, candidates, f
                                     {/* Card 2: Analyse IA */}
                                     <div className="border-ds-border bg-ds-surface rounded-2xl border p-6">
                                         <h3 className="text-ds-text text-base font-bold">Analyse IA</h3>
-                                        <p className="text-ds-text2 mt-2 text-sm leading-relaxed">{displayedSummary}</p>
-                                        {isTruncatable && (
-                                            <button
-                                                onClick={() => setExpanded((v) => !v)}
-                                                className="text-ds-accent mt-1.5 text-xs font-medium hover:underline"
-                                            >
-                                                {expanded ? 'Réduire' : 'Lire plus'}
-                                            </button>
+                                        {displayedSummary === null ? (
+                                            <p className="text-ds-text3 mt-2 text-sm">—</p>
+                                        ) : (
+                                            <>
+                                                <p className="text-ds-text2 mt-2 text-sm leading-relaxed">{displayedSummary}</p>
+                                                {isTruncatable && (
+                                                    <button
+                                                        onClick={() => setExpanded((v) => !v)}
+                                                        className="text-ds-accent mt-1.5 text-xs font-medium hover:underline"
+                                                    >
+                                                        {expanded ? 'Réduire' : 'Lire plus'}
+                                                    </button>
+                                                )}
+                                            </>
                                         )}
                                         {selected.skills.length > 0 && (
                                             <div className="mt-4 flex flex-wrap gap-1.5">

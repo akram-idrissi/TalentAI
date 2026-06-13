@@ -79,7 +79,7 @@ Route::get('/classement', function (Request $request) {
                     'experience_years' => $c->experience_years,
                     'linkedin_url' => $c->linkedin_url,
                     'skills' => $c->skills ?? [],
-                    'summary' => $c->summary,
+                    'ai_analysis' => $c->pivot->ai_analysis ?? null,
                     'score' => round($c->pivot->score ?? 0),
                     'score_breakdown' => $c->pivot->score_breakdown
                         ? (is_string($c->pivot->score_breakdown)
