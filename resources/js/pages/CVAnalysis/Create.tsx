@@ -77,7 +77,8 @@ function friendlyError(message: string): string {
     if (lower.includes('timeout') || lower.includes('timed out'))
         return "L'analyse a pris trop de temps. Veuillez réessayer avec un fichier plus léger.";
 
-    if (lower.includes('not found') || lower.includes('404')) return 'Fichier introuvable. Veuillez le téléverser à nouveau.';
+    if (lower.includes('file not found') || lower.includes('pdf file not found') || lower.includes('s3 file not found'))
+        return 'Fichier introuvable. Veuillez le téléverser à nouveau.';
 
     if (lower.includes('500') || lower.includes('server')) return "Une erreur interne s'est produite. Notre équipe a été notifiée.";
 
