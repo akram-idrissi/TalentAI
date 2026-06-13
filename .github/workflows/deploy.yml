@@ -24,4 +24,4 @@ jobs:
                     php artisan config:cache
                     php artisan route:cache
                     php artisan view:cache
-                    sudo /usr/local/bin/supervisorctl restart laravel-worker
+                    sudo /usr/local/bin/supervisorctl restart laravel-worker 
