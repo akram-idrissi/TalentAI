@@ -12,7 +12,7 @@ class TranscriptionAnalysisService
     private const MODEL = 'mistralai/mistral-small-3.2-24b-instruct';
 
     // private const MAX_TOKENS = 4096;
-    private const MAX_TOKENS = 1024;
+    private const MAX_TOKENS = 2048;
 
     private string $apiKey;
 

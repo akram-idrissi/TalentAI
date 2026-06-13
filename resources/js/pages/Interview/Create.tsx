@@ -172,6 +172,7 @@ export default function CreateInterview({ candidates, briefs, interviews }: Crea
                         clearInterval(pollRef.current!);
                         setStatus('done');
                         toast.success(t('interviews.index.toast.success'));
+                        router.reload({ only: ['interviews'] });
                     } else if (data.status === 'failed') {
                         clearInterval(pollRef.current!);
                         setStatus('failed');

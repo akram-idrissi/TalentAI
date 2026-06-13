@@ -4,13 +4,13 @@ namespace App\Http\Controllers\Interview;
 
 use App\Enums\BriefStatus;
 use App\Http\Controllers\Controller;
+use App\Jobs\Transcription\AnalyseTranscriptionJob;
 use App\Models\Brief;
 use App\Models\Candidat;
 use App\Models\Interview;
 use App\Models\Transcription;
 use App\Services\ActivityLogger;
 use App\Services\Transcription\AssemblyAIService;
-use App\Services\Transcription\TranscriptionAnalysisService;
 use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -217,15 +217,18 @@ class InterviewController extends Controller
 
             $path = $request->file('audio')->store('transcriptions/pending', 's3');
 
+            /** @var AwsS3V3Adapter $s3 */
+            $s3 = Storage::disk('s3');
+            $audioUrl = $s3->url($path);
+
             $transcription = Transcription::create([
                 'interview_id' => $interview->id,
                 'status' => 'pending',
                 'audio_path' => $path,
+                'audio_url' => $audioUrl,
             ]);
 
             // Pre-signed URL valid for 1 hour — long enough for AssemblyAI to fetch the file
-            /** @var AwsS3V3Adapter $s3 */
-            $s3 = Storage::disk('s3');
             $presignedUrl = $s3->temporaryUrl($path, now()->addHour());
 
             $assemblyTranscriptId = $assemblyAI->submit($presignedUrl);
@@ -375,7 +378,7 @@ class InterviewController extends Controller
      * @param  Interview  $interview  Interview being tracked
      * @return JsonResponse Current processing status, or an error payload on failure
      */
-    public function status(Interview $interview, AssemblyAIService $assemblyAI, TranscriptionAnalysisService $analysisService): JsonResponse
+    public function status(Interview $interview, AssemblyAIService $assemblyAI): JsonResponse
     {
         $this->authorize('interviews.view');
 
@@ -424,23 +427,13 @@ class InterviewController extends Controller
 
                     Storage::disk('s3')->delete($transcription->audio_path);
 
-                    // Run analysis — extend PHP time limit for this request
-                    @set_time_limit(300);
+                    $brief = $this->formatBrief($interview->brief, $interview->expectations ?? '');
 
-                    try {
-                        $brief = $this->formatBrief($interview->brief, $interview->expectations ?? '');
-                        $result = $analysisService->analyse($diarizedTranscript, $brief);
-
-                        $transcription->update([
-                            'analysis_status' => 'done',
-                            'analysis_score' => $result['global_score'],
-                            'analysis_verdict' => $result['verdict'],
-                            'analysis_result' => $result,
-                        ]);
-                        $interview->update(['status' => 'done']);
-                    } catch (\Throwable $e) {
-                        $transcription->update(['analysis_status' => 'failed', 'analysis_error' => $e->getMessage()]);
-                    }
+                    AnalyseTranscriptionJob::dispatch(
+                        $transcription,
+                        $brief,
+                        []
+                    );
 
                     $transcription->refresh();
 
