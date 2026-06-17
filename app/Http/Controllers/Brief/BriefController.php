@@ -27,6 +27,8 @@ class BriefController extends Controller
     private function applyFilters(Builder $query, array $filters): void
     {
         $allowedFields = [
+            'product_reference',
+            'mission_code',
             'title',
             'sector',
             'contract_type',
@@ -66,6 +68,8 @@ class BriefController extends Controller
     {
         return [
             'title' => 'required|string|max:255',
+            'product_reference' => 'nullable|string|max:255',
+            'mission_code' => 'nullable|string|max:255',
             'sector' => ['required', Rule::in($this->params->getGroup('sectors')->pluck('value'))],
             'contract_type' => ['required', Rule::in($this->params->getGroup('contract_types')->pluck('value'))],
             'location' => 'required|string|max:255',
@@ -122,6 +126,8 @@ class BriefController extends Controller
                     'education_level' => $brief->education_level,
                     'gender_pref' => $brief->gender_pref,
                     'status' => $brief->status,
+                    'product_reference' => $brief->product_reference,
+                    'mission_code' => $brief->mission_code,
                     'created_by' => $brief->creator?->name,
                     'created_at' => $brief->created_at->toDateTimeString(),
                 ]);

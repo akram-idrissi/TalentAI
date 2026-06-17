@@ -137,6 +137,8 @@ export default function Index({ briefs, filters, params, brief_statuses }: Index
 
     const FILTER_FIELDS = [
         { key: 'title', label: t('briefs.index.filters.fields.title'), type: 'text' as const },
+        { key: 'product_reference', label: 'Product Reference', type: 'text' as const },
+        { key: 'mission_code', label: 'Mission Code', type: 'text' as const },
         {
             key: 'sector',
             label: t('briefs.index.filters.fields.sector'),

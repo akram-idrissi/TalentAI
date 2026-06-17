@@ -16,6 +16,8 @@ class Brief extends Model
 
     protected $fillable = [
         'created_by',
+        'product_reference',
+        'mission_code',
         'title',
         'sector',
         'contract_type',
