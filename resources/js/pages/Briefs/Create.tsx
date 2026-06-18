@@ -33,7 +33,8 @@ export default function CreateBrief({ params }: CreateBriefProps) {
         mission_description: '',
         required_skills: '',
         soft_skills: '',
-        scoring_weights: { experience: 30, education: 20, sector: 20, soft_skills: 20, location: 10 },
+        search_prompt: '',
+        scoring_weights: { experience: 50, education: 25, location: 25 },
     });
     console.log('data', data);
     useEffect(() => {
@@ -294,6 +295,21 @@ export default function CreateBrief({ params }: CreateBriefProps) {
                                         value={data.soft_skills}
                                         rows={3}
                                         onChange={(e) => setData('soft_skills', e.target.value)}
+                                    />
+                                </FormField>
+
+                                <FormField
+                                    label="Instruction de sourcing"
+                                    error={errors.search_prompt}
+                                    hint="Décrivez le profil recherché en langage naturel. Ex : « commercial junior terrain, pas de managers ni de directeurs »"
+                                >
+                                    <textarea
+                                        className={textareaCls(errors.search_prompt)}
+                                        placeholder="Ex : je veux un commercial junior, exclure responsable, directeur, manager…"
+                                        value={data.search_prompt}
+                                        maxLength={1000}
+                                        rows={3}
+                                        onChange={(e) => setData('search_prompt', e.target.value)}
                                     />
                                 </FormField>
                             </div>

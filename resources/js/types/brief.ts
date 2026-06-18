@@ -1,8 +1,6 @@
 export type ScoringWeights = {
     experience: number;
     education: number;
-    sector: number;
-    soft_skills: number;
     location: number;
 };
 
@@ -24,6 +22,7 @@ export type BriefFormData = {
     mission_description: string;
     required_skills: string;
     soft_skills: string;
+    search_prompt: string;
     scoring_weights: ScoringWeights;
 };
 
@@ -78,6 +77,7 @@ export type Brief = {
     mission_description: string;
     required_skills: string;
     soft_skills: string;
+    search_prompt: string | null;
     scoring_weights: ScoringWeights;
     status: string;
     created_at: string;

@@ -18,6 +18,7 @@ return new class extends Migration
                 ->on('interviews');
 
             $table->string('audio_path');
+            $table->string('audio_url')->nullable();
             $table->string('status')->default('pending');
             $table->longText('transcript_text')->nullable();
             $table->longText('diarized_transcript')->nullable();

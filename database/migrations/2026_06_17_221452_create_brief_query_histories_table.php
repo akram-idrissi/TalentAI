@@ -11,8 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('brief_candidat', function (Blueprint $table) {
-            $table->text('ai_analysis')->nullable()->after('score_breakdown');
+        Schema::create('brief_query_histories', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('brief_id')->constrained()->cascadeOnDelete();
+            $table->text('query');
+            $table->timestamp('created_at')->useCurrent();
         });
     }
 
@@ -21,8 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('brief_candidat', function (Blueprint $table) {
-            $table->dropColumn('ai_analysis');
-        });
+        Schema::dropIfExists('brief_query_histories');
     }
 };

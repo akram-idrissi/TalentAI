@@ -84,12 +84,13 @@ class BriefController extends Controller
             'mission_description' => 'required|string',
             'required_skills' => 'required|string',
             'soft_skills' => 'nullable|string',
+            'search_prompt' => 'nullable|string|max:1000',
             'scoring_weights' => 'nullable|array',
             'scoring_weights.experience' => 'required_with:scoring_weights|integer|min:0|max:100',
             'scoring_weights.education' => 'required_with:scoring_weights|integer|min:0|max:100',
-            'scoring_weights.sector' => 'required_with:scoring_weights|integer|min:0|max:100',
-            'scoring_weights.soft_skills' => 'required_with:scoring_weights|integer|min:0|max:100',
             'scoring_weights.location' => 'required_with:scoring_weights|integer|min:0|max:100',
+            'scoring_weights.sector' => 'nullable|integer|min:0|max:100',
+            'scoring_weights.soft_skills' => 'nullable|integer|min:0|max:100',
             'status' => ['required', Rule::enum(BriefStatus::class)],
         ];
     }
