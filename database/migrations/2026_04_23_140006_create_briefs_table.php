@@ -26,6 +26,9 @@ return new class extends Migration
             $table->text('mission_description');
             $table->text('required_skills');
             $table->text('soft_skills')->nullable();
+            $table->text('search_prompt')->nullable();
+            $table->text('current_query')->nullable();
+            $table->unsignedSmallInteger('next_start_page')->default(1);
             $table->json('scoring_weights');
             $table->enum('status', ['draft', 'active', 'sourcing', 'interviews', 'closed']);
             $table->softDeletes();
