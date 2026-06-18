@@ -38,7 +38,21 @@ PROMPT;
             ?? $this->tryGroq($userMessage)
             ?? $this->hardcodedFallback($briefTitle, $searchPrompt);
 
+        // Reject responses that echo the prompt rather than generating a query
+        if ($this->looksLikePrompt($result)) {
+            Log::warning('[QueryGenerator] AI returned prompt echo, using fallback');
+            $result = $this->hardcodedFallback($briefTitle, $searchPrompt);
+        }
+
         return $this->enforce300Limit($result);
+    }
+
+    private function looksLikePrompt(string $text): bool
+    {
+        return str_contains($text, 'Instruction:')
+            || str_starts_with($text, 'We need')
+            || str_starts_with($text, 'Title:')
+            || str_starts_with($text, 'Brief title');
     }
 
     private function tryOpenRouter(string $userMessage): ?string

@@ -363,9 +363,11 @@ export default function Index({ briefs, filters }: Props) {
 
         if (brief) {
             setStartPage(brief.next_start_page ?? 1);
-            // Use stored query if available — only call API if none exists yet
-            if (brief.current_query) {
-                setJobTitleQuery(brief.current_query);
+            const q = brief.current_query ?? '';
+            const looksLikeQuery =
+                q && !q.includes('Instruction:') && !q.startsWith('We need') && !q.startsWith('Title:') && !q.startsWith('Brief title');
+            if (looksLikeQuery) {
+                setJobTitleQuery(q);
             } else {
                 setJobTitleQuery('');
                 generateQuery(brief);
@@ -435,8 +437,11 @@ export default function Index({ briefs, filters }: Props) {
             const brief = briefs.find((b) => b.id === filters.brief_id);
             if (brief) {
                 setStartPage(brief.next_start_page ?? 1);
-                if (brief.current_query) {
-                    setJobTitleQuery(brief.current_query);
+                const q = brief.current_query ?? '';
+                const looksLikeQuery =
+                    q && !q.includes('Instruction:') && !q.startsWith('We need') && !q.startsWith('Title:') && !q.startsWith('Brief title');
+                if (looksLikeQuery) {
+                    setJobTitleQuery(q);
                 } else {
                     generateQuery(brief);
                 }
