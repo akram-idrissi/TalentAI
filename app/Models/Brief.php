@@ -26,6 +26,9 @@ class Brief extends Model
         'languages',
         'seniority_level',
         'target_companies',
+        'company_headcount',
+        'linkedin_function',
+        'min_years_at_current_company',
         'gender_pref',
         'age_range',
         'mission_description',
@@ -48,6 +51,7 @@ class Brief extends Model
         return [
             'scoring_weights' => 'array',
             'min_experience_years' => 'integer',
+            'min_years_at_current_company' => 'integer',
             'next_start_page' => 'integer',
             'contract_type' => ContractType::class,
         ];

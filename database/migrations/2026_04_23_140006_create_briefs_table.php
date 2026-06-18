@@ -17,10 +17,13 @@ return new class extends Migration
             $table->string('location');
             $table->string('salary_range')->nullable();
             $table->integer('min_experience_years');
+            $table->unsignedTinyInteger('min_years_at_current_company')->nullable();
             $table->string('education_level');
             $table->text('languages')->nullable();
             $table->string('seniority_level')->nullable();
             $table->text('target_companies')->nullable();
+            $table->string('company_headcount')->nullable();
+            $table->string('linkedin_function')->nullable();
             $table->enum('gender_pref', ['M', 'F', 'any'])->nullable();
             $table->string('age_range')->nullable();
             $table->text('mission_description');
