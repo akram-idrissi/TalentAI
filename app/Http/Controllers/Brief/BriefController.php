@@ -500,4 +500,82 @@ class BriefController extends Controller
             ]);
         }
     }
+
+    /**
+     * Update the status of the specified brief and track lifecycle dates.
+     *
+     * @param  Request  $request  Must contain a valid status (lancement | cloture)
+     * @param  Brief  $brief  Route-model-bound Brief instance to update
+     * @return RedirectResponse|Response Redirects back on success or renders fallback on failure
+     *
+     * @throws ValidationException If validation fails (handled by Laravel)
+     */
+    public function updateStatus(Request $request, Brief $brief): RedirectResponse|Response
+    {
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $validated = $request->validate([
+                'status' => 'required|in:lancement,cloture',
+            ]);
+
+            $statutAvant = $brief->status;
+
+            $modifications = [];
+
+            // 🔁 status change
+            if ($statutAvant !== $validated['status']) {
+                $modifications['status'] = [
+                    'avant' => $statutAvant,
+                    'après' => $validated['status'],
+                ];
+            }
+
+            // 📌 apply status
+            $brief->status = $validated['status'];
+
+            // 📅 lifecycle dates
+            if ($validated['status'] === 'lancement' && ! $brief->date_lancement) {
+                $brief->date_lancement = now();
+            }
+
+            if ($validated['status'] === 'cloture') {
+                $brief->date_cloture = now();
+            }
+
+            $brief->save();
+
+            // 🧾 logging (safe)
+            try {
+                $transitionStatut = $statutAvant !== $brief->status
+                    ? " Changement de statut : « {$statutAvant} » → « {$brief->status} »."
+                    : '';
+
+                $descriptionBase = "Mise à jour du statut du brief « {$brief->title} » (ID : {$brief->id}).";
+
+                $logger->log(
+                    'brief.status.update',
+                    $descriptionBase.$transitionStatut,
+                    [
+                        'brief_id' => $brief->id,
+                        'modifications' => $modifications,
+                    ],
+                    [Brief::class]
+                );
+            } catch (\Throwable) {
+                // logging non bloquant
+            }
+
+            return back()->with('success', 'Statut du brief mis à jour.');
+
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return Inertia::render('Fallback', [
+                'error' => 'Impossible de mettre à jour le statut du brief.',
+                'brief' => $brief,
+            ]);
+        }
+    }
 }

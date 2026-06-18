@@ -277,6 +277,16 @@ return [
             'cancel' => 'Annuler',
             'confirm' => 'Oui, supprimer',
         ],
+        'modale' => [
+            'status' => [
+                'title' => 'Mettre à jour le statut du brief',
+                'description' => 'Sélectionnez le nouveau statut pour ce brief.',
+                'updating' => 'Mise à jour…',
+                'confirm' => 'Mettre à jour le statut',
+                'cancel' => 'Annuler',
+                'label' => 'Nouveau statut',
+            ],
+        ],
     ],
 
 ];

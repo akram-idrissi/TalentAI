@@ -276,6 +276,16 @@ return [
             'cancel' => 'Cancel',
             'confirm' => 'Yes, delete',
         ],
+        'modale' => [
+            'status' => [
+                'title' => 'Update brief status',
+                'description' => 'Select the new status for this brief.',
+                'updating' => 'Updating…',
+                'confirm' => 'Update status',
+                'cancel' => 'Cancel',
+                'label' => 'New status',
+            ],
+        ],
     ],
 
 ];

@@ -40,6 +40,8 @@ class Brief extends Model
         'current_query',
         'next_start_page',
         'scoring_weights',
+        'date_lancement',
+        'date_cloture',
         'status',
     ];
 
