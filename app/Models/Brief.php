@@ -31,9 +31,11 @@ class Brief extends Model
         'mission_description',
         'required_skills',
         'soft_skills',
+        'search_prompt',
+        'current_query',
+        'next_start_page',
         'scoring_weights',
         'status',
-
     ];
 
     /**
@@ -46,6 +48,7 @@ class Brief extends Model
         return [
             'scoring_weights' => 'array',
             'min_experience_years' => 'integer',
+            'next_start_page' => 'integer',
             'contract_type' => ContractType::class,
         ];
     }
@@ -58,6 +61,11 @@ class Brief extends Model
     public function apifyRuns(): HasMany
     {
         return $this->hasMany(ApifyRun::class);
+    }
+
+    public function queryHistories(): HasMany
+    {
+        return $this->hasMany(BriefQueryHistory::class)->latest('created_at');
     }
 
     public function candidates(): BelongsToMany
