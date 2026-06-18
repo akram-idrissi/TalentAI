@@ -6,7 +6,6 @@ use App\Models\Brief;
 use App\Models\Candidat;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Scores candidates against a job brief across six weighted dimensions.
@@ -27,14 +26,9 @@ use Illuminate\Support\Facades\Log;
 class CandidateScoringService
 {
     /**
-     * Dimensions scored deterministically in PHP (no AI cost).
+     * All scored dimensions are deterministic — no AI cost.
      */
     private const DETERMINISTIC_DIMENSIONS = ['experience', 'education', 'location'];
-
-    /**
-     * Dimensions scored semantically via a single batched Claude call.
-     */
-    private const AI_DIMENSIONS = ['required_skills', 'soft_skills', 'sector'];
 
     /**
      * Score a single candidate. Triggers one AI call for the three semantic
@@ -73,39 +67,12 @@ class CandidateScoringService
 
         $weights = $this->resolveWeights($brief);
         $total = array_sum($weights) ?: 100;
-        logger()->debug('[Scorer] ⚖ Resolved weights', [
-            'weights' => $weights,
-            'total' => $total,
-        ]);
-        logger()->info('[Scorer] 🔢 Computing deterministic scores for all candidates');
-        // 1. Compute deterministic scores for every candidate (pure PHP, free).
-        $deterministicScores = $candidates->mapWithKeys(
-            fn (Candidat $c, int $i) => [
-                ($c->linkedin_url ?? $i) => $this->computeDeterministicDimensions($brief, $c),
-            ]
-        )->all();
 
-        // 2. Get AI scores for all candidates in one call.
-        logger()->info('[Scorer] 🤖 Fetching AI scores batch', [
-            'brief_id' => $brief->id,
-            'candidate_count' => $candidates->count(),
-        ]);
-        $aiScores = $this->fetchAiScoresBatch($brief, $candidates);
-
-        logger()->info('[Scorer] ✅ AI scores received', [
-            'scored_keys' => array_keys($aiScores),
-        ]);
-        // 3. Merge and apply weights.
         $results = [];
 
         foreach ($candidates as $i => $candidate) {
             $key = $candidate->linkedin_url ?? $i;
-            $aiEntry = $aiScores[$key] ?? $this->neutralAiDimensions();
-            $aiAnalysis = $aiEntry['ai_analysis'] ?? null;
-            $dims = array_merge(
-                $deterministicScores[$key] ?? [],
-                array_diff_key($aiEntry, ['ai_analysis' => null]),
-            );
+            $dims = $this->computeDeterministicDimensions($brief, $candidate);
 
             $breakdown = [];
             foreach ($dims as $dimension => $raw) {
@@ -114,6 +81,7 @@ class CandidateScoringService
             }
 
             $finalScore = round(array_sum($breakdown), 2);
+            $aiAnalysis = $this->generateAnalysis($brief, $candidate);
 
             logger()->info('[Scorer] 🏆 Final score for candidate', [
                 'linkedin_url' => $key,
@@ -122,7 +90,7 @@ class CandidateScoringService
                 'breakdown' => $breakdown,
             ]);
             $results[$key] = [
-                'score' => round(array_sum($breakdown), 2),
+                'score' => $finalScore,
                 'breakdown' => $breakdown,
                 'ai_analysis' => $aiAnalysis,
             ];
@@ -159,8 +127,13 @@ class CandidateScoringService
      */
     private function scoreExperience(Brief $brief, Candidat $candidate): float
     {
-        if (! $brief->min_experience_years || ! $candidate->experience_years) {
+        if (is_null($brief->min_experience_years) || is_null($candidate->experience_years)) {
             return 0.0;
+        }
+
+        // When brief requires 0 years, any candidate qualifies
+        if ($brief->min_experience_years == 0) {
+            return 100.0;
         }
 
         $ratio = $candidate->experience_years / $brief->min_experience_years;
@@ -243,185 +216,171 @@ class CandidateScoringService
     }
 
     /**
-     * Send all candidates to Claude Haiku in one request and parse back
-     * per-candidate scores for required_skills, soft_skills, and sector.
-     *
-     * Prompt design priorities:
-     *   - One JSON object with all candidates keyed by index avoids repeated context.
-     *   - Haiku (not Sonnet) keeps cost at ~$0.01–0.02 per 50-candidate run.
-     *   - max_tokens is capped at 600: 50 candidates × ~10 tokens each + overhead.
-     *   - On any parse failure, neutral 50.0 scores are used (no exception thrown).
-     *
-     * @param  Collection<int, Candidat>  $candidates
-     * @return array<string, array{required_skills: float, soft_skills: float, sector: float}>
-     *                                                                                         Keyed by linkedin_url (falls back to collection index).
+     * Public entry point so the controller can trigger analysis on demand
+     * for candidates that were imported without one.
      */
-    private function fetchAiScoresBatch(Brief $brief, Collection $candidates): array
+    public function generateAnalysisPublic(Brief $brief, Candidat $candidate): ?string
     {
-        logger()->info('[Scorer/AI] ▶ Building prompt for AI batch scoring', [
-            'brief_id' => $brief->id,
-            'candidate_count' => $candidates->count(),
+        return $this->generateAnalysis($brief, $candidate);
+    }
+
+    /**
+     * Generate a complete bilingual recruiter synthesis for a single candidate
+     * using their full raw LinkedIn data and all brief fields.
+     *
+     * Returns a JSON-encoded string with "fr" and "en" keys, or null on failure.
+     */
+    private function generateAnalysis(Brief $brief, Candidat $candidate): ?string
+    {
+        $rawData = $candidate->raw_data;
+        if (empty($rawData)) {
+            return null;
+        }
+
+        // Extract only the fields relevant to a recruiter synthesis — drop photos, URLs, pagination, etc.
+        $profile = [
+            'firstName' => $rawData['firstName'] ?? null,
+            'lastName' => $rawData['lastName'] ?? null,
+            'headline' => $rawData['headline'] ?? null,
+            'location' => $rawData['location']['linkedinText'] ?? null,
+            'about' => $rawData['about'] ?? null,
+            'openToWork' => $rawData['openToWork'] ?? false,
+            'experience' => collect($rawData['experience'] ?? [])->map(fn ($e) => [
+                'position' => $e['position'] ?? $e['title'] ?? null,
+                'companyName' => $e['companyName'] ?? null,
+                'employmentType' => $e['employmentType'] ?? null,
+                'location' => $e['location'] ?? null,
+                'startDate' => $e['startDate']['text'] ?? null,
+                'endDate' => $e['endDate']['text'] ?? null,
+                'duration' => $e['duration'] ?? null,
+                'description' => mb_substr($e['description'] ?? '', 0, 400),
+            ])->values()->all(),
+            'education' => collect($rawData['education'] ?? [])->map(fn ($e) => [
+                'schoolName' => $e['schoolName'] ?? null,
+                'degree' => $e['degree'] ?? null,
+                'fieldOfStudy' => $e['fieldOfStudy'] ?? null,
+                'period' => $e['period'] ?? null,
+                'description' => mb_substr($e['description'] ?? '', 0, 200),
+            ])->values()->all(),
+            'skills' => collect($rawData['skills'] ?? [])->pluck('name')->filter()->values()->all(),
+            'languages' => collect($rawData['languages'] ?? [])->map(fn ($l) => $l['name'] ?? $l)->filter()->values()->all(),
+            'certifications' => collect($rawData['certifications'] ?? [])->map(fn ($c) => $c['name'] ?? null)->filter()->values()->all(),
+        ];
+
+        $briefContext = array_filter([
+            'title' => $brief->title,
+            'sector' => $brief->sector,
+            'contract_type' => $brief->contract_type?->value ?? $brief->contract_type,
+            'location' => $brief->location,
+            'salary_range' => $brief->salary_range,
+            'seniority_level' => $brief->seniority_level,
+            'min_experience_years' => $brief->min_experience_years,
+            'education_level' => $brief->education_level,
+            'languages' => $brief->languages,
+            'mission_description' => $brief->mission_description,
+            'required_skills' => $brief->required_skills,
+            'soft_skills' => $brief->soft_skills,
+            'target_companies' => $brief->target_companies,
         ]);
-        $briefContext = $this->buildBriefContext($brief);
-        $candidateList = $this->buildCandidateList($candidates);
-        logger()->debug('[Scorer/AI] 📝 Prompt context built', [
-            'brief_context' => $briefContext,
-            'candidate_list_preview' => mb_substr($candidateList, 0, 500),
-        ]);
+
+        $profileJson = json_encode($profile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $briefJson = json_encode($briefContext, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
         $prompt = <<<PROMPT
-            You are a recruitment scoring engine. Score each candidate 0–100 on three dimensions and write a short analysis in French.
+You are an expert recruitment analyst. Your role is to produce a complete, structured candidate synthesis that gives a recruiter everything they need to make an informed decision — without reading the raw profile themselves.
 
-            ## Job brief
-            {$briefContext}
+## Job Brief
+{$briefJson}
 
-            ## Candidates
-            {$candidateList}
+## Candidate LinkedIn Profile
+{$profileJson}
 
-            ## Instructions
-            Return ONLY a valid JSON object — no prose, no markdown fences.
-            Each key is the candidate index (integer). Each value has four fields:
-            - required_skills (integer 0–100): how many required skills does the candidate demonstrably have? 100 = all, 0 = none.
-            - soft_skills (integer 0–100): how well does headline + summary reflect the required soft skills? Consider synonyms and implied traits.
-            - sector (integer 0–100): how relevant is the candidate's background to the job sector? Resolve abbreviations (IT = Information Technology).
-            - analysis (string): 2–3 sentences in French summarising the candidate's strengths and weaknesses relative to this specific brief. Be concrete and specific to the brief requirements.
+## Your Task
+Write a thorough recruiter synthesis in BOTH French and English based strictly on the data above.
+Be specific: reference actual job titles, companies, durations, skills, and degrees from the profile.
+Do NOT invent information. If something is absent from the profile, say so explicitly.
 
-            Return ONLY valid JSON. No markdown. No explanations outside the JSON.
-            Example output shape:
-            {"0":{"required_skills":85,"soft_skills":70,"sector":90,"analysis":"Profil solide avec une maîtrise de Java et Spring Boot. L'expérience en microservices correspond aux attentes du brief. Manque de visibilité sur les compétences en tests automatisés."},"1":{"required_skills":40,"soft_skills":60,"sector":75,"analysis":"Expérience pertinente dans le secteur mais compétences techniques insuffisantes par rapport au brief. Bonne orientation soft skills."}}
+Return ONLY valid JSON — no markdown fences, no text outside the JSON.
 
-            PROMPT;
+Required output shape:
+{
+  "fr": {
+    "accroche": "1 phrase percutante résumant qui est ce candidat et sa pertinence pour ce poste spécifique",
+    "parcours": "Résumé du parcours professionnel : postes occupés, entreprises, durées, progression de carrière",
+    "competences_cles": "Compétences techniques et comportementales visibles dans le profil, comparées aux exigences du brief",
+    "formation": "Diplômes, formations et certifications pertinents pour le poste",
+    "points_forts": ["point fort 1", "point fort 2", "point fort 3"],
+    "points_attention": ["point de vigilance 1", "point de vigilance 2"],
+    "verdict": "Recommandation finale : ce candidat mérite-t-il un entretien ? Justification concrète basée sur l'adéquation au brief."
+  },
+  "en": {
+    "accroche": "1 punchy sentence summarising who this candidate is and their fit for this specific role",
+    "parcours": "Summary of professional path: positions held, companies, durations, career progression",
+    "competences_cles": "Hard and soft skills visible in the profile, mapped against brief requirements",
+    "formation": "Degrees, training and certifications relevant to the role",
+    "points_forts": ["strength 1", "strength 2", "strength 3"],
+    "points_attention": ["concern 1", "concern 2"],
+    "verdict": "Final recommendation: does this candidate deserve an interview? Concrete justification based on brief fit."
+  }
+}
+PROMPT;
 
-        try {
+        $key = config('services.openrouter.key');
+        $models = config('services.openrouter.analysis_models', ['google/gemini-2.0-flash-exp:free']);
 
-            // $text = $response->json('content.0.text', '{}');
-            logger()->info('[Scorer/AI] 🚀 Sending request to OpenRouter', [
-                'model' => 'meta-llama/llama-3.1-8b-instruct',
-                'candidate_count' => $candidates->count(),
-            ]);
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer '.config('services.openrouter.key'),
-                'HTTP-Referer' => 'http://localhost',
-                'X-Title' => 'TalentAI',
-            ])->post('https://openrouter.ai/api/v1/chat/completions', [
-                'model' => 'meta-llama/llama-3.1-8b-instruct',
-                'messages' => [
-                    ['role' => 'user', 'content' => trim($prompt)],
-                ],
-                'max_tokens' => 3000,
-            ]);
-            $text = $response->json('choices.0.message.content', '{}');
-            logger()->info('[Scorer/AI] ✅ Response received from OpenRouter', [
-                'http_status' => $response->status(),
-                'ok' => $response->ok(),
-            ]);
-            $text = preg_replace('/^```(?:json)?\s*|\s*```$/s', '', trim($text));
-            logger()->debug('[Scorer/AI] 🧹 Cleaned AI response text', [
-                'cleaned' => $text,
-            ]);
-            $parsed = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
-            logger()->info('[Scorer/AI] ✅ JSON parsed successfully', [
-                'keys_returned' => array_keys($parsed),
-            ]);
+        logger()->info('[Scorer/AI] 🚀 Generating candidate synthesis', [
+            'candidate' => $candidate->full_name,
+            'brief_id' => $brief->id,
+        ]);
 
-            return $this->mapAiResponseToKeys($candidates, $parsed);
+        foreach ($models as $model) {
+            try {
+                $response = Http::withHeaders([
+                    'Authorization' => 'Bearer '.$key,
+                    'HTTP-Referer' => config('app.url', 'http://localhost'),
+                    'X-Title' => 'TalentAI',
+                ])->timeout(30)->post('https://openrouter.ai/api/v1/chat/completions', [
+                    'model' => $model,
+                    'messages' => [
+                        ['role' => 'user', 'content' => $prompt],
+                    ],
+                    'max_tokens' => 1200,
+                ]);
 
-        } catch (\Throwable $e) {
-            Log::warning('AI batch scoring failed, using neutral fallbacks.', [
-                'brief_id' => $brief->id,
-                'error' => $e->getMessage(),
-            ]);
+                if (! $response->successful()) {
+                    logger()->warning('[Scorer/AI] Model failed, trying next', [
+                        'model' => $model,
+                        'status' => $response->status(),
+                    ]);
 
-            // Graceful degradation: every candidate gets neutral AI scores.
-            return $candidates->mapWithKeys(
-                fn (Candidat $c, int $i) => [
-                    ($c->linkedin_url ?? $i) => $this->neutralAiDimensions(),
-                ]
-            )->all();
-        }
-    }
+                    continue;
+                }
 
-    /**
-     * Build a compact brief summary for the AI prompt.
-     * Only fields relevant to AI dimensions are included to save tokens.
-     */
-    private function buildBriefContext(Brief $brief): string
-    {
-        $parts = ["Title: {$brief->title}"];
+                $text = $response->json('choices.0.message.content', '');
+                $text = preg_replace('/^```(?:json)?\s*|\s*```$/s', '', trim($text));
 
-        if ($brief->sector) {
-            $parts[] = "Sector: {$brief->sector}";
-        }
-        if ($brief->required_skills) {
-            $parts[] = "Required skills: {$brief->required_skills}";
-        }
-        if ($brief->soft_skills) {
-            $parts[] = "Soft skills: {$brief->soft_skills}";
-        }
+                json_decode($text, true, 512, JSON_THROW_ON_ERROR);
 
-        return implode("\n", $parts);
-    }
+                logger()->info('[Scorer/AI] ✅ Synthesis generated', [
+                    'candidate' => $candidate->full_name,
+                    'model' => $model,
+                ]);
 
-    /**
-     * Build a compact numbered candidate list for the AI prompt.
-     * Only fields relevant to AI dimensions are included (skills, headline, summary).
-     * Summaries are capped at 300 chars to control token count.
-     */
-    private function buildCandidateList(Collection $candidates): string
-    {
-        return $candidates->values()->map(function (Candidat $c, int $i) {
-            $skills = is_array($c->skills) ? implode(', ', $c->skills) : ($c->skills ?? '');
-            $summary = mb_substr($c->summary ?? '', 0, 300);
-            $parts = ["[{$i}] {$c->full_name}"];
+                return $text;
 
-            if ($c->headline) {
-                $parts[] = "  Headline: {$c->headline}";
+            } catch (\Throwable $e) {
+                logger()->warning('[Scorer/AI] Model exception, trying next', [
+                    'model' => $model,
+                    'error' => $e->getMessage(),
+                ]);
             }
-            if ($skills) {
-                $parts[] = "  Skills: {$skills}";
-            }
-            if ($summary) {
-                $parts[] = "  Summary: {$summary}";
-            }
-
-            return implode("\n", $parts);
-        })->implode("\n\n");
-    }
-
-    /**
-     * Map the AI response (keyed by sequential index) back to linkedin_url keys
-     * so the result aligns with the deterministic scores map.
-     *
-     * @param  array<int, array{required_skills: int, soft_skills: int, sector: int, analysis: string}>  $parsed
-     * @return array<string, array{required_skills: float, soft_skills: float, sector: float, ai_analysis: string|null}>
-     */
-    private function mapAiResponseToKeys(Collection $candidates, array $parsed): array
-    {
-        $result = [];
-
-        foreach ($candidates->values() as $i => $candidate) {
-            $key = $candidate->linkedin_url ?? $i;
-            $raw = $parsed[(string) $i] ?? $parsed[$i] ?? null;
-
-            $result[$key] = $raw ? [
-                'required_skills' => (float) min(100, max(0, $raw['required_skills'] ?? 0)),
-                'soft_skills' => (float) min(100, max(0, $raw['soft_skills'] ?? 0)),
-                'sector' => (float) min(100, max(0, $raw['sector'] ?? 0)),
-                'ai_analysis' => isset($raw['analysis']) ? (string) $raw['analysis'] : null,
-            ] : $this->neutralAiDimensions();
         }
 
-        return $result;
-    }
+        logger()->warning('[Scorer/AI] ⚠ All models failed, synthesis skipped.', [
+            'candidate' => $candidate->full_name,
+        ]);
 
-    /**
-     * Neutral AI dimension scores used when the brief lacks context
-     * or when the AI call fails. 50.0 = no signal, no penalty.
-     *
-     * @return array{required_skills: float, soft_skills: float, sector: float}
-     */
-    private function neutralAiDimensions(): array
-    {
-        return ['required_skills' => 0.0, 'soft_skills' => 0.0, 'sector' => 0.0, 'ai_analysis' => null];
+        return null;
     }
 
     /**
@@ -446,12 +405,9 @@ class CandidateScoringService
     private function defaultWeights(): array
     {
         return [
-            'experience' => 25,
-            'required_skills' => 25,
-            'education' => 15,
-            'soft_skills' => 20,
-            'sector' => 10,
-            'location' => 5,
+            'experience' => 50,
+            'education' => 25,
+            'location' => 25,
         ];
     }
 
