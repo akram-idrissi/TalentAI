@@ -3,14 +3,21 @@
 namespace App\Http\Controllers\Sourcing;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ApifySourceJob;
+use App\Models\ApifyRun;
 use App\Models\Brief;
+use App\Models\BriefQueryHistory;
 use App\Models\Candidat;
 use App\Models\UserApiToken;
 use App\Services\ActivityLogger;
 use App\Services\Recruitment\ApifyCandidateImporter;
 use App\Services\Recruitment\ApifyJobDispatcher;
 use App\Services\Recruitment\BriefToQueryConverter;
+use App\Services\Recruitment\CandidateScoringService;
+use App\Services\Recruitment\QueryGeneratorService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -18,11 +25,15 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SourcingController extends Controller
 {
+    public function __construct(
+        private BriefToQueryConverter $converter,
+        private ApifyJobDispatcher $dispatcher,
+        private ApifyCandidateImporter $importer,
+        private QueryGeneratorService $queryGenerator,
+    ) {}
+
     /**
-     * Display candidats for a selected brief with their sourcing scores.
-     *
-     * Query params:
-     * - brief_id (optional): selected brief
+     * Display the sourcing page with brief list and the latest run state per brief (if any).
      */
     public function index(Request $request): Response
     {
@@ -33,7 +44,7 @@ class SourcingController extends Controller
             $briefId = $request->input('brief_id');
 
             $briefs = Brief::query()
-                ->select('id', 'title')
+                ->select('id', 'title', 'search_prompt', 'current_query', 'next_start_page')
                 ->latest()
                 ->get();
 
@@ -65,38 +76,224 @@ class SourcingController extends Controller
     }
 
     /**
-     * SSE stream: if the brief already has candidates return them from DB instantly,
-     * otherwise trigger an Apify run, poll until done, import + score, then stream
-     * each candidate as a separate SSE event.
+     * Launch a new Apify sourcing run for a brief.
      *
-     * Events emitted:
-     *   event: status   data: {"message":"..."}
-     *   event: candidate data: {...candidat fields...}
-     *   event: error    data: {"message":"..."}
-     *   event: done     data: {}
+     * POST body:
+     *   brief_id              int     required
+     *   open_to_work          bool    default: false
+     *   job_title_query       string  Boolean query for currentJobTitles (max 300 chars)
+     *   force                 bool    force new run even if one exists  default: false
+     *
+     * Returns JSON: { run_id: int } or { run_id: int, reattached: true }
      */
-    public function stream(
-        Request $request,
-        BriefToQueryConverter $converter,
-        ApifyJobDispatcher $dispatcher,
-        ApifyCandidateImporter $importer,
-    ): StreamedResponse {
+    public function launch(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'brief_id' => 'required|integer|exists:briefs,id',
+            'open_to_work' => 'nullable|boolean',
+            'job_title_query' => 'nullable|string|max:300',
+            'force' => 'nullable|boolean',
+            'start_page' => 'nullable|integer|min:1|max:100',
+            'take_pages' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        $brief = Brief::findOrFail($validated['brief_id']);
+        $force = (bool) ($validated['force'] ?? false);
+
+        // If there is already an active (non-terminal) run, reattach to it
+        if (! $force) {
+            $active = $brief->apifyRuns()
+                ->whereIn('status', ['pending', 'running'])
+                ->latest()
+                ->first();
+
+            if ($active) {
+                return response()->json(['run_id' => $active->id, 'reattached' => true]);
+            }
+        }
+
+        $token = $this->resolveToken(auth()->id());
+
+        if (! $token) {
+            return response()->json(['error' => 'Aucune clé API Apify configurée. Ajoutez-la dans les intégrations.'], 422);
+        }
+
+        $options = [
+            'open_to_work' => (bool) ($validated['open_to_work'] ?? false),
+            'job_title_query' => $validated['job_title_query'] ?? null,
+            'start_page' => (int) ($validated['start_page'] ?? $brief->next_start_page ?? 1),
+            'take_pages' => (int) ($validated['take_pages'] ?? 4),
+        ];
+
+        $actorInput = $this->converter->convert($brief, $options);
+        $run = $this->dispatcher->dispatch($brief, $actorInput, $token);
+
+        $run->update([
+            'user_id' => auth()->id(),
+            'status' => 'running',
+            'search_params' => $actorInput,
+        ]);
+
+        ApifySourceJob::dispatch($run->id);
+
+        return response()->json(['run_id' => $run->id]);
+    }
+
+    /**
+     * Generate a LinkedIn Boolean job-title query from the brief's search_prompt.
+     *
+     * POST body: { brief_id: int, search_prompt?: string }
+     * Returns JSON: { query: string }
+     */
+    public function generateQuery(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'brief_id' => 'required|integer|exists:briefs,id',
+            'search_prompt' => 'nullable|string|max:1000',
+        ]);
+
+        $brief = Brief::findOrFail($validated['brief_id']);
+        $prompt = $validated['search_prompt'] ?? $brief->search_prompt ?? '';
+
+        if (! $prompt && ! $brief->title) {
+            return response()->json(['query' => '']);
+        }
+
+        $query = $this->queryGenerator->generate($brief->title ?? '', $prompt);
+
+        // Persist to history and update the cached current_query on the brief
+        BriefQueryHistory::create(['brief_id' => $brief->id, 'query' => $query]);
+        $brief->update(['current_query' => $query]);
+
+        return response()->json(['query' => $query]);
+    }
+
+    /**
+     * Return the query history for a given brief.
+     *
+     * GET /sourcing/query-history?brief_id=X
+     * Returns JSON: { history: [{ id, query, created_at }] }
+     */
+    /**
+     * POST /sourcing/rescore
+     * Rescore a single candidate against a brief and update the pivot score.
+     * Body: { candidat_id: int, brief_id: int }
+     */
+    public function rescore(Request $request, CandidateScoringService $scorer): JsonResponse
+    {
+        $validated = $request->validate([
+            'candidat_id' => 'required|integer|exists:candidats,id',
+            'brief_id' => 'required|integer|exists:briefs,id',
+        ]);
+
+        $candidat = Candidat::findOrFail($validated['candidat_id']);
+        $brief = Brief::findOrFail($validated['brief_id']);
+
+        $result = $scorer->score($brief, $candidat);
+        $score = $result['score'];
+
+        DB::table('brief_candidat')
+            ->where('candidat_id', $candidat->id)
+            ->where('brief_id', $brief->id)
+            ->update([
+                'score' => $score,
+                'score_breakdown' => json_encode($result['breakdown']),
+                'updated_at' => now(),
+            ]);
+
+        return response()->json(['score' => round($score)]);
+    }
+
+    public function generateAnalysis(Request $request, CandidateScoringService $scorer): JsonResponse
+    {
+        $validated = $request->validate([
+            'candidat_id' => 'required|integer|exists:candidats,id',
+            'brief_id' => 'required|integer|exists:briefs,id',
+        ]);
+
+        $candidat = Candidat::findOrFail($validated['candidat_id']);
+        $brief = Brief::findOrFail($validated['brief_id']);
+
+        $analysis = $scorer->generateAnalysisPublic($brief, $candidat);
+
+        if ($analysis === null) {
+            return response()->json(['error' => 'All AI models failed. Try again later.'], 503);
+        }
+
+        DB::table('brief_candidat')
+            ->where('candidat_id', $candidat->id)
+            ->where('brief_id', $brief->id)
+            ->update(['ai_analysis' => $analysis, 'updated_at' => now()]);
+
+        return response()->json(['ai_analysis' => $analysis]);
+    }
+
+    public function queryHistory(Request $request): JsonResponse
+    {
+        $briefId = (int) $request->validate(['brief_id' => 'required|integer|exists:briefs,id'])['brief_id'];
+
+        $history = BriefQueryHistory::where('brief_id', $briefId)
+            ->latest('created_at')
+            ->limit(20)
+            ->get(['id', 'query', 'created_at']);
+
+        return response()->json(['history' => $history]);
+    }
+
+    /**
+     * Return the current state of the latest run for a given brief.
+     * Used by the frontend on brief selection to know whether to show cached results,
+     * a resume button, or the options panel for a fresh launch.
+     *
+     * GET /sourcing/run-status?brief_id=X
+     */
+    public function runStatus(Request $request): JsonResponse
+    {
         $briefId = (int) $request->query('brief_id');
 
-        /** @var ActivityLogger $logger */
-        $logger = app(ActivityLogger::class);
-        $logger->log(
-            'sourcing.stream',
-            'Démarrage du flux de sourcing SSE.',
-            ['brief_id' => $briefId],
-            [Brief::class, Candidat::class]
-        );
+        $run = ApifyRun::where('brief_id', $briefId)
+            ->latest()
+            ->first();
 
-        // Release the session lock so other requests aren't blocked during the long-running stream
-        request()->session()->save();
+        if (! $run) {
+            return response()->json(null);
+        }
 
-        return response()->stream(function () use ($briefId, $converter, $dispatcher, $importer) {
-            // Helpers to write SSE frames
+        $searchParams = $run->search_params ?? [];
+
+        return response()->json([
+            'run_id' => $run->id,
+            'status' => $run->status,
+            'candidates_imported' => $run->candidates_imported,
+            'total_items' => $run->total_items,
+            'dataset_offset' => $run->dataset_offset,
+            'created_at' => $run->created_at?->toIso8601String(),
+            'paused_at' => $run->paused_at?->toIso8601String(),
+            'start_page' => $searchParams['startPage'] ?? 1,
+            'take_pages' => $searchParams['takePages'] ?? 4,
+            'next_start_page' => $run->brief?->next_start_page ?? 1,
+        ]);
+    }
+
+    /**
+     * SSE stream for a given run_id.
+     *
+     * Behaviour:
+     *   1. Immediately streams all candidates already attached to the brief since the run started.
+     *   2. Polls the DB every 3 s for new candidates and run status changes.
+     *   3. Closes automatically when the run reaches a terminal state (succeeded/failed/paused).
+     *   4. Closing and reopening with the same run_id is safe — step 1 replays existing candidates.
+     *
+     * GET /sourcing/stream?run_id=X
+     */
+    public function stream(Request $request): StreamedResponse
+    {
+        $runId = (int) $request->query('run_id');
+
+        // Release the session lock before streaming so other requests aren't blocked
+        $request->session()->save();
+
+        return response()->stream(function () use ($runId) {
             $emit = function (string $event, array $data) {
                 echo "event: {$event}\n";
                 echo 'data: '.json_encode($data)."\n\n";
@@ -106,127 +303,213 @@ class SourcingController extends Controller
 
             set_time_limit(600);
 
-            $brief = Brief::find($briefId);
+            $run = ApifyRun::find($runId);
 
-            if (! $brief) {
-                $emit('error', ['message' => 'Brief introuvable.']);
+            if (! $run) {
+                $emit('error', ['message' => 'Run introuvable.']);
                 $emit('done', []);
 
                 return;
             }
 
-            // Resolve the user's Apify token
-            $tokenRecord = UserApiToken::where('user_id', auth()->id())
-                ->where('provider', 'apify')
-                ->first();
+            // Replay all candidates already imported for this run
+            $this->streamExistingCandidates($run, $emit);
 
-            $token = $tokenRecord?->token ?? config('services.apify.token');
+            // If the run already reached a terminal state, close immediately
+            if (in_array($run->status, ['succeeded', 'failed'])) {
+                $emit('status', ['message' => $run->status]);
+                $emit('done', ['status' => $run->status]);
 
-            if (! $token) {
-                $emit('error', ['message' => 'Aucune clé API Apify configurée. Ajoutez-la dans les intégrations.']);
+                return;
+            }
+
+            if ($run->status === 'paused') {
+                $emit('status', [
+                    'message' => 'paused',
+                    'candidates_imported' => $run->candidates_imported,
+                    'total_items' => $run->total_items,
+                ]);
                 $emit('done', []);
 
                 return;
             }
 
-            // If candidates already exist for this brief, stream them from DB
-            $existingCount = $brief->candidates()->count();
+            // Resolve Apify token for direct status fallback
+            $apifyToken = $this->resolveToken($run->user_id);
 
-            if ($existingCount > 0) {
-                $emit('status', ['message' => 'cached']);
+            // Poll DB for new candidates and status changes
+            $lastSeenAt = now()->subSeconds(2);
+            $pollIntervalSeconds = 3;
+            $maxPolls = (int) (600 / $pollIntervalSeconds);
 
-                $brief->candidates()
-                    ->select('candidats.*', 'bc.score', 'bc.score_breakdown', 'bc.sourced_at')
+            for ($i = 0; $i < $maxPolls; $i++) {
+                sleep($pollIntervalSeconds);
+
+                if (connection_aborted()) {
+                    break;
+                }
+
+                $run->refresh();
+
+                // Stream any new candidates attached since last poll
+                $newCandidates = DB::table('candidats')
                     ->join('brief_candidat as bc', 'bc.candidat_id', '=', 'candidats.id')
-                    ->where('bc.brief_id', $briefId)
-                    ->orderByDesc('bc.sourced_at')
-                    ->each(function ($c) use ($emit) {
-                        $emit('candidate', [
-                            'id' => $c->id,
-                            'full_name' => $c->full_name,
-                            'linkedin_url' => $c->linkedin_url,
-                            'current_title' => $c->current_title,
-                            'current_company' => $c->current_company,
-                            'location' => $c->location,
-                            'experience_years' => $c->experience_years,
-                            'status' => $c->status,
-                            'score' => $c->score,
-                            'score_breakdown' => is_string($c->score_breakdown) ? json_decode($c->score_breakdown, true) : $c->score_breakdown,
-                            'sourced_at' => optional($c->sourced_at)?->toDateTimeString(),
-                        ]);
-                    });
+                    ->where('bc.brief_id', $run->brief_id)
+                    ->where('bc.sourced_at', '>', $lastSeenAt)
+                    ->orderBy('bc.sourced_at')
+                    ->select('candidats.*', 'bc.score', 'bc.score_breakdown', 'bc.ai_analysis', 'bc.sourced_at')
+                    ->get();
 
-                $emit('done', []);
+                foreach ($newCandidates as $c) {
+                    $emit('candidate', $this->formatCandidate($c));
+                }
 
-                return;
-            }
+                $lastSeenAt = now()->subSeconds(1);
 
-            // No candidates yet — run Apify
-            try {
-                $emit('status', ['message' => 'starting']);
+                // Emit progress heartbeat every ~30 s (every 10 polls)
+                if ($i % 10 === 9) {
+                    $emit('status', [
+                        'message' => 'running',
+                        'candidates_imported' => $run->candidates_imported,
+                        'total_items' => $run->total_items,
+                    ]);
+                }
 
-                $query = $converter->convert($brief);
-                $run = $dispatcher->dispatch($brief, $query, $token);
+                if ($run->status === 'succeeded' || $run->status === 'failed') {
+                    $emit('done', ['status' => $run->status]);
+                    break;
+                }
 
-                $emit('status', ['message' => 'running']);
+                if ($run->status === 'paused') {
+                    $emit('status', [
+                        'message' => 'paused',
+                        'candidates_imported' => $run->candidates_imported,
+                        'total_items' => $run->total_items,
+                    ]);
+                    $emit('done', []);
+                    break;
+                }
 
-                // Poll Apify until the run finishes (max ~8 min, 5s interval)
-                $maxAttempts = 96;
-                $attempt = 0;
-                $runStatus = 'RUNNING';
+                // Every ~15 s, check Apify directly so the stream is self-sufficient
+                // even when no queue worker is running.
+                if ($i % 5 === 4 && $apifyToken && $run->run_id) {
+                    $apifyStatus = $this->fetchApifyRunStatus($run->run_id, $apifyToken);
 
-                while ($attempt < $maxAttempts) {
-                    sleep(5);
-                    $attempt++;
-
-                    $pollResponse = Http::withToken($token)
-                        ->get("https://api.apify.com/v2/actor-runs/{$run->run_id}");
-
-                    if ($pollResponse->failed()) {
-                        continue;
-                    }
-
-                    $runStatus = $pollResponse->json('data.status');
-
-                    if (in_array($runStatus, ['SUCCEEDED', 'FAILED', 'ABORTED', 'TIMED-OUT'])) {
+                    if (in_array($apifyStatus, ['FAILED', 'ABORTED', 'TIMED-OUT'])) {
+                        $run->update(['status' => 'failed']);
+                        $emit('done', ['status' => 'failed']);
                         break;
                     }
 
-                    // Heartbeat every ~30s so the connection stays alive
-                    if ($attempt % 6 === 0) {
-                        $emit('status', ['message' => 'polling']);
+                    if ($apifyStatus === 'SUCCEEDED' && $run->dataset_id) {
+                        // Import candidates directly in the SSE stream so results appear
+                        // even when no queue worker is running.
+                        $run->update(['status' => 'succeeded']);
+                        $run->refresh();
+
+                        $this->importer->streamImport($run, $apifyToken, function (array $candidate) use ($emit) {
+                            $emit('candidate', $candidate);
+                        });
+
+                        $run->refresh();
+                        $emit('status', [
+                            'message' => 'running',
+                            'candidates_imported' => $run->candidates_imported,
+                            'total_items' => $run->total_items,
+                        ]);
+                        $emit('done', ['status' => 'succeeded']);
+                        break;
                     }
                 }
-
-                if ($runStatus !== 'SUCCEEDED') {
-                    $run->update(['status' => 'failed']);
-                    $emit('error', ['message' => "Le run Apify a échoué ({$runStatus})."]);
-                    $emit('done', []);
-
-                    return;
-                }
-
-                $run->update(['status' => 'succeeded']);
-
-                $emit('status', ['message' => 'importing']);
-
-                $count = $importer->streamImport($run, $token, function (array $candidate) use ($emit) {
-                    $emit('candidate', $candidate);
-                });
-
-                $run->update(['candidates_imported' => $count]);
-
-                $emit('done', []);
-
-            } catch (\Throwable $e) {
-                logger()->error('SourcingController::stream failed', ['error' => $e->getMessage()]);
-                $emit('error', ['message' => 'Une erreur est survenue : '.$e->getMessage()]);
-                $emit('done', []);
             }
         }, 200, [
             'Content-Type' => 'text/event-stream',
             'Cache-Control' => 'no-cache',
             'X-Accel-Buffering' => 'no',
         ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Stream all candidates already attached to the brief since the run started.
+     */
+    private function streamExistingCandidates(ApifyRun $run, callable $emit): void
+    {
+        $existing = DB::table('candidats')
+            ->join('brief_candidat as bc', 'bc.candidat_id', '=', 'candidats.id')
+            ->where('bc.brief_id', $run->brief_id)
+            ->where('bc.sourced_at', '>=', $run->created_at)
+            ->orderBy('bc.sourced_at')
+            ->select('candidats.*', 'bc.score', 'bc.score_breakdown', 'bc.ai_analysis', 'bc.sourced_at')
+            ->get();
+
+        foreach ($existing as $c) {
+            $emit('candidate', $this->formatCandidate($c));
+        }
+
+        if ($existing->isNotEmpty()) {
+            $emit('status', [
+                'message' => 'running',
+                'candidates_imported' => $run->candidates_imported,
+                'total_items' => $run->total_items,
+            ]);
+        }
+    }
+
+    /**
+     * Format a DB row (stdClass from query builder) into a candidate array for the frontend.
+     */
+    private function formatCandidate(object $c): array
+    {
+        $breakdown = $c->score_breakdown ?? null;
+        if (\is_string($breakdown)) {
+            $breakdown = json_decode($breakdown, true);
+        }
+
+        return [
+            'id' => $c->id,
+            'full_name' => $c->full_name,
+            'linkedin_url' => $c->linkedin_url,
+            'current_title' => $c->current_title,
+            'current_company' => $c->current_company,
+            'location' => $c->location,
+            'experience_years' => $c->experience_years,
+            'status' => $c->status,
+            'source' => $c->source,
+            'score' => $c->score,
+            'score_breakdown' => $breakdown,
+            'sourced_at' => $c->sourced_at,
+        ];
+    }
+
+    private function fetchApifyRunStatus(string $apifyRunId, string $token): ?string
+    {
+        try {
+            $response = Http::withToken($token)
+                ->timeout(10)
+                ->get("https://api.apify.com/v2/actor-runs/{$apifyRunId}");
+
+            return $response->ok() ? ($response->json('data.status') ?? null) : null;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function resolveToken(?int $userId): ?string
+    {
+        if ($userId) {
+            $token = UserApiToken::where('user_id', $userId)
+                ->where('provider', 'apify')
+                ->value('token');
+
+            if ($token) {
+                return $token;
+            }
+        }
+
+        return config('services.apify.token') ?: null;
     }
 }
