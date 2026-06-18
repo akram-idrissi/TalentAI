@@ -22,9 +22,13 @@ export interface Candidat {
     created_at: string;
     updated_at: string;
     brief_title: string | null;
+    brief_id: number | null;
     sourcing_score: number | null;
+    profile_photo: string | null;
     score_cv: number | null;
     ai_score: number | null;
+    score?: number | null;
+    ai_analysis?: string | null;
 }
 
 export interface PaginatedCandidats {
