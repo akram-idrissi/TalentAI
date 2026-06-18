@@ -325,8 +325,8 @@ Required output shape:
 }
 PROMPT;
 
-        $key = config('services.openrouter.key');
-        $models = config('services.openrouter.analysis_models', ['google/gemini-2.0-flash-exp:free']);
+        $groqKey = config('services.groq.key');
+        $models = config('services.groq.analysis_models', ['llama-3.3-70b-versatile']);
 
         logger()->info('[Scorer/AI] 🚀 Generating candidate synthesis', [
             'candidate' => $candidate->full_name,
@@ -336,10 +336,8 @@ PROMPT;
         foreach ($models as $model) {
             try {
                 $response = Http::withHeaders([
-                    'Authorization' => 'Bearer '.$key,
-                    'HTTP-Referer' => config('app.url', 'http://localhost'),
-                    'X-Title' => 'TalentAI',
-                ])->timeout(30)->post('https://openrouter.ai/api/v1/chat/completions', [
+                    'Authorization' => 'Bearer '.$groqKey,
+                ])->timeout(30)->post('https://api.groq.com/openai/v1/chat/completions', [
                     'model' => $model,
                     'messages' => [
                         ['role' => 'user', 'content' => $prompt],
