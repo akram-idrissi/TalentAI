@@ -42,6 +42,28 @@ return [
     ],
     'openrouter' => [
         'key' => env('OPEN_ROUTER_KEY'),
+        // Free models used for LinkedIn query generation (sourcing)
+        'sourcing_models' => [
+            'nvidia/nemotron-3-super-120b-a12b:free',
+            'google/gemma-4-31b-it:free',
+            'meta-llama/llama-3.3-70b-instruct:free',
+        ],
+        // Free models used for candidate AI synthesis (analysis)
+        'analysis_models' => [
+            'nvidia/nemotron-3-super-120b-a12b:free',
+            'openrouter/owl-alpha:free',
+            'google/gemma-4-31b-it:free',
+            'nex-agi/nex-n2-pro:free',
+            'meta-llama/llama-3.3-70b-instruct:free',
+        ],
+    ],
+    'groq' => [
+        'key' => env('GROQ_API_KEY'),
+        'analysis_models' => [
+            'llama-3.3-70b-versatile',   // 1,000 req/day
+            'qwen/qwen3-32b',             // 1,000 req/day
+            'llama-3.1-8b-instant',       // 14,400 req/day — fallback
+        ],
     ],
     'assemblyai' => [
         'key' => env('ASSEMBLYAI_API_KEY'),

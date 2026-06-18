@@ -1,8 +1,10 @@
+import AiAnalysisPanel from '@/components/Candidats/AiAnalysisPanel';
 import DeleteModal from '@/components/ui/DeleteModal';
 import AppLayout from '@/layouts/app-layout';
 import type { Candidat } from '@/types/candidat';
 import { Head, Link, router } from '@inertiajs/react';
-import { ChevronLeft, ExternalLink, Pencil, Trash2 } from 'lucide-react';
+import axios from 'axios';
+import { Briefcase, ChevronLeft, ExternalLink, GraduationCap, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
@@ -45,16 +47,84 @@ function InfoRow({ label, value }: { label: string; value?: string | number | nu
     );
 }
 
+interface RawExperience {
+    position?: string;
+    companyName?: string;
+    startDate?: { text?: string };
+    endDate?: { text?: string };
+    duration?: string;
+    location?: string;
+    employmentType?: string;
+    workplaceType?: string;
+}
+
+interface RawEducation {
+    degree?: string;
+    schoolName?: string;
+    fieldOfStudy?: string;
+    period?: string;
+    startDate?: { text?: string };
+    endDate?: { text?: string };
+}
+
+interface RawCertification {
+    title?: string;
+    issuedBy?: string;
+    issuedAt?: string;
+}
+
+interface RawSkill {
+    name?: string;
+    endorsements?: string;
+}
+
+interface RawData {
+    experience?: RawExperience[];
+    education?: RawEducation[];
+    certifications?: RawCertification[];
+    skills?: RawSkill[];
+    profilePicture?: { url?: string; sizes?: { url: string; width: number; height: number }[] } | string | null;
+}
+
 interface Props {
-    candidat: Candidat;
+    candidat: Candidat & { raw_data?: RawData | null; brief_title?: string | null; brief_id?: number | null };
 }
 
 export default function ShowCandidat({ candidat }: Props) {
     const [showDelete, setShowDelete] = useState(false);
+    const [aiAnalysis, setAiAnalysis] = useState<string | null>(candidat.ai_analysis ?? null);
+    const [generating, setGenerating] = useState(false);
+
+    async function handleGenerate() {
+        if (!candidat.brief_id) return;
+        setGenerating(true);
+        try {
+            const { data } = await axios.post<{ ai_analysis: string }>(route('dashboard.sourcing.generate-analysis'), {
+                candidat_id: candidat.id,
+                brief_id: candidat.brief_id,
+            });
+            setAiAnalysis(data.ai_analysis);
+        } catch {
+            // silently fail
+        } finally {
+            setGenerating(false);
+        }
+    }
 
     const statusCfg = STATUS_CONFIG[candidat.status] ?? STATUS_CONFIG.sourced;
     const initials = avatar(candidat.full_name);
     const gradientIdx = candidat.id % AVATAR_COLORS.length;
+
+    const raw = candidat.raw_data as RawData | null;
+    const experiences: RawExperience[] = raw?.experience ?? [];
+    const educations: RawEducation[] = raw?.education ?? [];
+    const certifications: RawCertification[] = raw?.certifications ?? [];
+    const rawSkills: RawSkill[] = raw?.skills ?? [];
+    const profilePhoto = raw?.profilePicture
+        ? typeof raw.profilePicture === 'string'
+            ? raw.profilePicture
+            : (raw.profilePicture.sizes?.find((s) => s.width === 200)?.url ?? raw.profilePicture.url ?? null)
+        : null;
 
     function handleDelete() {
         router.delete(route('dashboard.candidats.destroy', candidat.id), {
@@ -83,7 +153,14 @@ export default function ShowCandidat({ candidat }: Props) {
                                 </Link>{' '}
                                 <span className="text-ds-text2">› {candidat.full_name}</span>
                             </p>
-                            <h1 className="font-heading text-ds-text text-[26px] font-bold">{candidat.full_name}</h1>
+                            <div className="flex items-center gap-2">
+                                <h1 className="font-heading text-ds-text text-[26px] font-bold">{candidat.full_name}</h1>
+                                {candidat.open_to_work && (
+                                    <span className="border-ds-green/20 bg-ds-green/10 text-ds-green rounded-full border px-2.5 py-0.5 text-[11px] font-semibold">
+                                        Open to Work
+                                    </span>
+                                )}
+                            </div>
                             {candidat.headline && <p className="text-ds-text2 mt-0.5 text-[14px]">{candidat.headline}</p>}
                         </div>
                     </div>
@@ -107,13 +184,27 @@ export default function ShowCandidat({ candidat }: Props) {
                 </div>
 
                 <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-                    {/* LEFT — identity card */}
+                    {/* LEFT column */}
                     <div className="space-y-5">
+                        {/* Identity */}
                         <div className={card}>
-                            {/* Avatar + status */}
                             <div className="mb-5 flex items-center gap-4">
+                                {profilePhoto ? (
+                                    <img
+                                        src={profilePhoto}
+                                        alt={candidat.full_name}
+                                        className="h-14 w-14 shrink-0 rounded-full object-cover"
+                                        onError={(e) => {
+                                            e.currentTarget.style.display = 'none';
+                                            if (e.currentTarget.nextElementSibling) {
+                                                (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
+                                            }
+                                        }}
+                                    />
+                                ) : null}
                                 <div
                                     className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${AVATAR_COLORS[gradientIdx]} text-[16px] font-bold text-white`}
+                                    style={profilePhoto ? { display: 'none' } : undefined}
                                 >
                                     {initials}
                                 </div>
@@ -154,7 +245,16 @@ export default function ShowCandidat({ candidat }: Props) {
                                 <div>
                                     <p className={labelCls}>Score sourcing</p>
                                     {candidat.sourcing_score != null ? (
-                                        <p className={`text-[20px] font-bold ${scoreColor(candidat.sourcing_score)}`}>{candidat.sourcing_score}</p>
+                                        <p className={`text-[26px] font-bold ${scoreColor(candidat.sourcing_score)}`}>{candidat.sourcing_score}</p>
+                                    ) : (
+                                        <p className="text-ds-text3 text-[13px]">—</p>
+                                    )}
+                                    {candidat.brief_title && <p className="text-ds-text3 mt-0.5 text-[11px]">Brief : {candidat.brief_title}</p>}
+                                </div>
+                                <div>
+                                    <p className={labelCls}>Score CV</p>
+                                    {candidat.score_cv != null ? (
+                                        <p className={`text-[26px] font-bold ${scoreColor(candidat.score_cv)}`}>{candidat.score_cv}</p>
                                     ) : (
                                         <p className="text-ds-text3 text-[13px]">—</p>
                                     )}
@@ -162,20 +262,18 @@ export default function ShowCandidat({ candidat }: Props) {
                                 <div>
                                     <p className={labelCls}>Score entretien</p>
                                     {candidat.ai_score != null ? (
-                                        <p className={`text-[20px] font-bold ${scoreColor(candidat.ai_score)}`}>{candidat.ai_score}</p>
+                                        <p className={`text-[26px] font-bold ${scoreColor(candidat.ai_score)}`}>{candidat.ai_score}</p>
                                     ) : (
                                         <p className="text-ds-text3 text-[13px]">—</p>
                                     )}
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* RIGHT — details */}
-                    <div className="space-y-5 lg:col-span-2">
+                        {/* Quick profile facts */}
                         <div className={card}>
-                            <h2 className="text-ds-text mb-4 text-[13px] font-semibold">Expérience professionnelle</h2>
-                            <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
+                            <h2 className="text-ds-text mb-4 text-[13px] font-semibold">Profil</h2>
+                            <div className="space-y-3">
                                 <InfoRow label="Poste actuel" value={candidat.current_title} />
                                 <InfoRow label="Entreprise actuelle" value={candidat.current_company} />
                                 <InfoRow
@@ -187,30 +285,126 @@ export default function ShowCandidat({ candidat }: Props) {
                                 <InfoRow label="Open to work" value={candidat.open_to_work ? 'Oui' : 'Non'} />
                             </div>
                         </div>
+                    </div>
 
+                    {/* RIGHT — rich content */}
+                    <div className="space-y-5 lg:col-span-2">
+                        {/* AI Synthesis */}
+                        <AiAnalysisPanel
+                            aiAnalysis={aiAnalysis}
+                            onGenerate={candidat.brief_id ? handleGenerate : undefined}
+                            generating={generating}
+                        />
+
+                        {/* Summary */}
                         {candidat.summary && (
                             <div className={card}>
-                                <h2 className="text-ds-text mb-3 text-[13px] font-semibold">Résumé</h2>
+                                <h2 className="text-ds-text mb-3 text-[13px] font-semibold">À propos</h2>
                                 <p className="text-ds-text2 text-[13px] leading-relaxed whitespace-pre-wrap">{candidat.summary}</p>
                             </div>
                         )}
 
-                        {candidat.skills && candidat.skills.length > 0 && (
+                        {/* Work experience */}
+                        {experiences.length > 0 && (
                             <div className={card}>
-                                <h2 className="text-ds-text mb-3 text-[13px] font-semibold">Compétences</h2>
-                                <div className="flex flex-wrap gap-2">
-                                    {candidat.skills.map((skill) => (
-                                        <span
-                                            key={skill}
-                                            className="inline-flex items-center rounded-full bg-[#6C63FF]/10 px-2.5 py-1 text-[11px] font-medium text-[#818CF8]"
-                                        >
-                                            {skill}
-                                        </span>
+                                <div className="mb-4 flex items-center gap-2">
+                                    <Briefcase size={14} className="text-ds-text3" />
+                                    <h2 className="text-ds-text text-[13px] font-semibold">Expériences professionnelles</h2>
+                                </div>
+                                <div className="space-y-4">
+                                    {experiences.map((exp, i) => (
+                                        <div key={i} className="flex gap-3">
+                                            <div className="bg-ds-accent/10 mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
+                                                <Briefcase size={13} className="text-ds-accent" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-ds-text text-[13px] font-semibold">{exp.position ?? '—'}</p>
+                                                <p className="text-ds-text2 text-[12px]">{exp.companyName ?? '—'}</p>
+                                                <div className="text-ds-text3 mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+                                                    {(exp.startDate?.text || exp.endDate?.text) && (
+                                                        <span>
+                                                            {exp.startDate?.text ?? '?'} – {exp.endDate?.text ?? 'Présent'}
+                                                        </span>
+                                                    )}
+                                                    {exp.duration && <span>· {exp.duration}</span>}
+                                                    {exp.location && <span>· {exp.location}</span>}
+                                                    {exp.employmentType &&
+                                                        exp.employmentType !== 'Permanent' &&
+                                                        exp.employmentType !== 'Full-time' && (
+                                                            <span className="border-ds-border rounded-full border px-1.5 py-0.5">
+                                                                {exp.employmentType}
+                                                            </span>
+                                                        )}
+                                                </div>
+                                            </div>
+                                        </div>
                                     ))}
                                 </div>
                             </div>
                         )}
 
+                        {/* Education */}
+                        {educations.length > 0 && (
+                            <div className={card}>
+                                <div className="mb-4 flex items-center gap-2">
+                                    <GraduationCap size={14} className="text-ds-text3" />
+                                    <h2 className="text-ds-text text-[13px] font-semibold">Formation</h2>
+                                </div>
+                                <div className="space-y-4">
+                                    {educations.map((edu, i) => (
+                                        <div key={i} className="flex gap-3">
+                                            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#34D399]/10">
+                                                <GraduationCap size={13} className="text-[#34D399]" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-ds-text text-[13px] font-semibold">{edu.schoolName ?? '—'}</p>
+                                                <p className="text-ds-text2 text-[12px]">
+                                                    {[edu.degree, edu.fieldOfStudy].filter(Boolean).join(' · ')}
+                                                </p>
+                                                {edu.period && <p className="text-ds-text3 mt-0.5 text-[11px]">{edu.period}</p>}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Skills */}
+                        {(rawSkills.length > 0 || (candidat.skills && candidat.skills.length > 0)) && (
+                            <div className={card}>
+                                <h2 className="text-ds-text mb-3 text-[13px] font-semibold">Compétences</h2>
+                                <div className="flex flex-wrap gap-2">
+                                    {(rawSkills.length > 0 ? rawSkills : (candidat.skills ?? []).map((s) => ({ name: s }))).map((skill, i) => (
+                                        <div key={i} className="flex items-center gap-1.5 rounded-full bg-[#6C63FF]/10 px-2.5 py-1">
+                                            <span className="text-[11px] font-medium text-[#818CF8]">{'name' in skill ? skill.name : skill}</span>
+                                            {'endorsements' in skill && skill.endorsements && (
+                                                <span className="text-[10px] text-[#818CF8]/60">
+                                                    {skill.endorsements.replace(' endorsements', '').replace(' endorsement', '')}
+                                                </span>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Certifications */}
+                        {certifications.length > 0 && (
+                            <div className={card}>
+                                <h2 className="text-ds-text mb-3 text-[13px] font-semibold">Certifications</h2>
+                                <div className="space-y-2">
+                                    {certifications.map((cert, i) => (
+                                        <div key={i} className="flex items-start gap-2">
+                                            <span className="text-ds-text text-[13px] font-medium">{cert.title}</span>
+                                            {cert.issuedBy && <span className="text-ds-text3 text-[12px]">— {cert.issuedBy}</span>}
+                                            {cert.issuedAt && <span className="text-ds-text3 ml-auto shrink-0 text-[11px]">{cert.issuedAt}</span>}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Metadata */}
                         <div className={card}>
                             <h2 className="text-ds-text mb-4 text-[13px] font-semibold">Métadonnées</h2>
                             <div className="grid grid-cols-2 gap-4">

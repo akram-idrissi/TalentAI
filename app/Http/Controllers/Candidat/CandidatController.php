@@ -158,10 +158,31 @@ class CandidatController extends Controller
                     'created_at' => $candidat->created_at?->toDateTimeString(),
 
                     'brief_title' => $candidat->briefs->first()?->title,
+                    'brief_id' => $candidat->briefs->first()?->id,
 
                     'sourcing_score' => $candidat->briefs->first()?->pivot?->score
                         ? round($candidat->briefs->first()->pivot->score)
                         : null,
+
+                    'ai_analysis' => $candidat->briefs->first()?->pivot?->ai_analysis,
+
+                    'profile_photo' => (function () use ($candidat) {
+                        $pic = data_get($candidat->raw_data, 'profilePicture');
+                        if (! $pic) {
+                            return null;
+                        }
+                        if (is_string($pic)) {
+                            return $pic;
+                        }
+                        $sizes = data_get($pic, 'sizes', []);
+                        foreach ($sizes as $size) {
+                            if (($size['width'] ?? 0) === 200) {
+                                return $size['url'];
+                            }
+                        }
+
+                        return data_get($pic, 'url');
+                    })(),
                 ]);
             $logger->log(
                 'candidat.index',
@@ -301,8 +322,18 @@ class CandidatController extends Controller
                 [Candidat::class]
             );
 
+            $candidat->load('briefs');
+            $firstBrief = $candidat->briefs->first();
+
             return Inertia::render('Candidats/Show', [
-                'candidat' => $candidat,
+                'candidat' => array_merge($candidat->toArray(), [
+                    'brief_title' => $firstBrief?->title,
+                    'brief_id' => $firstBrief?->id,
+                    'sourcing_score' => $firstBrief?->pivot?->score
+                        ? round($firstBrief->pivot->score)
+                        : null,
+                    'ai_analysis' => $firstBrief?->pivot?->ai_analysis,
+                ]),
             ]);
         } catch (\Throwable $e) {
             $logger->log(

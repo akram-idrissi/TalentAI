@@ -14,12 +14,18 @@ return new class extends Migration
         Schema::create('apify_runs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('brief_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->string('run_id')->unique();
             $table->string('dataset_id')->nullable()->unique();
             $table->string('status')->default('pending');
-            $table->json('meta')->nullable();
             $table->unsignedInteger('candidates_imported')->default(0);
+            $table->unsignedInteger('dataset_offset')->default(0);
+            $table->unsignedInteger('total_items')->nullable();
+            $table->json('search_params')->nullable();
+            $table->json('meta')->nullable();
+            $table->timestamp('paused_at')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

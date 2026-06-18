@@ -4,16 +4,12 @@ import type { ScoringWeights } from '@/types/brief';
 const WEIGHT_COLORS: Record<keyof ScoringWeights, { track: string; text: string; accent: string }> = {
     experience: { track: '#6C63FF', text: 'text-ds-accent', accent: '#6C63FF' },
     education: { track: '#38BDF8', text: 'text-ds-accent3', accent: '#38BDF8' },
-    sector: { track: '#34D399', text: 'text-score-high', accent: '#34D399' },
-    soft_skills: { track: '#FBBF24', text: 'text-score-mid', accent: '#FBBF24' },
     location: { track: '#9993B8', text: 'text-ds-text3', accent: '#9993B8' },
 };
 
 const WEIGHT_LABELS: Record<keyof ScoringWeights, string> = {
     experience: 'Expérience poste',
     education: 'Parcours académique',
-    sector: "Secteur d'activité",
-    soft_skills: 'Soft skills',
     location: 'Localisation',
 };
 
