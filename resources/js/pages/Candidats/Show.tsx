@@ -1,7 +1,9 @@
+import AiAnalysisPanel from '@/components/Candidats/AiAnalysisPanel';
 import DeleteModal from '@/components/ui/DeleteModal';
 import AppLayout from '@/layouts/app-layout';
 import type { Candidat } from '@/types/candidat';
 import { Head, Link, router } from '@inertiajs/react';
+import axios from 'axios';
 import { Briefcase, ChevronLeft, ExternalLink, GraduationCap, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -90,6 +92,24 @@ interface Props {
 
 export default function ShowCandidat({ candidat }: Props) {
     const [showDelete, setShowDelete] = useState(false);
+    const [aiAnalysis, setAiAnalysis] = useState<string | null>(candidat.ai_analysis ?? null);
+    const [generating, setGenerating] = useState(false);
+
+    async function handleGenerate() {
+        if (!candidat.brief_id) return;
+        setGenerating(true);
+        try {
+            const { data } = await axios.post<{ ai_analysis: string }>(route('dashboard.sourcing.generate-analysis'), {
+                candidat_id: candidat.id,
+                brief_id: candidat.brief_id,
+            });
+            setAiAnalysis(data.ai_analysis);
+        } catch {
+            // silently fail
+        } finally {
+            setGenerating(false);
+        }
+    }
 
     const statusCfg = STATUS_CONFIG[candidat.status] ?? STATUS_CONFIG.sourced;
     const initials = avatar(candidat.full_name);
@@ -269,6 +289,13 @@ export default function ShowCandidat({ candidat }: Props) {
 
                     {/* RIGHT — rich content */}
                     <div className="space-y-5 lg:col-span-2">
+                        {/* AI Synthesis */}
+                        <AiAnalysisPanel
+                            aiAnalysis={aiAnalysis}
+                            onGenerate={candidat.brief_id ? handleGenerate : undefined}
+                            generating={generating}
+                        />
+
                         {/* Summary */}
                         {candidat.summary && (
                             <div className={card}>

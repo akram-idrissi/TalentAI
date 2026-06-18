@@ -1,3 +1,4 @@
+import AiAnalysisPanel from '@/components/Candidats/AiAnalysisPanel';
 import DeleteModal from '@/components/ui/DeleteModal';
 import FilterPanel, { FilterEntry } from '@/components/ui/FilterPanel';
 import SkeletonTable from '@/components/ui/SkeletonTable';
@@ -6,7 +7,7 @@ import AppLayout from '@/layouts/app-layout';
 import type { Candidat, IndexCandidatProps } from '@/types/candidat';
 import { Head, Link, router } from '@inertiajs/react';
 import axios from 'axios';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ExternalLink, Plus, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ExternalLink, Plus, RefreshCw, Sparkles, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 
@@ -141,12 +142,37 @@ export default function Index({ candidats, filters, briefs }: IndexCandidatProps
     const { t } = useI18n();
     const [search] = useState(filters.search ?? '');
     const [deletingCandidat, setDeletingCandidat] = useState<Candidat | null>(null);
+    const [analysisCandidat, setAnalysisCandidat] = useState<Candidat | null>(null);
+    const [analysisMap, setAnalysisMap] = useState<Record<number, string>>({});
+    const [generatingId, setGeneratingId] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [activeFilters, setActiveFilters] = useState<FilterEntry[]>(Array.isArray(filters) ? filters : []);
     type SortKey = 'sourcing_score' | 'score_cv' | 'score_interview';
     const [sortKey, setSortKey] = useState<SortKey | null>(null);
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
     const [rescoringId, setRescoringId] = useState<number | null>(null);
+
+    async function handleSparkle(candidat: Candidat) {
+        const existingAnalysis = analysisMap[candidat.id] ?? candidat.ai_analysis;
+        if (existingAnalysis) {
+            setAnalysisCandidat({ ...candidat, ai_analysis: existingAnalysis });
+            return;
+        }
+        if (!candidat.brief_id) return;
+        setGeneratingId(candidat.id);
+        try {
+            const { data } = await axios.post<{ ai_analysis: string }>(route('dashboard.sourcing.generate-analysis'), {
+                candidat_id: candidat.id,
+                brief_id: candidat.brief_id,
+            });
+            setAnalysisMap((prev) => ({ ...prev, [candidat.id]: data.ai_analysis }));
+            setAnalysisCandidat({ ...candidat, ai_analysis: data.ai_analysis });
+        } catch {
+            toast.error('Erreur lors de la génération de la synthèse.');
+        } finally {
+            setGeneratingId(null);
+        }
+    }
 
     async function handleRescore(candidat: Candidat) {
         if (!candidat.brief_id) return;
@@ -510,6 +536,42 @@ export default function Index({ candidats, filters, briefs }: IndexCandidatProps
                                                         </Link>
                                                         {candidat.brief_id && (
                                                             <button
+                                                                onClick={() => handleSparkle(candidat)}
+                                                                disabled={generatingId === candidat.id}
+                                                                title={
+                                                                    (analysisMap[candidat.id] ?? candidat.ai_analysis)
+                                                                        ? 'Voir la synthèse IA'
+                                                                        : 'Générer la synthèse IA'
+                                                                }
+                                                                className={`border-ds-border flex h-7 w-7 items-center justify-center rounded-xl border transition disabled:opacity-40 ${
+                                                                    (analysisMap[candidat.id] ?? candidat.ai_analysis)
+                                                                        ? 'text-ds-accent border-ds-accent/30'
+                                                                        : 'text-ds-text3 hover:border-ds-accent/40 hover:text-ds-accent'
+                                                                }`}
+                                                            >
+                                                                {generatingId === candidat.id ? (
+                                                                    <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                                                                        <circle
+                                                                            className="opacity-25"
+                                                                            cx="12"
+                                                                            cy="12"
+                                                                            r="10"
+                                                                            stroke="currentColor"
+                                                                            strokeWidth="4"
+                                                                        />
+                                                                        <path
+                                                                            className="opacity-75"
+                                                                            fill="currentColor"
+                                                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                                                                        />
+                                                                    </svg>
+                                                                ) : (
+                                                                    <Sparkles size={12} />
+                                                                )}
+                                                            </button>
+                                                        )}
+                                                        {candidat.brief_id && (
+                                                            <button
                                                                 onClick={() => handleRescore(candidat)}
                                                                 disabled={rescoringId === candidat.id}
                                                                 title="Recalculer le score"
@@ -540,6 +602,30 @@ export default function Index({ candidats, filters, briefs }: IndexCandidatProps
                         onConfirm={handleDelete}
                         onCancel={() => setDeletingCandidat(null)}
                     />
+                )}
+
+                {analysisCandidat && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+                        <div className="bg-ds-surface border-ds-border w-full max-w-xl overflow-hidden rounded-2xl border shadow-xl">
+                            <div className="border-ds-border flex items-center justify-between border-b px-5 py-4">
+                                <div>
+                                    <h3 className="font-heading text-ds-text text-[14px] font-semibold">{analysisCandidat.full_name}</h3>
+                                    <p className="text-ds-text3 mt-0.5 text-[12px]">
+                                        {analysisCandidat.current_title ?? analysisCandidat.brief_title ?? '—'}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setAnalysisCandidat(null)}
+                                    className="text-ds-text3 hover:text-ds-text flex h-7 w-7 items-center justify-center rounded-lg transition"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+                            <div className="max-h-[70vh] overflow-y-auto p-4">
+                                <AiAnalysisPanel aiAnalysis={analysisMap[analysisCandidat.id] ?? analysisCandidat.ai_analysis} />
+                            </div>
+                        </div>
+                    </div>
                 )}
             </AppLayout>
         </>

@@ -164,6 +164,8 @@ class CandidatController extends Controller
                         ? round($candidat->briefs->first()->pivot->score)
                         : null,
 
+                    'ai_analysis' => $candidat->briefs->first()?->pivot?->ai_analysis,
+
                     'profile_photo' => (function () use ($candidat) {
                         $pic = data_get($candidat->raw_data, 'profilePicture');
                         if (! $pic) {
@@ -330,6 +332,7 @@ class CandidatController extends Controller
                     'sourcing_score' => $firstBrief?->pivot?->score
                         ? round($firstBrief->pivot->score)
                         : null,
+                    'ai_analysis' => $firstBrief?->pivot?->ai_analysis,
                 ]),
             ]);
         } catch (\Throwable $e) {
