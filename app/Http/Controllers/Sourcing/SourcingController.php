@@ -134,6 +134,20 @@ class SourcingController extends Controller
             'search_params' => $actorInput,
         ]);
 
+        // Persist the query used (whether AI-generated or manually edited)
+        $queryUsed = $validated['job_title_query'] ?? null;
+        if ($queryUsed) {
+            $lastHistory = BriefQueryHistory::where('brief_id', $brief->id)
+                ->latest('created_at')
+                ->value('query');
+
+            if ($lastHistory !== $queryUsed) {
+                BriefQueryHistory::create(['brief_id' => $brief->id, 'query' => $queryUsed]);
+            }
+
+            $brief->update(['current_query' => $queryUsed]);
+        }
+
         ApifySourceJob::dispatch($run->id);
 
         return response()->json(['run_id' => $run->id]);
