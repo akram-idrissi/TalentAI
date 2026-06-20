@@ -6,6 +6,7 @@ use App\Enums\CandidatStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Brief;
 use App\Models\Candidat;
+use App\Models\Interview;
 use App\Services\ActivityLogger;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -485,6 +486,178 @@ class CandidatController extends Controller
             return Inertia::render('Fallback', [
                 'error' => 'Impossible de supprimer ce candidat.',
             ]);
+        }
+    }
+
+    /**
+     * Display the interview history for the specified candidat.
+     *
+     * @param  Candidat  $candidat  Route-model-bound Candidat instance
+     * @return Response Inertia page — Candidats/Historique — or Candidats/Fallback on failure
+     */
+    public function historique(Candidat $candidat): Response
+    {
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $candidat->load([
+                'interviews' => function ($query) {
+                    $query
+                        ->with([
+                            'brief:id,title,sector,contract_type',
+                            'interviewer:id,name,email',
+                            'transcription:interview_id,analysis_score,analysis_verdict,analysis_status',
+                            'report:interview_id,score_global,verdict,strengths,watch_points,ai_recommendation',
+                            'decisionBy:id,name',
+                        ])
+                        ->orderByDesc('scheduled_at');
+                },
+            ]);
+
+            $interviews = $candidat->interviews->map(fn ($interview) => [
+                'id' => $interview->id,
+                'platform' => $interview->platform,
+                'status' => $interview->status,
+                'scheduled_at' => $interview->scheduled_at?->toDateTimeString(),
+                'completed_at' => $interview->completed_at?->toDateTimeString(),
+                'decision' => $interview->decision,
+                'decision_comment' => $interview->decision_comment,
+                'decision_at' => $interview->decision_at?->toDateTimeString(),
+
+                'brief' => $interview->brief ? [
+                    'id' => $interview->brief->id,
+                    'title' => $interview->brief->title,
+                    'sector' => $interview->brief->sector,
+                    'contract_type' => $interview->brief->contract_type,
+                ] : null,
+
+                'interviewer' => $interview->interviewer ? [
+                    'id' => $interview->interviewer->id,
+                    'name' => $interview->interviewer->name,
+                    'email' => $interview->interviewer->email,
+                ] : null,
+
+                'decision_by' => $interview->decisionBy ? [
+                    'id' => $interview->decisionBy->id,
+                    'name' => $interview->decisionBy->name,
+                ] : null,
+
+                'ai_score' => $interview->transcription?->analysis_score,
+                'ai_verdict' => $interview->transcription?->analysis_verdict,
+
+                'report' => $interview->report ? [
+                    'score_global' => $interview->report->score_global,
+                    'verdict' => $interview->report->verdict,
+                    'strengths' => $interview->report->strengths,
+                    'watch_points' => $interview->report->watch_points,
+                    'ai_recommendation' => $interview->report->ai_recommendation,
+                ] : null,
+            ]);
+
+            $logger->log(
+                'candidat.historique',
+                "Consultation de l'historique des entretiens du candidat « {$candidat->full_name} » (ID : {$candidat->id}).",
+                ['candidat_id' => $candidat->id, 'interviews_count' => $interviews->count()],
+                [Candidat::class]
+            );
+
+            return Inertia::render('Candidats/Historique', [
+                'candidat' => [
+                    'id' => $candidat->id,
+                    'full_name' => $candidat->full_name,
+                    'headline' => $candidat->headline,
+                    'location' => $candidat->location,
+                    'current_title' => $candidat->current_title,
+                    'current_company' => $candidat->current_company,
+                    'linkedin_url' => $candidat->linkedin_url,
+                    'status' => $candidat->status,
+                    'open_to_work' => $candidat->open_to_work,
+                    'profile_photo' => (function () use ($candidat) {
+                        $pic = data_get($candidat->raw_data, 'profilePicture');
+                        if (! $pic) {
+                            return null;
+                        }
+                        if (is_string($pic)) {
+                            return $pic;
+                        }
+                        $sizes = data_get($pic, 'sizes', []);
+                        foreach ($sizes as $size) {
+                            if (($size['width'] ?? 0) === 200) {
+                                return $size['url'];
+                            }
+                        }
+
+                        return data_get($pic, 'url');
+                    })(),
+                ],
+                'interviews' => $interviews,
+            ]);
+
+        } catch (\Throwable $e) {
+            $logger->log(
+                'candidat.historique.error',
+                "Erreur lors de la consultation de l'historique du candidat (ID : {$candidat->id}) : ".$e->getMessage(),
+                ['candidat_id' => $candidat->id, 'exception' => $e->getMessage()],
+                [Candidat::class]
+            );
+
+            return Inertia::render('Fallback', [
+                'error' => "Impossible d'afficher l'historique de ce candidat.",
+            ]);
+        }
+    }
+
+    /**
+     * Record or update the recruiter's decision (accepted/rejected/pending) for an interview.
+     *
+     * @param  Request  $request  Must contain `decision` (accepted|rejected|pending) and optional `decision_comment`
+     * @param  Interview  $interview  Interview being decided on
+     * @return RedirectResponse Redirects back with a flash message
+     */
+    public function decide(Request $request, Interview $interview): RedirectResponse
+    {
+        $this->authorize('interviews.decide');
+
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $validated = $request->validate([
+                'decision' => ['required', 'in:accepted,rejected,pending'],
+                'decision_comment' => ['nullable', 'string', 'max:2000'],
+            ]);
+
+            $isReset = $validated['decision'] === 'pending';
+
+            $interview->update([
+                'decision' => $validated['decision'],
+                'decision_comment' => $isReset ? null : ($validated['decision_comment'] ?? null),
+                'decision_by' => $isReset ? null : auth()->id(),
+                'decision_at' => $isReset ? null : now(),
+            ]);
+
+            $logger->log(
+                'interview.decide',
+                "Décision {$validated['decision']} enregistrée pour l'entretien (ID : {$interview->id}).",
+                ['interview_id' => $interview->id, 'decision' => $validated['decision']],
+                [Interview::class]
+            );
+
+            return back()->with('success', $isReset
+                ? 'Décision réinitialisée.'
+                : 'Décision enregistrée avec succès.');
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            $logger->log(
+                'interview.decide.error',
+                "Erreur lors de l'enregistrement de la décision (ID : {$interview->id}) : ".$e->getMessage(),
+                ['interview_id' => $interview->id, 'exception' => $e->getMessage()],
+                [Interview::class]
+            );
+
+            return back()->with('error', "Impossible d'enregistrer la décision.");
         }
     }
 }

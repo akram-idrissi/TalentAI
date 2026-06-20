@@ -44,6 +44,14 @@ return new class extends Migration
             $table->foreign('interviewer_id')
                 ->references('id')
                 ->on('users');
+            $table->enum('decision', ['accepted', 'rejected', 'pending'])
+                ->default('pending');
+
+            $table->text('decision_comment')->nullable();
+            $table->unsignedBigInteger('decision_by')->nullable();
+            $table->timestamp('decision_at')->nullable();
+
+            $table->foreign('decision_by')->references('id')->on('users')->nullOnDelete();
 
             $table->timestamps();
             $table->softDeletes();

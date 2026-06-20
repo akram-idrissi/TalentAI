@@ -77,6 +77,7 @@ return [
         'approve' => 'Approve',
         'export' => 'Export',
         'manage' => 'Manage',
+        'decide' => 'Decide',
     ],
 
     'create_modal' => [
