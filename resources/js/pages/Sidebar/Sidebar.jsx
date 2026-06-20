@@ -213,7 +213,8 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                             icon: BarChart3,
                             route: 'dashboard.reports',
                         },
-                        can('historique.view') && {
+                        // can('historique.view') &&
+                        {
                             id: 'historique',
                             label: t('sidebar.interviews.historique'),
                             icon: Clock,

@@ -1,4 +1,5 @@
 import { PLATFORM_LABEL, STATUS_CFG, VERDICT_CFG } from '@/constants/interviews';
+import { useI18n } from '@/hooks/useI18n';
 import { Interview } from '@/types/candidat';
 import { Award, Calendar, Clock, MessageSquare, Monitor, User } from 'lucide-react';
 import { useState } from 'react';
@@ -13,13 +14,20 @@ function formatDate(iso: string | null) {
         year: 'numeric',
     });
 }
+
 export function InterviewCard({ interview }: { interview: Interview }) {
+    const { t } = useI18n();
     const [showForm, setShowForm] = useState(false);
 
     const statusCfg = STATUS_CFG[interview.status] ?? { label: interview.status, cls: '' };
     const verdictCfg = interview.report ? VERDICT_CFG[interview.report.verdict] : null;
 
-    const decisionLabel = interview.decision === 'accepted' ? 'Accepté' : interview.decision === 'rejected' ? 'Refusé' : null;
+    const decisionLabel =
+        interview.decision === 'accepted'
+            ? t('historique.index.decision.accepted')
+            : interview.decision === 'rejected'
+              ? t('historique.index.decision.rejected')
+              : null;
 
     const decisionCls =
         interview.decision === 'accepted' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-ds-red/10 text-ds-red border-ds-red/20';
@@ -63,7 +71,7 @@ export function InterviewCard({ interview }: { interview: Interview }) {
                     <span className="text-ds-text3 flex items-center gap-1.5 text-[12px]">
                         <Award size={12} className="text-ds-accent" />
                         <span className="text-ds-accent font-medium">{interview.ai_score}/100</span>
-                        <span className="text-ds-text3">IA</span>
+                        <span className="text-ds-text3">{t('historique.interview_card.ai_label')}</span>
                     </span>
                 )}
             </div>
@@ -71,7 +79,9 @@ export function InterviewCard({ interview }: { interview: Interview }) {
             {/* AI recommendation */}
             {interview.report?.ai_recommendation && (
                 <div className="border-ds-border bg-ds-bg mb-4 rounded-xl border p-3">
-                    <p className="text-ds-text3 mb-1 text-[11px] font-medium tracking-wide uppercase">Recommandation IA</p>
+                    <p className="text-ds-text3 mb-1 text-[11px] font-medium tracking-wide uppercase">
+                        {t('historique.interview_card.ai_recommendation')}
+                    </p>
                     <p className="text-ds-text2 line-clamp-3 text-[12px] leading-relaxed">{interview.report.ai_recommendation}</p>
                 </div>
             )}
@@ -80,7 +90,9 @@ export function InterviewCard({ interview }: { interview: Interview }) {
             {interview.decision !== 'pending' && !showForm && (
                 <div className="border-ds-border bg-ds-bg mb-4 rounded-xl border p-3">
                     <div className="mb-2 flex items-center justify-between">
-                        <p className="text-ds-text3 text-[11px] font-medium tracking-wide uppercase">Décision du recruteur</p>
+                        <p className="text-ds-text3 text-[11px] font-medium tracking-wide uppercase">
+                            {t('historique.interview_card.recruiter_decision')}
+                        </p>
                         <div className="flex items-center gap-2">
                             {interview.decision_at && (
                                 <span className="text-ds-text3 flex items-center gap-1 text-[11px]">
@@ -88,7 +100,11 @@ export function InterviewCard({ interview }: { interview: Interview }) {
                                     {formatDate(interview.decision_at)}
                                 </span>
                             )}
-                            {interview.decision_by && <span className="text-ds-text3 text-[11px]">par {interview.decision_by.name}</span>}
+                            {interview.decision_by && (
+                                <span className="text-ds-text3 text-[11px]">
+                                    {t('historique.interview_card.decided_by').replace('{name}', interview.decision_by.name)}
+                                </span>
+                            )}
                         </div>
                     </div>
                     {interview.decision_comment && (
@@ -109,7 +125,7 @@ export function InterviewCard({ interview }: { interview: Interview }) {
                     onClick={() => setShowForm(true)}
                     className="border-ds-border text-ds-text3 hover:border-ds-accent/40 hover:text-ds-accent mt-1 w-full rounded-lg border py-2 text-[12px] font-medium transition"
                 >
-                    {interview.decision === 'pending' ? '+ Saisir une décision' : '✎ Modifier la décision'}
+                    {interview.decision === 'pending' ? t('historique.interview_card.actions.add') : t('historique.interview_card.actions.edit')}
                 </button>
             )}
         </div>

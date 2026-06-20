@@ -1,30 +1,13 @@
 import FilterPanel, { FilterEntry, FilterField } from '@/components/ui/FilterPanel';
 import { AVATAR_COLORS } from '@/constants/historique';
 import { PLATFORM_LABEL } from '@/constants/interviews';
+import { useI18n } from '@/hooks/useI18n';
 import AppLayout from '@/layouts/app-layout';
 import { PaginatedInterviews, Props } from '@/types/historique';
 import { entriesToParams, filtersToEntries, formatDate, scoreColor } from '@/utils/historique';
 import { Head, Link, router } from '@inertiajs/react';
 import { Award, Briefcase, Calendar, ChevronLeft, ChevronRight, Clock, ExternalLink, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
-
-const DECISION_CFG = {
-    accepted: {
-        label: 'Accepté',
-        cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-        icon: <ThumbsUp size={11} />,
-    },
-    rejected: {
-        label: 'Refusé',
-        cls: 'bg-ds-red/10 text-ds-red border-ds-red/20',
-        icon: <ThumbsDown size={11} />,
-    },
-    pending: {
-        label: 'En attente',
-        cls: 'bg-ds-text3/10 text-ds-text3 border-ds-text3/20',
-        icon: <Clock size={11} />,
-    },
-} as const;
 
 function avatar(name: string, index: number, photo: string | null) {
     const initials = name
@@ -46,13 +29,10 @@ function avatar(name: string, index: number, photo: string | null) {
     );
 }
 
-/** Convert the server-supplied flat filters object into FilterEntry[] for FilterPanel's initial state. */
-
-/** Convert FilterPanel's FilterEntry[] back into a flat query-param object for router.get(). */
-
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
 function Pagination({ meta, params }: { meta: PaginatedInterviews; params: Record<string, string> }) {
+    const { t } = useI18n();
     const { current_page, last_page, from, to, total } = meta;
     if (last_page <= 1) return null;
 
@@ -71,9 +51,14 @@ function Pagination({ meta, params }: { meta: PaginatedInterviews; params: Recor
     const visible = pages.filter((p) => p === 1 || p === last_page || Math.abs(p - current_page) <= 2);
     const btn = 'flex h-7 min-w-[28px] items-center justify-center rounded-lg border px-2 text-[12px] transition';
 
+    const rangeLabel =
+        from != null && to != null
+            ? t('historique.index.pagination.range').replace('{from}', String(from)).replace('{to}', String(to)).replace('{total}', String(total))
+            : t('historique.index.pagination.count').replace('{total}', String(total));
+
     return (
         <div className="mt-4 flex items-center justify-between px-5 pb-4 text-[13px]">
-            <p className="text-ds-text3">{from != null && to != null ? `${from}–${to} sur ${total} entretiens` : `${total} entretiens`}</p>
+            <p className="text-ds-text3">{rangeLabel}</p>
             <div className="flex items-center gap-1">
                 <button
                     onClick={() => goTo(current_page - 1)}
@@ -108,29 +93,48 @@ function Pagination({ meta, params }: { meta: PaginatedInterviews; params: Recor
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function HistoriqueIndex({ interviews, briefs, filters: initialFilters }: Props) {
+    const { t } = useI18n();
     const [activeFilters, setActiveFilters] = useState<FilterEntry[]>(filtersToEntries(initialFilters));
     const [loading, setLoading] = useState(false);
 
+    const DECISION_CFG = {
+        accepted: {
+            label: t('historique.index.decision.accepted'),
+            cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+            icon: <ThumbsUp size={11} />,
+        },
+        rejected: {
+            label: t('historique.index.decision.rejected'),
+            cls: 'bg-ds-red/10 text-ds-red border-ds-red/20',
+            icon: <ThumbsDown size={11} />,
+        },
+        pending: {
+            label: t('historique.index.decision.pending'),
+            cls: 'bg-ds-text3/10 text-ds-text3 border-ds-text3/20',
+            icon: <Clock size={11} />,
+        },
+    } as const;
+
     const FILTER_FIELDS: FilterField[] = [
-        { key: 'candidat_name', label: 'Candidat', type: 'text' },
+        { key: 'candidat_name', label: t('historique.index.filters.fields.candidat'), type: 'text' },
         {
             key: 'brief_id',
-            label: 'Brief',
+            label: t('historique.index.filters.fields.brief'),
             type: 'select',
             options: briefs.map((b) => ({ value: b.id, label: b.title })),
         },
         {
             key: 'decision',
-            label: 'Décision',
+            label: t('historique.index.filters.fields.decision'),
             type: 'select',
             options: [
-                { value: 'accepted', label: 'Accepté' },
-                { value: 'rejected', label: 'Refusé' },
-                { value: 'pending', label: 'En attente' },
+                { value: 'accepted', label: t('historique.index.decision.accepted') },
+                { value: 'rejected', label: t('historique.index.decision.rejected') },
+                { value: 'pending', label: t('historique.index.decision.pending') },
             ],
         },
-        { key: 'date_from', label: 'Date début', type: 'date' },
-        { key: 'date_to', label: 'Date fin', type: 'date' },
+        { key: 'date_from', label: t('historique.index.filters.fields.date_from'), type: 'date' },
+        { key: 'date_to', label: t('historique.index.filters.fields.date_to'), type: 'date' },
     ];
 
     const appliedParams = useMemo(() => entriesToParams(activeFilters), [activeFilters]);
@@ -153,21 +157,27 @@ export default function HistoriqueIndex({ interviews, briefs, filters: initialFi
         return v && String(v).trim() !== '';
     }).length;
 
+    const totalLabel =
+        interviews.total !== 1
+            ? t('historique.index.total_plural').replace('{count}', String(interviews.total))
+            : t('historique.index.total').replace('{count}', String(interviews.total));
+
+    const activeFiltersLabel =
+        activeCount > 1
+            ? t('historique.index.active_filters_plural').replace('{count}', String(activeCount))
+            : t('historique.index.active_filters').replace('{count}', String(activeCount));
+
     return (
         <AppLayout>
-            <Head title="Historique des candidatures" />
+            <Head title={t('historique.index.title')} />
 
             <div className="bg-ds-bg min-h-full px-6 py-8">
                 {/* Header */}
                 <div className="mb-6">
-                    <h1 className="font-heading text-ds-text text-[26px] font-bold">Historique des candidatures</h1>
+                    <h1 className="font-heading text-ds-text text-[26px] font-bold">{t('historique.index.title')}</h1>
                     <p className="text-ds-text2 mt-1 text-[14px]">
-                        {interviews.total} entretien{interviews.total !== 1 ? 's' : ''} au total
-                        {activeCount > 0 && (
-                            <span className="text-ds-accent ml-1">
-                                · {activeCount} filtre{activeCount > 1 ? 's' : ''} actif{activeCount > 1 ? 's' : ''}
-                            </span>
-                        )}
+                        {totalLabel}
+                        {activeCount > 0 && <span className="text-ds-accent ml-1">· {activeFiltersLabel}</span>}
                     </p>
                 </div>
 
@@ -188,11 +198,9 @@ export default function HistoriqueIndex({ interviews, briefs, filters: initialFi
                         <div className="bg-ds-accent/10 mb-4 flex h-12 w-12 items-center justify-center rounded-full">
                             <Clock size={22} className="text-ds-accent" />
                         </div>
-                        <p className="text-ds-text mb-1 text-[15px] font-semibold">Aucun entretien trouvé</p>
+                        <p className="text-ds-text mb-1 text-[15px] font-semibold">{t('historique.index.empty.title')}</p>
                         <p className="text-ds-text3 text-[13px]">
-                            {activeCount > 0
-                                ? 'Aucun résultat pour ces filtres. Essayez de les réinitialiser.'
-                                : "Aucun entretien n'a encore été enregistré."}
+                            {activeCount > 0 ? t('historique.index.empty.no_results') : t('historique.index.empty.no_data')}
                         </p>
                     </div>
                 )}
@@ -204,7 +212,16 @@ export default function HistoriqueIndex({ interviews, briefs, filters: initialFi
                             <table className="w-full border-collapse text-[13px]">
                                 <thead>
                                     <tr className="border-ds-border border-b">
-                                        {['CANDIDAT', 'BRIEF', 'DATE', 'PLATEFORME', 'SCORE IA', 'DÉCISION', 'DÉCIDÉ PAR', ''].map((col, i) => (
+                                        {[
+                                            t('historique.index.columns.candidat'),
+                                            t('historique.index.columns.brief'),
+                                            t('historique.index.columns.date'),
+                                            t('historique.index.columns.platform'),
+                                            t('historique.index.columns.ai_score'),
+                                            t('historique.index.columns.decision'),
+                                            t('historique.index.columns.decided_by'),
+                                            '',
+                                        ].map((col, i) => (
                                             <th
                                                 key={i}
                                                 className="text-ds-text3 px-5 py-3.5 text-left text-[10px] font-semibold tracking-[0.8px] uppercase"
@@ -320,7 +337,7 @@ export default function HistoriqueIndex({ interviews, briefs, filters: initialFi
                                                     <Link
                                                         href={route('dashboard.candidats.historique', interview.candidat?.id)}
                                                         className="border-ds-border text-ds-text3 hover:border-ds-accent/40 hover:text-ds-accent flex h-7 w-7 items-center justify-center rounded-xl border transition"
-                                                        title="Voir l'historique du candidat"
+                                                        title={t('historique.index.actions.view_candidat_history')}
                                                     >
                                                         <Briefcase size={12} />
                                                     </Link>

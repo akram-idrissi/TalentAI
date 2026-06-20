@@ -1,10 +1,12 @@
 import { InterviewCard } from '@/components/Candidats/InterviewCard';
+import { useI18n } from '@/hooks/useI18n';
 import AppLayout from '@/layouts/app-layout';
 import { CandidatHistoryProps } from '@/types/candidat';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { Briefcase, Calendar, ChevronLeft, ExternalLink, MapPin } from 'lucide-react';
 
 export default function Historique({ candidat, interviews }: CandidatHistoryProps) {
+    const { t } = useI18n();
     const { props } = usePage<{ flash?: { success?: string } }>();
     const flash = props.flash;
 
@@ -14,7 +16,7 @@ export default function Historique({ candidat, interviews }: CandidatHistoryProp
 
     return (
         <AppLayout>
-            <Head title={`Historique — ${candidat.full_name}`} />
+            <Head title={t('historique.candidat.title').replace('{name}', candidat.full_name)} />
 
             <div className="bg-ds-bg min-h-full px-6 py-8">
                 {/* Flash */}
@@ -35,12 +37,12 @@ export default function Historique({ candidat, interviews }: CandidatHistoryProp
                     <div>
                         <p className="text-ds-text3 mb-1 text-[12px]">
                             <Link href={route('dashboard.candidats.index')} className="hover:text-ds-text2 transition">
-                                Candidats
+                                {t('historique.candidat.breadcrumb.candidats')}
                             </Link>{' '}
-                            <span className="text-ds-text2">› Historique</span>
+                            <span className="text-ds-text2">› {t('historique.candidat.breadcrumb.historique')}</span>
                         </p>
-                        <h1 className="font-heading text-ds-text text-[26px] font-bold">Historique des candidatures</h1>
-                        <p className="text-ds-text2 mt-1 text-[14px]">Tous les entretiens et décisions associés à ce candidat.</p>
+                        <h1 className="font-heading text-ds-text text-[26px] font-bold">{t('historique.candidat.heading')}</h1>
+                        <p className="text-ds-text2 mt-1 text-[14px]">{t('historique.candidat.subtitle')}</p>
                     </div>
                 </div>
 
@@ -80,7 +82,7 @@ export default function Historique({ candidat, interviews }: CandidatHistoryProp
                                 )}
                                 {candidat.open_to_work && (
                                     <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
-                                        ✓ Open to work
+                                        {t('historique.candidat.open_to_work')}
                                     </span>
                                 )}
                             </div>
@@ -94,29 +96,31 @@ export default function Historique({ candidat, interviews }: CandidatHistoryProp
                                     className="border-ds-border text-ds-text3 hover:border-ds-accent/40 hover:text-ds-accent mt-4 flex w-full items-center justify-center gap-1.5 rounded-lg border py-2 text-[12px] font-medium transition"
                                 >
                                     <ExternalLink size={12} />
-                                    Voir le profil LinkedIn
+                                    {t('historique.candidat.linkedin_link')}
                                 </a>
                             )}
                         </div>
 
                         {/* Stats */}
                         <div className="border-ds-border bg-ds-surface rounded-2xl border p-5">
-                            <p className="text-ds-text2 mb-3 text-[12px] font-semibold tracking-wide uppercase">Résumé</p>
+                            <p className="text-ds-text2 mb-3 text-[12px] font-semibold tracking-wide uppercase">
+                                {t('historique.candidat.summary.title')}
+                            </p>
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-ds-text3 text-[12px]">Total entretiens</span>
+                                    <span className="text-ds-text3 text-[12px]">{t('historique.candidat.summary.total')}</span>
                                     <span className="text-ds-text text-[13px] font-semibold">{interviews.length}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-ds-text3 text-[12px]">Acceptés</span>
+                                    <span className="text-ds-text3 text-[12px]">{t('historique.candidat.summary.accepted')}</span>
                                     <span className="text-[13px] font-semibold text-emerald-400">{accepted}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-ds-text3 text-[12px]">Refusés</span>
+                                    <span className="text-ds-text3 text-[12px]">{t('historique.candidat.summary.rejected')}</span>
                                     <span className="text-ds-red text-[13px] font-semibold">{rejected}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-ds-text3 text-[12px]">En attente</span>
+                                    <span className="text-ds-text3 text-[12px]">{t('historique.index.decision.pending')}</span>
                                     <span className="text-ds-text3 text-[13px] font-semibold">{pending}</span>
                                 </div>
                             </div>
@@ -130,8 +134,8 @@ export default function Historique({ candidat, interviews }: CandidatHistoryProp
                                 <div className="bg-ds-accent/10 mb-4 flex h-12 w-12 items-center justify-center rounded-full">
                                     <Calendar size={22} className="text-ds-accent" />
                                 </div>
-                                <p className="text-ds-text mb-1 text-[15px] font-semibold">Aucun entretien</p>
-                                <p className="text-ds-text3 text-[13px]">Ce candidat n'a pas encore passé d'entretien.</p>
+                                <p className="text-ds-text mb-1 text-[15px] font-semibold">{t('historique.candidat.empty.title')}</p>
+                                <p className="text-ds-text3 text-[13px]">{t('historique.candidat.empty.description')}</p>
                             </div>
                         ) : (
                             <div className="space-y-4">
