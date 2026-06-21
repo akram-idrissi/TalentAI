@@ -9,9 +9,10 @@ import { Head, Link, router } from '@inertiajs/react';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import { ChevronLeft, ChevronRight, Edit2, Eye, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit2, Eye, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
+import ReactSelect from 'react-select';
 
 dayjs.extend(relativeTime);
 dayjs.locale('fr');
@@ -131,12 +132,18 @@ export default function Index({ briefs, filters, params, brief_statuses }: Index
     const { can, isSuperAdmin } = usePermission();
     const canCreateBriefs = isSuperAdmin() || can('briefs.create');
 
+    const [statusBrief, setStatusBrief] = useState<Brief | null>(null);
+    const [newStatus, setNewStatus] = useState<string>('');
+    const [updatingStatus, setUpdatingStatus] = useState(false);
+
     const [deletingBrief, setDeletingBrief] = useState<Brief | null>(null);
     const [loading, setLoading] = useState(false);
     const [activeFilters, setActiveFilters] = useState<FilterEntry[]>(Array.isArray(filters) ? filters : []);
 
     const FILTER_FIELDS = [
         { key: 'title', label: t('briefs.index.filters.fields.title'), type: 'text' as const },
+        { key: 'product_reference', label: 'Product Reference', type: 'text' as const },
+        { key: 'mission_code', label: 'Mission Code', type: 'text' as const },
         {
             key: 'sector',
             label: t('briefs.index.filters.fields.sector'),
@@ -168,6 +175,25 @@ export default function Index({ briefs, filters, params, brief_statuses }: Index
             options: brief_statuses,
         },
     ];
+
+    function handleUpdateStatus() {
+        if (!statusBrief) return;
+
+        setUpdatingStatus(true);
+
+        router.post(
+            route('dashboard.briefs.updateStatus', statusBrief.id),
+            {
+                status: newStatus,
+            },
+            {
+                onSuccess: () => {
+                    setStatusBrief(null);
+                },
+                onFinish: () => setUpdatingStatus(false),
+            },
+        );
+    }
 
     function handleDelete() {
         if (!deletingBrief) return;
@@ -301,6 +327,16 @@ export default function Index({ briefs, filters, params, brief_statuses }: Index
                                                 <td className="text-ds-text3 px-4 py-3.5 text-[12px]">{dayjs(brief.created_at).fromNow()}</td>
                                                 <td className="px-4 py-3.5">
                                                     <div className="flex items-center justify-end gap-1">
+                                                        <button
+                                                            onClick={() => {
+                                                                setStatusBrief(brief);
+                                                                setNewStatus(brief.status);
+                                                            }}
+                                                            className="border-ds-border text-ds-text3 hover:border-ds-accent hover:text-ds-accent flex h-7 w-7 items-center justify-center rounded-lg border transition"
+                                                            title="Modifier statut"
+                                                        >
+                                                            <RefreshCw size={13} />
+                                                        </button>
                                                         <Link
                                                             href={route('dashboard.briefs.show', brief.id)}
                                                             className="border-ds-border text-ds-text3 hover:border-ds-border2 hover:text-ds-text flex h-7 w-7 items-center justify-center rounded-lg border transition"
@@ -346,6 +382,60 @@ export default function Index({ briefs, filters, params, brief_statuses }: Index
                         />
                     )}
                 </div>
+                {statusBrief && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                        <div className="bg-ds-surface border-ds-border animate-in fade-in zoom-in-95 w-full max-w-md rounded-2xl border shadow-2xl duration-200">
+                            {/* Header */}
+                            <div className="border-ds-border flex items-center justify-between border-b px-6 py-4">
+                                <div>
+                                    <h2 className="text-ds-text text-lg font-bold">{t('briefs.index.modale.status.title')}</h2>
+
+                                    <p className="text-ds-text3 mt-1 text-sm">{statusBrief.title}</p>
+                                </div>
+
+                                <button
+                                    onClick={() => setStatusBrief(null)}
+                                    className="text-ds-text3 hover:bg-ds-bg3 hover:text-ds-text rounded-lg p-2 transition"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            {/* Body */}
+                            <div className="px-6 py-5">
+                                <label className="text-ds-text mb-2 block text-sm font-medium">{t('briefs.index.modale.status.label')}</label>
+
+                                <ReactSelect
+                                    classNamePrefix="rs"
+                                    options={brief_statuses}
+                                    value={brief_statuses.find((option) => option.value === newStatus)}
+                                    onChange={(option) => setNewStatus(option?.value ?? '')}
+                                    isSearchable={false}
+                                />
+
+                                <p className="text-ds-text3 mt-3 text-xs">{t('briefs.index.modale.status.description')}</p>
+                            </div>
+
+                            {/* Footer */}
+                            <div className="border-ds-border flex justify-end gap-3 border-t px-6 py-4">
+                                <button
+                                    onClick={() => setStatusBrief(null)}
+                                    className="border-ds-border text-ds-text hover:bg-ds-bg3 rounded-lg border px-4 py-2 text-sm font-medium transition"
+                                >
+                                    {t('briefs.index.modale.status.cancel')}
+                                </button>
+
+                                <button
+                                    onClick={handleUpdateStatus}
+                                    disabled={updatingStatus}
+                                    className="bg-ds-accent hover:bg-ds-accent/90 rounded-lg px-4 py-2 text-sm font-medium text-white transition disabled:opacity-60"
+                                >
+                                    {updatingStatus ? t('briefs.index.modale.status.updating') : t('briefs.index.modale.status.confirm')}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </AppLayout>
         </>
     );

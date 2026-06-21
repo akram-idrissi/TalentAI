@@ -134,14 +134,13 @@ class GeminiService
         $response = Http::withHeaders([
             'Content-Type' => 'application/json',
             'X-goog-api-key' => config('services.gemini.key'),
-        ])->post(
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
-            [
+        ])
+            ->timeout(30)
+            ->post('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent', [
                 'contents' => [[
                     'parts' => [['text' => $prompt]],
                 ]],
-            ]
-        );
+            ]);
 
         Log::info('GEMINI STATUS', ['status' => $response->status()]);
         Log::info('GEMINI RAW RESPONSE', ['body' => $response->body()]);

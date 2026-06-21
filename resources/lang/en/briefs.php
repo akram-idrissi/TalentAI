@@ -18,6 +18,10 @@ return [
         ],
 
         'fields' => [
+            'mission_code' => 'Mission Code',
+            'mission_code_placeholder' => 'e.g. DEV-001',
+            'product_reference' => 'Product Reference',
+            'product_reference_placeholder' => 'e.g. PROD-001',
             'title' => 'Job title',
             'title_placeholder' => 'e.g. Senior Full-Stack Developer',
             'sector' => 'Sector',
@@ -87,6 +91,8 @@ return [
         ],
 
         'fields' => [
+            'mission_code' => 'Mission Code',
+            'product_reference' => 'Product Reference',
             'title' => 'Job title',
             'sector' => 'Sector',
             'contract_type' => 'Contract type',
@@ -269,6 +275,16 @@ return [
             'description' => 'Are you sure you want to permanently delete this brief?',
             'cancel' => 'Cancel',
             'confirm' => 'Yes, delete',
+        ],
+        'modale' => [
+            'status' => [
+                'title' => 'Update brief status',
+                'description' => 'Select the new status for this brief.',
+                'updating' => 'Updating…',
+                'confirm' => 'Update status',
+                'cancel' => 'Cancel',
+                'label' => 'New status',
+            ],
         ],
     ],
     'import_modal' => [

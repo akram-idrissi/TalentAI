@@ -17,6 +17,8 @@ export default function EditBrief({ brief, params }: EditBriefProps) {
     const [confirmingCancel, setConfirmingCancel] = useState(false);
 
     const { data, setData, transform, put, processing, errors, setError, clearErrors } = useForm<BriefFormData>({
+        product_reference: brief.product_reference ?? '',
+        mission_code: brief.mission_code ?? '',
         title: brief.title ?? '',
         sector: brief.sector ?? '',
         contract_type: brief.contract_type ?? '',
@@ -109,6 +111,25 @@ export default function EditBrief({ brief, params }: EditBriefProps) {
                     {/* ── LEFT ── */}
                     <div className="space-y-5">
                         <FormCard title={t('briefs.edit_brief.sections.position')}>
+                            <div className="mb-4 grid grid-cols-2 gap-3">
+                                <FormField label={t('briefs.create_briefs.fields.mission_code')} required error={errors.mission_code}>
+                                    <input
+                                        className={inputCls(errors.mission_code)}
+                                        placeholder={t('briefs.create_briefs.fields.mission_code_placeholder')}
+                                        value={data.mission_code}
+                                        onChange={(e) => setData('mission_code', e.target.value)}
+                                    />
+                                </FormField>
+
+                                <FormField label={t('briefs.create_briefs.fields.product_reference')} required error={errors.product_reference}>
+                                    <input
+                                        className={inputCls(errors.product_reference)}
+                                        placeholder={t('briefs.create_briefs.fields.product_reference_placeholder')}
+                                        value={data.product_reference}
+                                        onChange={(e) => setData('product_reference', e.target.value)}
+                                    />
+                                </FormField>
+                            </div>
                             <div className="space-y-4">
                                 <FormField label={t('briefs.create_briefs.fields.title')} required error={errors.title}>
                                     <input
