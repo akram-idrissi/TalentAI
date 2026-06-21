@@ -1,5 +1,5 @@
 interface FormFieldProps {
-    label: string;
+    label: string | React.ReactNode;
     required?: boolean;
     error?: string;
     children: React.ReactNode;
@@ -9,9 +9,9 @@ interface FormFieldProps {
 export function FormField({ label, required, error, children, hint }: FormFieldProps) {
     return (
         <div>
-            <label className="text-ds-text2 mb-1.5 block text-[12px] font-medium">
-                {label}
-                {required && <span className="text-ds-red ml-0.5">*</span>}
+            <label className="text-ds-text2 mb-1.5 flex items-center gap-1 text-[12px] font-medium">
+                <span>{label}</span>
+                {required && <span className="text-ds-red">*</span>}
             </label>
             {children}
             {hint && !error && <p className="text-ds-text3 mt-1 text-right text-[11px]">{hint}</p>}
