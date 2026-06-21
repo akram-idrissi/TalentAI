@@ -1,3 +1,4 @@
+import BriefImportModal from '@/components/briefs/BriefImportModal';
 import FormCard from '@/components/briefs/FormCard';
 import { FormField, inputCls, textareaCls } from '@/components/briefs/FormField';
 import ScoringSlider from '@/components/briefs/ScoringSlider';
@@ -7,7 +8,7 @@ import type { BriefFormData, CreateBriefProps, SelectOption } from '@/types/brie
 import { validateBriefForm } from '@/utils/briefCreationValidation';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ChevronLeft } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ReactSelect from 'react-select';
 
 export default function CreateBrief({ params }: CreateBriefProps) {
@@ -36,10 +37,38 @@ export default function CreateBrief({ params }: CreateBriefProps) {
         search_prompt: '',
         scoring_weights: { experience: 50, education: 25, location: 25 },
     });
-    console.log('data', data);
+
+    const [showImport, setShowImport] = useState(true);
+    const [aiFields, setAiFields] = useState<Record<string, 'high' | 'low'>>({});
+    const clearAiField = (key: keyof BriefFormData) =>
+        setAiFields((prev) => {
+            const n = { ...prev };
+            delete n[key];
+            return n;
+        });
+
     useEffect(() => {
         transform((d) => ({ ...d, status: statusRef.current }));
     }, []);
+
+    function handleExtracted(extracted: Partial<BriefFormData> & { _confidence?: Record<string, 'high' | 'low'> }) {
+        const confidence = extracted._confidence ?? {};
+        const patch: Partial<BriefFormData> = {};
+        const filled: Record<string, 'high' | 'low'> = {};
+
+        (Object.keys(extracted) as (keyof typeof extracted)[]).forEach((key) => {
+            if (key === '_confidence') return;
+            const val = extracted[key];
+            if (val !== undefined && val !== null && val !== '') {
+                (patch as Record<string, unknown>)[key] = val;
+                filled[key] = confidence[key] ?? 'high';
+            }
+        });
+
+        setData((prev) => ({ ...prev, ...patch }));
+        setAiFields(filled);
+        setShowImport(false);
+    }
 
     function submit(e: React.FormEvent) {
         e.preventDefault();
@@ -64,14 +93,38 @@ export default function CreateBrief({ params }: CreateBriefProps) {
         post(route('dashboard.briefs.store'));
     }
 
-    // Helpers to convert string↔SelectOption for react-select
     const toOption = (val: string, opts: SelectOption[]) => opts.find((o) => o.value === val) ?? null;
     const toMultiOptions = (val: string, opts: SelectOption[]) =>
         val ? val.split(',').map((v) => opts.find((o) => o.value === v.trim()) ?? { value: v.trim(), label: v.trim() }) : [];
 
+    const aiBadge = (key: string, label: string) => {
+        const conf = aiFields[key];
+        if (!conf) return label;
+        return (
+            <span className="flex items-center gap-1.5">
+                {label}
+                <span
+                    className={[
+                        'rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                        conf === 'high'
+                            ? 'bg-ds-accent/10 text-ds-accent' // green-ish: certain
+                            : 'bg-amber-100 text-amber-700', // amber: inferred
+                    ].join(' ')}
+                >
+                    {conf === 'high' ? '✦ IA' : '~ IA'}
+                </span>
+            </span>
+        );
+    };
+
     return (
         <AppLayout>
             <Head title={t('briefs.create_briefs.create.title')} />
+
+            {/* ── Import modal — outside <form> ── */}
+            {showImport && (
+                <BriefImportModal onExtracted={handleExtracted} onManual={() => setShowImport(false)} onClose={() => setShowImport(false)} />
+            )}
 
             <div className="bg-ds-bg min-h-full px-6 py-8">
                 {/* Header */}
@@ -120,28 +173,38 @@ export default function CreateBrief({ params }: CreateBriefProps) {
                                 </FormField>
                             </div>
                             <div className="space-y-4">
-                                <FormField label={t('briefs.create_briefs.fields.title')} required error={errors.title}>
+                                <FormField label={aiBadge('title', t('briefs.create_briefs.fields.title'))} required error={errors.title}>
                                     <input
                                         className={inputCls(errors.title)}
                                         placeholder={t('briefs.create_briefs.fields.title_placeholder')}
                                         value={data.title}
                                         maxLength={100}
-                                        onChange={(e) => setData('title', e.target.value)}
+                                        onChange={(e) => {
+                                            setData('title', e.target.value);
+                                            clearAiField('title');
+                                        }}
                                     />
                                 </FormField>
 
                                 <div className="grid grid-cols-2 gap-3">
-                                    <FormField label={t('briefs.create_briefs.fields.sector')} required error={errors.sector}>
+                                    <FormField label={aiBadge('sector', t('briefs.create_briefs.fields.sector'))} required error={errors.sector}>
                                         <ReactSelect
                                             classNamePrefix="rs"
                                             options={sectors}
                                             value={toOption(data.sector, sectors)}
-                                            onChange={(opt) => setData('sector', opt?.value ?? '')}
+                                            onChange={(opt) => {
+                                                setData('sector', opt?.value ?? '');
+                                                clearAiField('sector');
+                                            }}
                                             placeholder={t('briefs.create_briefs.fields.sector_placeholder')}
                                         />
                                     </FormField>
 
-                                    <FormField label={t('briefs.create_briefs.fields.contract_type')} required error={errors.contract_type}>
+                                    <FormField
+                                        label={aiBadge('contract_type', t('briefs.create_briefs.fields.contract_type'))}
+                                        required
+                                        error={errors.contract_type}
+                                    >
                                         <ReactSelect
                                             classNamePrefix="rs"
                                             options={contract_types}
@@ -151,7 +214,11 @@ export default function CreateBrief({ params }: CreateBriefProps) {
                                         />
                                     </FormField>
 
-                                    <FormField label={t('briefs.create_briefs.fields.location')} required error={errors.location}>
+                                    <FormField
+                                        label={aiBadge('location', t('briefs.create_briefs.fields.location'))}
+                                        required
+                                        error={errors.location}
+                                    >
                                         <input
                                             className={inputCls(errors.location)}
                                             placeholder={t('briefs.create_briefs.fields.location_placeholder')}
@@ -160,7 +227,10 @@ export default function CreateBrief({ params }: CreateBriefProps) {
                                         />
                                     </FormField>
 
-                                    <FormField label={t('briefs.create_briefs.fields.salary_range')} error={errors.salary_range}>
+                                    <FormField
+                                        label={aiBadge('salary_range', t('briefs.create_briefs.fields.salary_range'))}
+                                        error={errors.salary_range}
+                                    >
                                         <input
                                             className={inputCls(errors.salary_range)}
                                             placeholder={t('briefs.create_briefs.fields.salary_range_placeholder')}
@@ -177,7 +247,7 @@ export default function CreateBrief({ params }: CreateBriefProps) {
                             <div className="space-y-4">
                                 <div className="grid grid-cols-2 gap-3">
                                     <FormField
-                                        label={t('briefs.create_briefs.fields.min_experience_years')}
+                                        label={aiBadge('min_experience_years', t('briefs.create_briefs.fields.min_experience_years'))}
                                         required
                                         error={errors.min_experience_years}
                                     >
@@ -190,7 +260,11 @@ export default function CreateBrief({ params }: CreateBriefProps) {
                                         />
                                     </FormField>
 
-                                    <FormField label={t('briefs.create_briefs.fields.education_level')} required error={errors.education_level}>
+                                    <FormField
+                                        label={aiBadge('education_level', t('briefs.create_briefs.fields.education_level'))}
+                                        required
+                                        error={errors.education_level}
+                                    >
                                         <ReactSelect
                                             classNamePrefix="rs"
                                             options={education_levels}
@@ -200,7 +274,10 @@ export default function CreateBrief({ params }: CreateBriefProps) {
                                         />
                                     </FormField>
 
-                                    <FormField label={t('briefs.create_briefs.fields.gender_pref')} error={errors.gender_pref}>
+                                    <FormField
+                                        label={aiBadge('gender_pref', t('briefs.create_briefs.fields.gender_pref'))}
+                                        error={errors.gender_pref}
+                                    >
                                         <ReactSelect
                                             classNamePrefix="rs"
                                             options={gender_prefs}
@@ -211,7 +288,7 @@ export default function CreateBrief({ params }: CreateBriefProps) {
                                         />
                                     </FormField>
 
-                                    <FormField label={t('briefs.create_briefs.fields.age_range')} error={errors.age_range}>
+                                    <FormField label={aiBadge('age_range', t('briefs.create_briefs.fields.age_range'))} error={errors.age_range}>
                                         <ReactSelect
                                             classNamePrefix="rs"
                                             options={age_ranges}
@@ -223,7 +300,7 @@ export default function CreateBrief({ params }: CreateBriefProps) {
                                     </FormField>
                                 </div>
 
-                                <FormField label={t('briefs.create_briefs.fields.languages')} error={errors.languages}>
+                                <FormField label={aiBadge('languages', t('briefs.create_briefs.fields.languages'))} error={errors.languages}>
                                     <ReactSelect
                                         classNamePrefix="rs"
                                         isMulti
@@ -234,7 +311,7 @@ export default function CreateBrief({ params }: CreateBriefProps) {
                                     />
                                 </FormField>
 
-                                <FormField label="Niveau de séniorité" error={errors.seniority_level}>
+                                <FormField label={aiBadge('seniority_level', 'Niveau de séniorité')} error={errors.seniority_level}>
                                     <ReactSelect
                                         classNamePrefix="rs"
                                         options={seniority_levels}
@@ -245,7 +322,7 @@ export default function CreateBrief({ params }: CreateBriefProps) {
                                     />
                                 </FormField>
 
-                                <FormField label="Entreprises cibles" error={errors.target_companies}>
+                                <FormField label={aiBadge('target_companies', 'Entreprises cibles')} error={errors.target_companies}>
                                     <input
                                         className={inputCls(errors.target_companies)}
                                         placeholder="ex: Google, Meta, Amazon (séparés par des virgules)"
@@ -263,7 +340,7 @@ export default function CreateBrief({ params }: CreateBriefProps) {
                         <FormCard title={t('briefs.create_briefs.create.sections.description')}>
                             <div className="space-y-4">
                                 <FormField
-                                    label={t('briefs.create_briefs.fields.mission_description')}
+                                    label={aiBadge('mission_description', t('briefs.create_briefs.fields.mission_description'))}
                                     required
                                     error={errors.mission_description}
                                     hint={`${data.mission_description.length}/2000`}
@@ -278,7 +355,11 @@ export default function CreateBrief({ params }: CreateBriefProps) {
                                     />
                                 </FormField>
 
-                                <FormField label={t('briefs.create_briefs.fields.required_skills')} required error={errors.required_skills}>
+                                <FormField
+                                    label={aiBadge('required_skills', t('briefs.create_briefs.fields.required_skills'))}
+                                    required
+                                    error={errors.required_skills}
+                                >
                                     <textarea
                                         className={textareaCls(errors.required_skills)}
                                         placeholder={t('briefs.create_briefs.fields.required_skills_placeholder')}
@@ -288,7 +369,7 @@ export default function CreateBrief({ params }: CreateBriefProps) {
                                     />
                                 </FormField>
 
-                                <FormField label={t('briefs.create_briefs.fields.soft_skills')} error={errors.soft_skills}>
+                                <FormField label={aiBadge('soft_skills', t('briefs.create_briefs.fields.soft_skills'))} error={errors.soft_skills}>
                                     <textarea
                                         className={textareaCls(errors.soft_skills)}
                                         placeholder={t('briefs.create_briefs.fields.soft_skills_placeholder')}

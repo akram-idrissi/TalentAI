@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Brief\BriefController;
+use App\Http\Controllers\Brief\BriefImportController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('can:briefs.create')->group(function () {
@@ -26,3 +27,6 @@ Route::post('/briefs/{brief}/activate', [BriefController::class, 'activate'])->n
 
 Route::post('/briefs/{brief}/status', [BriefController::class, 'updateStatus'])
     ->name('briefs.updateStatus');
+
+Route::post('briefs/import', [BriefImportController::class, 'extractFromFile'])
+    ->name('briefs.import');
