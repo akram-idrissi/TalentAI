@@ -4,6 +4,7 @@ import {
     Activity,
     BarChart3,
     ChevronUp,
+    Clock,
     FileText,
     Hash,
     LayoutDashboard,
@@ -211,6 +212,13 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                             label: t('sidebar.interviews.reports'),
                             icon: BarChart3,
                             route: 'dashboard.reports',
+                        },
+                        // can('historique.view') &&
+                        {
+                            id: 'historique',
+                            label: t('sidebar.interviews.historique'),
+                            icon: Clock,
+                            route: 'dashboard.historique.index',
                         },
                     ],
                 },

@@ -4,7 +4,7 @@ import AppLayout from '@/layouts/app-layout';
 import { CreateInterviewProps, Option, Status } from '@/types/interviews';
 import { Head, router } from '@inertiajs/react';
 import { CheckCircle2, Loader2, Mic, RotateCcw, Sparkles, XCircle } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import Select from 'react-select';
 import { InterviewField } from './components/InterviewField';
@@ -156,6 +156,12 @@ export default function CreateInterview({ candidates, briefs, interviews }: Crea
     const inputRef = useRef<HTMLInputElement>(null);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+    // Stop polling if the component unmounts mid-poll (e.g. user navigates away)
+    useEffect(() => {
+        return () => {
+            if (pollRef.current) clearInterval(pollRef.current);
+        };
+    }, []);
     const isWorking = ['uploading', 'pending', 'processing'].includes(status);
     const canSubmit = !!file && !!selectedCandidate && !!selectedBrief && !isWorking;
 

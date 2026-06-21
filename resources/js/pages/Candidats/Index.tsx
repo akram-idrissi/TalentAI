@@ -7,7 +7,7 @@ import AppLayout from '@/layouts/app-layout';
 import type { Candidat, IndexCandidatProps } from '@/types/candidat';
 import { Head, Link, router } from '@inertiajs/react';
 import axios from 'axios';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ExternalLink, Plus, RefreshCw, Sparkles, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, ExternalLink, Plus, RefreshCw, Sparkles, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 
@@ -533,6 +533,13 @@ export default function Index({ candidats, filters, briefs }: IndexCandidatProps
                                                             className="border-ds-border text-ds-text2 hover:border-ds-border2 hover:text-ds-text rounded-xl border px-3 py-1.5 text-[12px] transition"
                                                         >
                                                             Voir
+                                                        </Link>
+                                                        <Link
+                                                            href={route('dashboard.candidats.historique', candidat.id)}
+                                                            title="Historique des entretiens"
+                                                            className="border-ds-border text-ds-text3 hover:border-ds-accent/40 hover:text-ds-accent flex h-7 w-7 items-center justify-center rounded-xl border transition"
+                                                        >
+                                                            <Clock size={12} />
                                                         </Link>
                                                         {candidat.brief_id && (
                                                             <button
