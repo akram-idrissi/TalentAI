@@ -18,6 +18,10 @@ return [
         ],
 
         'fields' => [
+            'mission_code' => 'Code de mission',
+            'mission_code_placeholder' => 'ex. DEV-001',
+            'product_reference' => 'Référence du produit',
+            'product_reference_placeholder' => 'ex. PROD-001',
             'title' => 'Intitulé du poste',
             'title_placeholder' => 'ex. Développeur Full-Stack Senior',
             'sector' => 'Secteur',
@@ -87,6 +91,8 @@ return [
         ],
 
         'fields' => [
+            'mission_code' => 'Code de mission',
+            'product_reference' => 'Référence du produit',
             'title' => 'Intitulé du poste',
             'sector' => 'Secteur',
             'contract_type' => 'Type de contrat',
@@ -270,6 +276,16 @@ return [
             'description' => 'Êtes-vous sûr de vouloir supprimer définitivement ce brief ?',
             'cancel' => 'Annuler',
             'confirm' => 'Oui, supprimer',
+        ],
+        'modale' => [
+            'status' => [
+                'title' => 'Mettre à jour le statut du brief',
+                'description' => 'Sélectionnez le nouveau statut pour ce brief.',
+                'updating' => 'Mise à jour…',
+                'confirm' => 'Mettre à jour le statut',
+                'cancel' => 'Annuler',
+                'label' => 'Nouveau statut',
+            ],
         ],
     ],
     'import_modal' => [

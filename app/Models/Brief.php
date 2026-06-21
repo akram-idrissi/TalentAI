@@ -16,6 +16,8 @@ class Brief extends Model
 
     protected $fillable = [
         'created_by',
+        'product_reference',
+        'mission_code',
         'title',
         'sector',
         'contract_type',
@@ -38,6 +40,8 @@ class Brief extends Model
         'current_query',
         'next_start_page',
         'scoring_weights',
+        'date_lancement',
+        'date_cloture',
         'status',
     ];
 
