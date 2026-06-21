@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useI18n } from '@/hooks/useI18n';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Brain, Briefcase, FileSearch, Plus, Sparkles } from 'lucide-react';
+import { Download, FileSearch, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 
@@ -36,13 +36,20 @@ interface PageProps {
     filters: PageFilters;
 }
 
-const SCORE_COLORS = [
-    'from-[#6C63FF] to-[#8B5CF6]',
-    'from-[#38BDF8] to-[#0EA5E9]',
-    'from-[#34D399] to-[#10B981]',
-    'from-[#F59E0B] to-[#F97316]',
-    'from-[#F87171] to-[#EF4444]',
+const AVATAR_GRADIENTS = [
+    'from-[#6C63FF] to-[#38BDF8]',
+    'from-[#22D3EE] to-[#34D399]',
+    'from-[#F59E0B] to-[#F87171]',
+    'from-[#EC4899] to-[#818CF8]',
+    'from-[#38BDF8] to-[#6C63FF]',
+    'from-[#34D399] to-[#22D3EE]',
 ];
+
+const RANK_COLORS = ['text-[#34D399]', 'text-[#818CF8]', 'text-[#22D3EE]'];
+
+function rankColor(index: number) {
+    return RANK_COLORS[index] ?? 'text-ds-text3';
+}
 
 function getScoreColor(score: number) {
     if (score >= 80) return 'text-[#34D399]';
@@ -59,11 +66,14 @@ function initials(name: string) {
         ?.toUpperCase();
 }
 
+const SUMMARY_LIMIT = 120;
+
 export default function Index() {
     const { analyses, briefs, filters } = usePage().props as unknown as PageProps;
     const { t } = useI18n();
     const [selected, setSelected] = useState<Analysis | null>(analyses?.[0] ?? null);
     const [lang, setLang] = useState('fr');
+    const [expanded, setExpanded] = useState(false);
     const [loading, setLoading] = useState(false);
     const [activeFilters, setActiveFilters] = useState<FilterEntry[]>(Array.isArray(filters) ? filters : []);
 
@@ -102,75 +112,73 @@ export default function Index() {
         );
     }
 
+    function handleSelect(item: Analysis) {
+        setSelected(item);
+        setExpanded(false);
+    }
+
+    const selectedIndex = analyses?.findIndex((a) => a.id === selected?.id) ?? -1;
+
     const parsedTags = useMemo(() => {
         if (!selected?.ai_tags) return [];
-
-        if (Array.isArray(selected.ai_tags)) {
-            return selected.ai_tags;
-        }
-
+        if (Array.isArray(selected.ai_tags)) return selected.ai_tags;
         return [];
     }, [selected]);
+
+    const aiSummary = lang === 'fr' ? (selected?.ai_summary ?? null) : (selected?.ai_summary_en ?? null);
+    const isTruncatable = aiSummary !== null && aiSummary.length > SUMMARY_LIMIT;
+    const displayedSummary = aiSummary === null ? null : !expanded && isTruncatable ? aiSummary.slice(0, SUMMARY_LIMIT).trimEnd() + '…' : aiSummary;
 
     return (
         <>
             <Head title="CV Analyses" />
-
             <AppLayout>
                 <div className="bg-ds-bg text-ds-text min-h-screen p-6">
                     {/* HEADER */}
-                    <div className="mb-6 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="mb-5 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                         <div>
                             <p className="text-ds-text3 text-xs">Recruitment › CV Analysis</p>
-
                             <h1 className="mt-1 text-3xl font-bold">Analyses CV IA</h1>
-
-                            <p className="text-ds-text2 mt-1 text-sm">Analyse intelligente des candidats.</p>
+                            {analyses?.length > 0 && (
+                                <p className="text-ds-text2 mt-1.5 text-sm">
+                                    {analyses.length} analyse{analyses.length > 1 ? 's' : ''} · Triées par score global
+                                </p>
+                            )}
+                            <div className="py-3">
+                                <FilterPanel
+                                    fields={FILTER_FIELDS}
+                                    activeFilters={activeFilters}
+                                    onChange={setActiveFilters}
+                                    onSearch={handleSearch}
+                                    loading={loading}
+                                />
+                            </div>
                         </div>
-
                         <button
                             onClick={() => router.get(route('dashboard.cv-analysis.create'))}
-                            className="flex items-center gap-2 rounded-2xl bg-[#6C63FF] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+                            className="flex shrink-0 items-center gap-2 rounded-2xl bg-[#6C63FF] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
                         >
                             <Plus size={16} />
                             Nouvelle Analyse
                         </button>
                     </div>
 
-                    {/* FILTERS */}
-                    <div className="mb-5">
-                        <FilterPanel
-                            fields={FILTER_FIELDS}
-                            activeFilters={activeFilters}
-                            onChange={setActiveFilters}
-                            onSearch={handleSearch}
-                            loading={loading}
-                        />
-                    </div>
-
                     {/* Skeleton while loading */}
                     {loading && (
-                        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                            <div className="space-y-4 lg:col-span-2">
-                                {Array.from({ length: 5 }).map((_, i) => (
-                                    <div key={i} className="border-ds-border bg-ds-surface rounded-3xl border p-5">
-                                        <div className="flex items-start gap-4">
-                                            <Skeleton className="bg-ds-bg3 h-14 w-14 shrink-0 rounded-full" />
-                                            <div className="flex-1 space-y-2 pt-1">
-                                                <Skeleton className="bg-ds-bg3 h-4 w-2/3" />
-                                                <Skeleton className="bg-ds-bg3 h-3 w-1/2" />
-                                                <Skeleton className="bg-ds-bg3 h-3 w-3/4" />
-                                            </div>
+                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                            {Array.from({ length: 6 }).map((_, i) => (
+                                <div key={i} className="border-ds-border bg-ds-surface rounded-2xl border p-5">
+                                    <div className="mb-3 flex items-center gap-3">
+                                        <Skeleton className="bg-ds-bg3 h-9 w-9 rounded-lg" />
+                                        <div className="flex-1 space-y-2">
+                                            <Skeleton className="bg-ds-bg3 h-3 w-3/4" />
+                                            <Skeleton className="bg-ds-bg3 h-2.5 w-1/2" />
                                         </div>
+                                        <Skeleton className="bg-ds-bg3 h-8 w-14 rounded-full" />
                                     </div>
-                                ))}
-                            </div>
-                            <div className="border-ds-border bg-ds-surface space-y-4 rounded-3xl border p-6">
-                                <Skeleton className="bg-ds-bg3 mx-auto h-16 w-16 rounded-full" />
-                                <Skeleton className="bg-ds-bg3 mx-auto h-4 w-3/4" />
-                                <Skeleton className="bg-ds-bg3 mx-auto h-3 w-1/2" />
-                                <Skeleton className="bg-ds-bg3 h-24 w-full rounded-xl" />
-                            </div>
+                                    <Skeleton className="bg-ds-bg3 h-2 w-full rounded-full" />
+                                </div>
+                            ))}
                         </div>
                     )}
 
@@ -178,179 +186,182 @@ export default function Index() {
                     {!loading && (!analyses || analyses.length === 0) && (
                         <div className="border-ds-border bg-ds-surface flex flex-col items-center justify-center rounded-3xl border py-28 text-center">
                             <FileSearch size={60} className="text-ds-text3 mb-4" />
-
                             <h2 className="text-xl font-bold">Aucun résultat</h2>
-
                             <p className="text-ds-text2 mt-2 text-sm">Aucun candidat trouvé.</p>
                         </div>
                     )}
 
                     {/* CONTENT */}
                     {!loading && analyses?.length > 0 && (
-                        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                            {/* LEFT */}
-                            <div className="space-y-4 lg:col-span-2">
+                        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+                            {/* ── LIST ── */}
+                            <div className="space-y-3 lg:col-span-2">
                                 {analyses.map((item: Analysis, index: number) => (
                                     <div
                                         key={item.id}
-                                        onClick={() => setSelected(item)}
-                                        className={`cursor-pointer rounded-3xl border p-5 transition-all duration-200 ${
+                                        onClick={() => handleSelect(item)}
+                                        className={`flex cursor-pointer items-center gap-4 rounded-2xl border px-5 py-4 transition-all duration-150 ${
                                             selected?.id === item.id
-                                                ? 'border-[#6C63FF]/50 bg-[#6C63FF]/10 shadow-[0_0_0_1px_rgba(108,99,255,0.3)]'
+                                                ? 'border-[#6C63FF]/60 bg-[#6C63FF]/10 shadow-[0_0_0_1px_rgba(108,99,255,0.3)]'
                                                 : 'border-ds-border bg-ds-surface hover:border-ds-border2 hover:bg-ds-bg3'
                                         }`}
                                     >
-                                        <div className="flex items-start gap-4">
-                                            {/* AVATAR */}
-                                            <div
-                                                className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-sm font-bold text-white ${
-                                                    SCORE_COLORS[index % SCORE_COLORS.length]
-                                                }`}
-                                            >
-                                                {initials(item.candidate?.full_name ?? 'U')}
-                                            </div>
+                                        {/* rank badge */}
+                                        <div
+                                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${
+                                                index === 0
+                                                    ? 'bg-[#F59E0B]/20 text-[#F59E0B]'
+                                                    : index === 1
+                                                      ? 'text-ds-text2 bg-white/8'
+                                                      : index === 2
+                                                        ? 'bg-[#cd7f32]/15 text-[#cd7f32]'
+                                                        : 'bg-ds-bg3 text-ds-text3'
+                                            }`}
+                                        >
+                                            {index + 1}
+                                        </div>
 
-                                            {/* INFO */}
-                                            <div className="min-w-0 flex-1">
-                                                <div className="flex items-start justify-between gap-4">
-                                                    <div>
-                                                        <h2 className="truncate text-lg font-bold">{item.candidate?.full_name}</h2>
+                                        {/* avatar */}
+                                        <div
+                                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-sm font-bold text-white ${
+                                                AVATAR_GRADIENTS[index % AVATAR_GRADIENTS.length]
+                                            }`}
+                                        >
+                                            {initials(item.candidate?.full_name ?? 'U')}
+                                        </div>
 
-                                                        <div className="text-ds-text2 mt-1 flex flex-wrap items-center gap-3 text-xs">
-                                                            <div className="flex items-center gap-1">
-                                                                <Briefcase size={13} />
-                                                                {item.brief?.title}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* SCORE */}
-                                                    <div className="text-right">
-                                                        <p className={`text-3xl font-extrabold ${getScoreColor(item.score_global ?? 0)}`}>
-                                                            {item.score_global ?? 0}
-                                                        </p>
-
-                                                        <p className="text-ds-text3 text-xs">/100</p>
-                                                    </div>
+                                        {/* info */}
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-ds-text text-[15px] font-semibold">{item.candidate?.full_name}</p>
+                                            <p className="text-ds-text2 mt-0.5 text-xs">{item.brief?.title}</p>
+                                            {parsedTags.length > 0 && selected?.id === item.id
+                                                ? null
+                                                : item.ai_tags &&
+                                                  item.ai_tags.length > 0 && (
+                                                      <div className="mt-2 flex flex-wrap gap-1.5">
+                                                          {item.ai_tags.slice(0, 4).map((tag: string) => (
+                                                              <span
+                                                                  key={tag}
+                                                                  className="border-ds-border bg-ds-bg3 text-ds-text2 rounded-md border px-2 py-0.5 text-[11px]"
+                                                              >
+                                                                  {tag}
+                                                              </span>
+                                                          ))}
+                                                      </div>
+                                                  )}
+                                            {(!item.ai_tags || item.ai_tags.length === 0) && item.extracted_text?.technical_skills?.length > 0 && (
+                                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                                    {item.extracted_text.technical_skills.slice(0, 4).map((s: string) => (
+                                                        <span
+                                                            key={s}
+                                                            className="border-ds-border bg-ds-bg3 text-ds-text2 rounded-md border px-2 py-0.5 text-[11px]"
+                                                        >
+                                                            {s}
+                                                        </span>
+                                                    ))}
                                                 </div>
+                                            )}
+                                        </div>
 
-                                                {/* SUMMARY */}
-                                                {item.ai_summary && (
-                                                    <p className="text-ds-text2 mt-4 line-clamp-2 text-sm leading-relaxed">{item.ai_summary}</p>
-                                                )}
-                                            </div>
+                                        {/* score */}
+                                        <div className="shrink-0 text-right">
+                                            <span
+                                                className={`text-xl leading-none font-bold ${rankColor(index)}`}
+                                                style={{ fontFamily: 'var(--font-heading)' }}
+                                            >
+                                                {item.score_global ?? 0}
+                                            </span>
+                                            <p className="text-ds-text3 mt-0.5 text-[11px]">/100</p>
                                         </div>
                                     </div>
                                 ))}
                             </div>
 
-                            {/* RIGHT */}
+                            {/* ── DETAIL PANEL ── */}
                             {selected && (
-                                <div className="space-y-5">
-                                    {/* CARD */}
-                                    <div className="border-ds-border bg-ds-surface rounded-3xl border p-6">
-                                        <div className="border-ds-border border-b pb-5 text-center">
-                                            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-[#6C63FF] to-[#38BDF8] text-2xl font-bold text-white">
+                                <div className="flex flex-col gap-4">
+                                    {/* Card 1: score + meta */}
+                                    <div className="border-ds-border bg-ds-surface rounded-2xl border p-5">
+                                        <div className="border-ds-border border-b pb-4 text-center">
+                                            <div
+                                                className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br text-lg font-bold text-white ${
+                                                    AVATAR_GRADIENTS[selectedIndex % AVATAR_GRADIENTS.length]
+                                                }`}
+                                            >
                                                 {initials(selected.candidate?.full_name ?? '')}
                                             </div>
 
-                                            <h2 className="mt-4 text-xl font-bold">{selected.candidate?.full_name}</h2>
+                                            <h2 className="text-ds-text mt-2.5 text-base font-bold">{selected.candidate?.full_name}</h2>
 
-                                            <p className="text-ds-text2 mt-1 text-sm">{selected.brief?.title}</p>
+                                            <p className="text-ds-text2 mt-0.5 text-xs">{selected.brief?.title}</p>
 
-                                            <div className={`mt-5 text-6xl font-extrabold ${getScoreColor(selected.score_global ?? 0)}`}>
-                                                {selected.score_global ?? 0}
-                                            </div>
+                                            {(selected.score_global ?? 0) >= 70 && (
+                                                <div className="mt-2.5 flex justify-center">
+                                                    <span className="rounded-full border border-[#34D399]/40 bg-[#34D399]/20 px-3 py-1 text-xs font-semibold text-[#34D399]">
+                                                        Top match
+                                                    </span>
+                                                </div>
+                                            )}
 
-                                            <p className="text-ds-text3 mt-1 text-xs">Score global IA</p>
-                                        </div>
-
-                                        {/* ANALYSIS */}
-                                        <div className="mt-5">
-                                            <div className="mb-3 flex items-center gap-2">
-                                                <Brain size={18} className="text-[#6C63FF]" />
-
-                                                <h3 className="font-bold">Analyse IA</h3>
-                                            </div>
-                                            <a
-                                                href={`${selected.cv_file_path}`}
-                                                target="_blank"
-                                                className="bg-ds-accent border-ds-border hover:bg-ds-accent2 flex w-full items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-semibold text-white transition"
+                                            <p
+                                                className={`mt-3 leading-none font-extrabold ${getScoreColor(selected.score_global ?? 0)}`}
+                                                style={{ fontFamily: 'var(--font-heading)', fontSize: '3rem' }}
                                             >
-                                                Voir CV
-                                            </a>
-
-                                            <p className="text-ds-text2 py-4 text-sm leading-relaxed">
-                                                {lang === 'fr' ? selected.ai_summary : selected.ai_summary_en}
+                                                {selected.score_global ?? 0}
                                             </p>
-                                            <button onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')} className="mt-4 text-xs text-indigo-500">
-                                                {lang === 'fr' ? 'Switch to English' : 'Passer en Français'}
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* TAGS */}
-                                    <div className="border-ds-border bg-ds-surface rounded-3xl border p-6">
-                                        <div className="mb-4 flex items-center gap-2">
-                                            <Sparkles size={18} className="text-[#F59E0B]" />
-
-                                            <h3 className="font-bold">Skills détectés</h3>
+                                            <p className="text-ds-text3 mt-1 text-xs">/100 · Score IA global</p>
                                         </div>
 
-                                        {parsedTags.length > 0 ? (
-                                            <div className="flex flex-wrap gap-2">
-                                                {parsedTags.map((tag: string, index: number) => (
+                                        {/* skills tags */}
+                                        {parsedTags.length > 0 && (
+                                            <div className="mt-4 flex flex-wrap gap-1.5">
+                                                {parsedTags.map((tag: string) => (
                                                     <span
-                                                        key={index}
-                                                        className="border-ds-border bg-ds-bg3 text-ds-text2 rounded-xl border px-3 py-1.5 text-xs"
+                                                        key={tag}
+                                                        className="border-ds-border bg-ds-bg3 text-ds-text2 rounded-md border px-2.5 py-1 text-xs"
                                                     >
                                                         {tag}
                                                     </span>
                                                 ))}
                                             </div>
-                                        ) : (
-                                            <p className="text-ds-text3 text-sm">Aucun skill détecté.</p>
                                         )}
                                     </div>
 
-                                    <div className="border-ds-border bg-ds-surface rounded-3xl border p-6">
-                                        <div className="mb-4 flex items-center gap-2">
-                                            <Sparkles size={18} className="text-[#F59E0B]" />
-
-                                            <h3 className="font-bold">Skills CV</h3>
-                                        </div>
-
-                                        {selected?.extracted_text?.technical_skills?.length > 0 ? (
-                                            <div className="flex flex-wrap gap-2">
-                                                {selected.extracted_text.technical_skills.map((tag: string, index: number) => (
-                                                    <span
-                                                        key={index}
-                                                        className="border-ds-border bg-ds-bg3 text-ds-text2 rounded-xl border px-3 py-1.5 text-xs"
+                                    {/* Card 2: Analyse IA */}
+                                    <div className="border-ds-border bg-ds-surface rounded-2xl border p-5">
+                                        <h3 className="text-ds-text text-base font-bold">Analyse IA</h3>
+                                        {displayedSummary === null ? (
+                                            <p className="text-ds-text3 mt-2 text-sm">—</p>
+                                        ) : (
+                                            <>
+                                                <p className="text-ds-text2 mt-2 text-sm leading-relaxed">{displayedSummary}</p>
+                                                {isTruncatable && (
+                                                    <button
+                                                        onClick={() => setExpanded((v) => !v)}
+                                                        className="text-ds-accent mt-1.5 text-xs font-medium hover:underline"
                                                     >
-                                                        {tag}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <p className="text-ds-text3 text-sm">Aucun skill détecté.</p>
+                                                        {expanded ? 'Réduire' : 'Lire plus'}
+                                                    </button>
+                                                )}
+                                            </>
                                         )}
+                                        <button
+                                            onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
+                                            className="mt-4 block text-xs text-indigo-400 hover:underline"
+                                        >
+                                            {lang === 'fr' ? 'Switch to English' : 'Passer en Français'}
+                                        </button>
                                     </div>
 
-                                    <div className="border-ds-border bg-ds-surface rounded-3xl border p-6">
-                                        <div className="mb-4 flex items-center gap-2">
-                                            <Sparkles size={18} className="text-[#F59E0B]" />
-
-                                            <h3 className="font-bold">Skills Brif</h3>
-                                        </div>
-
-                                        {(selected?.brief?.required_skills?.length ?? 0) > 0 ? (
-                                            <div className="flex flex-wrap gap-2">
-                                                <p className="text-ds-text2">{selected.brief?.required_skills}</p>
-                                            </div>
-                                        ) : (
-                                            <p className="text-ds-text3 text-sm">Aucun skill détecté.</p>
-                                        )}
-                                    </div>
+                                    {/* actions */}
+                                    <a
+                                        href={selected.cv_file_path}
+                                        target="_blank"
+                                        className="bg-ds-accent flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+                                    >
+                                        <Download size={14} />
+                                        Voir CV
+                                    </a>
                                 </div>
                             )}
                         </div>

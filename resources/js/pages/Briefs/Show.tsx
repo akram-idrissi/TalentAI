@@ -130,6 +130,14 @@ export default function ShowBrief({ brief, params }: ShowBriefProps) {
                                 <h2 className="text-ds-text mb-4 font-semibold">{t('briefs.show_brief.sections.position')}</h2>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
+                                        <p className={labelClass}>{t('briefs.show_brief.fields.mission_code')}</p>
+                                        <p className={valueClass}>{brief.mission_code}</p>
+                                    </div>
+                                    <div>
+                                        <p className={labelClass}>{t('briefs.show_brief.fields.product_reference')}</p>
+                                        <p className={valueClass}>{brief.product_reference}</p>
+                                    </div>
+                                    <div>
                                         <p className={labelClass}>{t('briefs.show_brief.fields.title')}</p>
                                         <p className={valueClass}>{brief.title}</p>
                                     </div>

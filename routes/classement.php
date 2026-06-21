@@ -70,6 +70,22 @@ Route::get('/classement', function (Request $request) {
             }
 
             $candidates = $candidates->map(function ($c) {
+                $pic = data_get($c->raw_data, 'profilePicture');
+                $profilePhoto = null;
+                if (is_string($pic)) {
+                    $profilePhoto = $pic;
+                } elseif (is_array($pic)) {
+                    foreach (data_get($pic, 'sizes', []) as $size) {
+                        if (($size['width'] ?? 0) === 200) {
+                            $profilePhoto = $size['url'];
+                            break;
+                        }
+                    }
+                    if (! $profilePhoto) {
+                        $profilePhoto = data_get($pic, 'url');
+                    }
+                }
+
                 return [
                     'id' => $c->id,
                     'name' => $c->full_name,
@@ -79,13 +95,14 @@ Route::get('/classement', function (Request $request) {
                     'experience_years' => $c->experience_years,
                     'linkedin_url' => $c->linkedin_url,
                     'skills' => $c->skills ?? [],
-                    'summary' => $c->summary,
+                    'ai_analysis' => $c->pivot->ai_analysis ?? null,
                     'score' => round($c->pivot->score ?? 0),
                     'score_breakdown' => $c->pivot->score_breakdown
                         ? (is_string($c->pivot->score_breakdown)
                             ? json_decode($c->pivot->score_breakdown, true)
                             : $c->pivot->score_breakdown)
                         : null,
+                    'profile_photo' => $profilePhoto,
                 ];
             })->values();
         }

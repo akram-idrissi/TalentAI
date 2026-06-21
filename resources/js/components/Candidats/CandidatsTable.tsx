@@ -1,9 +1,11 @@
 import { Candidat } from '@/types/candidat';
 import { Link, router } from '@inertiajs/react';
+import axios from 'axios';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import { Edit2, ExternalLink, Eye, Trash2 } from 'lucide-react';
+import { Edit2, ExternalLink, Eye, Sparkles, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 dayjs.extend(relativeTime);
 dayjs.locale('fr');
@@ -11,6 +13,7 @@ dayjs.locale('fr');
 interface Props {
     data: Candidat[];
     onDelete?: (candidat: Candidat) => void;
+    briefId?: number;
 }
 
 function getScoreColor(score: number) {
@@ -65,7 +68,26 @@ function SourceBadge({ source }: { source: string | null }) {
     );
 }
 
-export default function CandidateTable({ data, onDelete }: Props) {
+export default function CandidateTable({ data, onDelete, briefId }: Props) {
+    const [loadingAnalysis, setLoadingAnalysis] = useState<Record<number, boolean>>({});
+    const [analysisMap, setAnalysisMap] = useState<Record<number, string>>({});
+
+    async function handleGenerateAnalysis(candidat: Candidat) {
+        if (!briefId) return;
+        setLoadingAnalysis((prev) => ({ ...prev, [candidat.id]: true }));
+        try {
+            const { data } = await axios.post<{ ai_analysis: string }>(route('dashboard.sourcing.generate-analysis'), {
+                candidat_id: candidat.id,
+                brief_id: briefId,
+            });
+            setAnalysisMap((prev) => ({ ...prev, [candidat.id]: data.ai_analysis }));
+        } catch {
+            // silently fail — user can retry
+        } finally {
+            setLoadingAnalysis((prev) => ({ ...prev, [candidat.id]: false }));
+        }
+    }
+
     return (
         <div className="border-ds-border bg-ds-surface overflow-hidden rounded-2xl border">
             {/* Header */}
@@ -99,7 +121,7 @@ export default function CandidateTable({ data, onDelete }: Props) {
 
                     <tbody>
                         {data.map((candidat, index) => {
-                            const score = candidat.ai_score ?? Math.floor(Math.random() * 40) + 60;
+                            const score = candidat.score ?? candidat.ai_score ?? 0;
 
                             return (
                                 <tr key={candidat.id} className="border-ds-border border-b transition hover:bg-white/[0.02]">
@@ -191,6 +213,35 @@ export default function CandidateTable({ data, onDelete }: Props) {
                                             >
                                                 <Edit2 size={14} />
                                             </Link>
+
+                                            {briefId && !candidat.ai_analysis && !analysisMap[candidat.id] && (
+                                                <button
+                                                    onClick={() => handleGenerateAnalysis(candidat)}
+                                                    disabled={loadingAnalysis[candidat.id]}
+                                                    title="Générer la synthèse IA"
+                                                    className="border-ds-border text-ds-text3 hover:border-ds-accent/40 hover:text-ds-accent flex h-8 w-8 items-center justify-center rounded-lg border transition disabled:cursor-not-allowed disabled:opacity-40"
+                                                >
+                                                    {loadingAnalysis[candidat.id] ? (
+                                                        <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                                                            <circle
+                                                                className="opacity-25"
+                                                                cx="12"
+                                                                cy="12"
+                                                                r="10"
+                                                                stroke="currentColor"
+                                                                strokeWidth="4"
+                                                            />
+                                                            <path
+                                                                className="opacity-75"
+                                                                fill="currentColor"
+                                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                                                            />
+                                                        </svg>
+                                                    ) : (
+                                                        <Sparkles size={14} />
+                                                    )}
+                                                </button>
+                                            )}
 
                                             <button
                                                 onClick={() => onDelete?.(candidat)}

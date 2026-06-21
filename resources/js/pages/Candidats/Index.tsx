@@ -1,3 +1,4 @@
+import AiAnalysisPanel from '@/components/Candidats/AiAnalysisPanel';
 import DeleteModal from '@/components/ui/DeleteModal';
 import FilterPanel, { FilterEntry } from '@/components/ui/FilterPanel';
 import SkeletonTable from '@/components/ui/SkeletonTable';
@@ -5,7 +6,8 @@ import { useI18n } from '@/hooks/useI18n';
 import AppLayout from '@/layouts/app-layout';
 import type { Candidat, IndexCandidatProps } from '@/types/candidat';
 import { Head, Link, router } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight, ExternalLink, Plus } from 'lucide-react';
+import axios from 'axios';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ExternalLink, Plus, RefreshCw, Sparkles, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 
@@ -45,13 +47,33 @@ const AVATAR_COLORS = [
     'from-[#EC4899] to-[#818CF8]',
 ];
 
-function CandidatAvatar({ name, index }: { name: string; index: number }) {
+function CandidatAvatar({ name, index, photoUrl }: { name: string; index: number; photoUrl?: string | null }) {
     const initials = name
         .split(' ')
         .slice(0, 2)
         .map((w) => w[0])
         .join('')
         .toUpperCase();
+
+    if (photoUrl) {
+        return (
+            <div className="relative h-10 w-10 shrink-0">
+                <img
+                    src={photoUrl}
+                    alt={name}
+                    className="h-10 w-10 rounded-full object-cover"
+                    onError={(e) => {
+                        const parent = e.currentTarget.parentElement;
+                        if (parent) {
+                            e.currentTarget.remove();
+                            parent.innerHTML = `<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${AVATAR_COLORS[index % AVATAR_COLORS.length]} text-[12px] font-bold text-white">${initials}</div>`;
+                        }
+                    }}
+                />
+            </div>
+        );
+    }
+
     return (
         <div
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${AVATAR_COLORS[index % AVATAR_COLORS.length]} text-[12px] font-bold text-white`}
@@ -116,14 +138,86 @@ function Pagination({ meta, search }: { meta: PaginationMeta; search: string }) 
     );
 }
 
-export default function Index({ candidats, filters }: IndexCandidatProps) {
+export default function Index({ candidats, filters, briefs }: IndexCandidatProps) {
     const { t } = useI18n();
     const [search] = useState(filters.search ?? '');
     const [deletingCandidat, setDeletingCandidat] = useState<Candidat | null>(null);
+    const [analysisCandidat, setAnalysisCandidat] = useState<Candidat | null>(null);
+    const [analysisMap, setAnalysisMap] = useState<Record<number, string>>({});
+    const [generatingId, setGeneratingId] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [activeFilters, setActiveFilters] = useState<FilterEntry[]>(Array.isArray(filters) ? filters : []);
+    type SortKey = 'sourcing_score' | 'score_cv' | 'score_interview';
+    const [sortKey, setSortKey] = useState<SortKey | null>(null);
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+    const [rescoringId, setRescoringId] = useState<number | null>(null);
+
+    async function handleSparkle(candidat: Candidat) {
+        const existingAnalysis = analysisMap[candidat.id] ?? candidat.ai_analysis;
+        if (existingAnalysis) {
+            setAnalysisCandidat({ ...candidat, ai_analysis: existingAnalysis });
+            return;
+        }
+        if (!candidat.brief_id) return;
+        setGeneratingId(candidat.id);
+        try {
+            const { data } = await axios.post<{ ai_analysis: string }>(route('dashboard.sourcing.generate-analysis'), {
+                candidat_id: candidat.id,
+                brief_id: candidat.brief_id,
+            });
+            setAnalysisMap((prev) => ({ ...prev, [candidat.id]: data.ai_analysis }));
+            setAnalysisCandidat({ ...candidat, ai_analysis: data.ai_analysis });
+        } catch {
+            toast.error('Erreur lors de la génération de la synthèse.');
+        } finally {
+            setGeneratingId(null);
+        }
+    }
+
+    async function handleRescore(candidat: Candidat) {
+        if (!candidat.brief_id) return;
+        setRescoringId(candidat.id);
+        try {
+            const { data } = await axios.post<{ score: number }>(route('dashboard.sourcing.rescore'), {
+                candidat_id: candidat.id,
+                brief_id: candidat.brief_id,
+            });
+            toast.success(`Score recalculé : ${data.score}`);
+            router.reload({ only: ['candidats'] });
+        } catch {
+            toast.error('Erreur lors du recalcul du score.');
+        } finally {
+            setRescoringId(null);
+        }
+    }
+
+    function handleSort(key: SortKey) {
+        if (sortKey === key) {
+            setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
+        } else {
+            setSortKey(key);
+            setSortDir('desc');
+        }
+    }
+
+    const sortedData = [...candidats.data].sort((a, b) => {
+        if (!sortKey) return 0;
+        const valA = sortKey === 'score_interview' ? (a.ai_score ?? null) : (a[sortKey] ?? null);
+        const valB = sortKey === 'score_interview' ? (b.ai_score ?? null) : (b[sortKey] ?? null);
+        if (valA === null && valB === null) return 0;
+        if (valA === null) return 1;
+        if (valB === null) return -1;
+        return sortDir === 'desc' ? valB - valA : valA - valB;
+    });
 
     const FILTER_FIELDS = [
+        {
+            key: 'brief_id',
+            label: 'Brief',
+            type: 'select' as const,
+            multi: true,
+            options: briefs.map((b) => ({ value: String(b.id), label: b.title })),
+        },
         { key: 'full_name', label: t('candidats.index.filters.full_name'), type: 'text' as const },
         { key: 'headline', label: t('candidats.index.filters.headline'), type: 'text' as const },
         { key: 'location', label: t('candidats.index.filters.location'), type: 'text' as const },
@@ -214,7 +308,17 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
     }
 
     const totalLabel = `${candidats.total} profil${candidats.total !== 1 ? 's' : ''} actif${candidats.total !== 1 ? 's' : ''} · Toutes sources confondues`;
-    const COLUMNS = ['CANDIDAT', 'POSTE VISÉ', 'SOURCE', 'SCORE CV', 'SCORE ENTRETIEN', 'STATUT', ''];
+
+    function SortIcon({ col }: { col: SortKey }) {
+        if (sortKey !== col) return <ChevronDown size={11} className="text-ds-text3 opacity-40" />;
+        return sortDir === 'desc' ? <ChevronDown size={11} className="text-ds-accent" /> : <ChevronUp size={11} className="text-ds-accent" />;
+    }
+
+    const SORTABLE_COLS: { label: string; key: SortKey }[] = [
+        { label: 'SCORE SOURCING', key: 'sourcing_score' },
+        { label: 'SCORE CV', key: 'score_cv' },
+        { label: 'SCORE ENTRETIEN', key: 'score_interview' },
+    ];
 
     return (
         <>
@@ -272,7 +376,27 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
                                 <table className="w-full border-collapse text-[13px]">
                                     <thead>
                                         <tr className="border-ds-border border-b">
-                                            {COLUMNS.map((col, i) => (
+                                            {['CANDIDAT', 'POSTE ACTUEL', 'POSTE VISÉ', 'SOURCE'].map((col, i) => (
+                                                <th
+                                                    key={i}
+                                                    className="text-ds-text3 px-5 py-3.5 text-left text-[10px] font-semibold tracking-[0.8px] uppercase"
+                                                >
+                                                    {col}
+                                                </th>
+                                            ))}
+                                            {SORTABLE_COLS.map(({ label, key }) => (
+                                                <th
+                                                    key={key}
+                                                    onClick={() => handleSort(key)}
+                                                    className="text-ds-text3 hover:text-ds-text cursor-pointer px-5 py-3.5 text-left text-[10px] font-semibold tracking-[0.8px] uppercase transition-colors select-none"
+                                                >
+                                                    <span className="flex items-center gap-1">
+                                                        {label}
+                                                        <SortIcon col={key} />
+                                                    </span>
+                                                </th>
+                                            ))}
+                                            {['STATUT', ''].map((col, i) => (
                                                 <th
                                                     key={i}
                                                     className="text-ds-text3 px-5 py-3.5 text-left text-[10px] font-semibold tracking-[0.8px] uppercase"
@@ -283,7 +407,7 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {candidats.data.map((candidat, index) => (
+                                        {sortedData.map((candidat, index) => (
                                             <tr
                                                 key={candidat.id}
                                                 className="border-ds-border hover:bg-ds-bg3/40 border-b transition-colors last:border-0"
@@ -291,7 +415,7 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
                                                 {/* CANDIDAT */}
                                                 <td className="px-5 py-4">
                                                     <div className="flex items-center gap-3">
-                                                        <CandidatAvatar name={candidat.full_name} index={index} />
+                                                        <CandidatAvatar name={candidat.full_name} index={index} photoUrl={candidat.profile_photo} />
                                                         <div className="min-w-0">
                                                             <div className="flex items-center gap-1.5">
                                                                 <p className="text-ds-text max-w-[150px] truncate font-semibold">
@@ -322,11 +446,23 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
                                                     </div>
                                                 </td>
 
+                                                {/* POSTE ACTUEL */}
+                                                <td className="px-5 py-4">
+                                                    <div>
+                                                        <p className="text-ds-text max-w-[160px] truncate text-[12px] font-medium">
+                                                            {candidat.current_title ?? '—'}
+                                                        </p>
+                                                        {candidat.current_company && (
+                                                            <p className="text-ds-text3 max-w-[160px] truncate text-[11px]">
+                                                                {candidat.current_company}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </td>
+
                                                 {/* POSTE VISÉ */}
                                                 <td className="px-5 py-4">
-                                                    <p className="text-ds-text2 max-w-[140px] truncate">
-                                                        {candidat.brief_title ?? candidat.current_title ?? '—'}
-                                                    </p>
+                                                    <p className="text-ds-text2 max-w-[140px] truncate">{candidat.brief_title ?? '—'}</p>
                                                 </td>
 
                                                 {/* SOURCE */}
@@ -336,6 +472,17 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
                                                             className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize ${sourceStyle(candidat.source)}`}
                                                         >
                                                             {candidat.source}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-ds-text3">—</span>
+                                                    )}
+                                                </td>
+
+                                                {/* SCORE SOURCING */}
+                                                <td className="px-5 py-4">
+                                                    {candidat.sourcing_score != null ? (
+                                                        <span className={`text-[13px] font-bold ${scoreColor(candidat.sourcing_score)}`}>
+                                                            {candidat.sourcing_score}
                                                         </span>
                                                     ) : (
                                                         <span className="text-ds-text3">—</span>
@@ -355,7 +502,13 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
 
                                                 {/* SCORE ENTRETIEN */}
                                                 <td className="px-5 py-4">
-                                                    <span className="text-ds-text3">—</span>
+                                                    {candidat.ai_score != null ? (
+                                                        <span className={`text-[13px] font-bold ${scoreColor(candidat.ai_score)}`}>
+                                                            {candidat.ai_score}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-ds-text3">—</span>
+                                                    )}
                                                 </td>
 
                                                 {/* STATUT */}
@@ -374,12 +527,60 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
 
                                                 {/* ACTIONS */}
                                                 <td className="px-5 py-4">
-                                                    <Link
-                                                        href={route('dashboard.candidats.show', candidat.id)}
-                                                        className="border-ds-border text-ds-text2 hover:border-ds-border2 hover:text-ds-text rounded-xl border px-3 py-1.5 text-[12px] transition"
-                                                    >
-                                                        Voir
-                                                    </Link>
+                                                    <div className="flex items-center gap-2">
+                                                        <Link
+                                                            href={route('dashboard.candidats.show', candidat.id)}
+                                                            className="border-ds-border text-ds-text2 hover:border-ds-border2 hover:text-ds-text rounded-xl border px-3 py-1.5 text-[12px] transition"
+                                                        >
+                                                            Voir
+                                                        </Link>
+                                                        {candidat.brief_id && (
+                                                            <button
+                                                                onClick={() => handleSparkle(candidat)}
+                                                                disabled={generatingId === candidat.id}
+                                                                title={
+                                                                    (analysisMap[candidat.id] ?? candidat.ai_analysis)
+                                                                        ? 'Voir la synthèse IA'
+                                                                        : 'Générer la synthèse IA'
+                                                                }
+                                                                className={`border-ds-border flex h-7 w-7 items-center justify-center rounded-xl border transition disabled:opacity-40 ${
+                                                                    (analysisMap[candidat.id] ?? candidat.ai_analysis)
+                                                                        ? 'text-ds-accent border-ds-accent/30'
+                                                                        : 'text-ds-text3 hover:border-ds-accent/40 hover:text-ds-accent'
+                                                                }`}
+                                                            >
+                                                                {generatingId === candidat.id ? (
+                                                                    <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                                                                        <circle
+                                                                            className="opacity-25"
+                                                                            cx="12"
+                                                                            cy="12"
+                                                                            r="10"
+                                                                            stroke="currentColor"
+                                                                            strokeWidth="4"
+                                                                        />
+                                                                        <path
+                                                                            className="opacity-75"
+                                                                            fill="currentColor"
+                                                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                                                                        />
+                                                                    </svg>
+                                                                ) : (
+                                                                    <Sparkles size={12} />
+                                                                )}
+                                                            </button>
+                                                        )}
+                                                        {candidat.brief_id && (
+                                                            <button
+                                                                onClick={() => handleRescore(candidat)}
+                                                                disabled={rescoringId === candidat.id}
+                                                                title="Recalculer le score"
+                                                                className="border-ds-border text-ds-text3 hover:border-ds-accent/40 hover:text-ds-accent flex h-7 w-7 items-center justify-center rounded-xl border transition disabled:opacity-40"
+                                                            >
+                                                                <RefreshCw size={12} className={rescoringId === candidat.id ? 'animate-spin' : ''} />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -401,6 +602,30 @@ export default function Index({ candidats, filters }: IndexCandidatProps) {
                         onConfirm={handleDelete}
                         onCancel={() => setDeletingCandidat(null)}
                     />
+                )}
+
+                {analysisCandidat && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+                        <div className="bg-ds-surface border-ds-border w-full max-w-xl overflow-hidden rounded-2xl border shadow-xl">
+                            <div className="border-ds-border flex items-center justify-between border-b px-5 py-4">
+                                <div>
+                                    <h3 className="font-heading text-ds-text text-[14px] font-semibold">{analysisCandidat.full_name}</h3>
+                                    <p className="text-ds-text3 mt-0.5 text-[12px]">
+                                        {analysisCandidat.current_title ?? analysisCandidat.brief_title ?? '—'}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setAnalysisCandidat(null)}
+                                    className="text-ds-text3 hover:text-ds-text flex h-7 w-7 items-center justify-center rounded-lg transition"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+                            <div className="max-h-[70vh] overflow-y-auto p-4">
+                                <AiAnalysisPanel aiAnalysis={analysisMap[analysisCandidat.id] ?? analysisCandidat.ai_analysis} />
+                            </div>
+                        </div>
+                    </div>
                 )}
             </AppLayout>
         </>

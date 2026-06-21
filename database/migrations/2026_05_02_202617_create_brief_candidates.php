@@ -17,6 +17,7 @@ return new class extends Migration
 
             $table->float('score')->nullable();
             $table->json('score_breakdown')->nullable();
+            $table->text('ai_analysis')->nullable();
             $table->timestamp('sourced_at')->nullable();
 
             $table->primary(['brief_id', 'candidat_id']);

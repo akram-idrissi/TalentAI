@@ -16,6 +16,8 @@ class Brief extends Model
 
     protected $fillable = [
         'created_by',
+        'product_reference',
+        'mission_code',
         'title',
         'sector',
         'contract_type',
@@ -26,14 +28,21 @@ class Brief extends Model
         'languages',
         'seniority_level',
         'target_companies',
+        'company_headcount',
+        'linkedin_function',
+        'min_years_at_current_company',
         'gender_pref',
         'age_range',
         'mission_description',
         'required_skills',
         'soft_skills',
+        'search_prompt',
+        'current_query',
+        'next_start_page',
         'scoring_weights',
+        'date_lancement',
+        'date_cloture',
         'status',
-
     ];
 
     /**
@@ -46,6 +55,8 @@ class Brief extends Model
         return [
             'scoring_weights' => 'array',
             'min_experience_years' => 'integer',
+            'min_years_at_current_company' => 'integer',
+            'next_start_page' => 'integer',
             'contract_type' => ContractType::class,
         ];
     }
@@ -60,10 +71,15 @@ class Brief extends Model
         return $this->hasMany(ApifyRun::class);
     }
 
+    public function queryHistories(): HasMany
+    {
+        return $this->hasMany(BriefQueryHistory::class)->latest('created_at');
+    }
+
     public function candidates(): BelongsToMany
     {
         return $this->belongsToMany(Candidat::class)
-            ->withPivot(['score', 'score_breakdown', 'sourced_at'])
+            ->withPivot(['score', 'score_breakdown', 'ai_analysis', 'sourced_at'])
             ->withTimestamps();
     }
 }

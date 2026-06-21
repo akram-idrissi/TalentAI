@@ -17,6 +17,8 @@ export default function EditBrief({ brief, params }: EditBriefProps) {
     const [confirmingCancel, setConfirmingCancel] = useState(false);
 
     const { data, setData, transform, put, processing, errors, setError, clearErrors } = useForm<BriefFormData>({
+        product_reference: brief.product_reference ?? '',
+        mission_code: brief.mission_code ?? '',
         title: brief.title ?? '',
         sector: brief.sector ?? '',
         contract_type: brief.contract_type ?? '',
@@ -32,7 +34,12 @@ export default function EditBrief({ brief, params }: EditBriefProps) {
         mission_description: brief.mission_description ?? '',
         required_skills: brief.required_skills ?? '',
         soft_skills: brief.soft_skills ?? '',
-        scoring_weights: brief.scoring_weights ?? { experience: 90, education: 70, sector: 80, soft_skills: 75, location: 50 },
+        search_prompt: brief.search_prompt ?? '',
+        scoring_weights: {
+            experience: brief.scoring_weights?.experience ?? 50,
+            education: brief.scoring_weights?.education ?? 25,
+            location: brief.scoring_weights?.location ?? 25,
+        },
     });
 
     useEffect(() => {
@@ -104,6 +111,25 @@ export default function EditBrief({ brief, params }: EditBriefProps) {
                     {/* ── LEFT ── */}
                     <div className="space-y-5">
                         <FormCard title={t('briefs.edit_brief.sections.position')}>
+                            <div className="mb-4 grid grid-cols-2 gap-3">
+                                <FormField label={t('briefs.create_briefs.fields.mission_code')} required error={errors.mission_code}>
+                                    <input
+                                        className={inputCls(errors.mission_code)}
+                                        placeholder={t('briefs.create_briefs.fields.mission_code_placeholder')}
+                                        value={data.mission_code}
+                                        onChange={(e) => setData('mission_code', e.target.value)}
+                                    />
+                                </FormField>
+
+                                <FormField label={t('briefs.create_briefs.fields.product_reference')} required error={errors.product_reference}>
+                                    <input
+                                        className={inputCls(errors.product_reference)}
+                                        placeholder={t('briefs.create_briefs.fields.product_reference_placeholder')}
+                                        value={data.product_reference}
+                                        onChange={(e) => setData('product_reference', e.target.value)}
+                                    />
+                                </FormField>
+                            </div>
                             <div className="space-y-4">
                                 <FormField label={t('briefs.create_briefs.fields.title')} required error={errors.title}>
                                     <input
@@ -278,6 +304,21 @@ export default function EditBrief({ brief, params }: EditBriefProps) {
                                         value={data.soft_skills}
                                         rows={3}
                                         onChange={(e) => setData('soft_skills', e.target.value)}
+                                    />
+                                </FormField>
+
+                                <FormField
+                                    label="Instruction de sourcing"
+                                    error={errors.search_prompt}
+                                    hint="Décrivez le profil recherché en langage naturel. Ex : « commercial junior terrain, pas de managers ni de directeurs »"
+                                >
+                                    <textarea
+                                        className={textareaCls(errors.search_prompt)}
+                                        placeholder="Ex : je veux un commercial junior, exclure responsable, directeur, manager…"
+                                        value={data.search_prompt}
+                                        maxLength={1000}
+                                        rows={3}
+                                        onChange={(e) => setData('search_prompt', e.target.value)}
                                     />
                                 </FormField>
                             </div>
