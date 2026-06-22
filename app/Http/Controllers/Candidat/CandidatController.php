@@ -54,6 +54,12 @@ class CandidatController extends Controller
 
                 continue;
             }
+            if ($field === 'recruiter_notes') {
+                $query->whereHas('interviews', fn ($q) => $q->where('recruiter_notes', 'LIKE', '%'.$value.'%'));
+
+                continue;
+
+            }
 
             if (in_array($field, $textFields)) {
                 $values = is_array($value) ? $value : explode(',', $value);
@@ -323,8 +329,9 @@ class CandidatController extends Controller
                 [Candidat::class]
             );
 
-            $candidat->load('briefs');
+            $candidat->load('briefs', 'interviews');
             $firstBrief = $candidat->briefs->first();
+            $interview = $candidat->interviews->first();
 
             return Inertia::render('Candidats/Show', [
                 'candidat' => array_merge($candidat->toArray(), [
@@ -334,6 +341,7 @@ class CandidatController extends Controller
                         ? round($firstBrief->pivot->score)
                         : null,
                     'ai_analysis' => $firstBrief?->pivot?->ai_analysis,
+                    'recruiter_notes' => $interview?->recruiter_notes,
                 ]),
             ]);
         } catch (\Throwable $e) {

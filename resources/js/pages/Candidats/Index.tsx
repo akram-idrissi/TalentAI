@@ -225,6 +225,7 @@ export default function Index({ candidats, filters, briefs }: IndexCandidatProps
         { key: 'current_title', label: t('candidats.index.filters.current_title'), type: 'text' as const },
         { key: 'experience_years', label: t('candidats.index.filters.experience_years'), type: 'number' as const },
         { key: 'education_level', label: t('candidats.index.filters.education_level'), type: 'text' as const },
+        { key: 'recruiter_notes', label: t('candidats.index.filters.recruiter_notes'), type: 'text' as const },
         {
             key: 'sector',
             label: t('candidats.index.filters.sector'),

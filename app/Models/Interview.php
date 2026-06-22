@@ -19,6 +19,7 @@ class Interview extends Model
         'platform',
         'recording_url',
         'duration_seconds',
+        'recruiter_notes',
         'status',
         'scheduled_at',
         'completed_at',
