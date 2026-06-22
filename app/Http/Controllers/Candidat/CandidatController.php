@@ -695,9 +695,7 @@ class CandidatController extends Controller
             );
 
             if (! $candidat->linkedin_url) {
-                return back()->withErrors([
-                    'message' => 'LinkedIn URL is missing',
-                ]);
+                return back()->with('error', 'LinkedIn URL is required for enrichment.');
             }
 
             /**
@@ -714,9 +712,7 @@ class CandidatController extends Controller
                     [Candidat::class]
                 );
 
-                return back()->withErrors([
-                    'message' => 'No contact found',
-                ]);
+                return back()->with('error', 'No contact found');
             }
 
             /**
@@ -733,9 +729,7 @@ class CandidatController extends Controller
                     [Candidat::class]
                 );
 
-                return back()->withErrors([
-                    'message' => 'Enrichment failed',
-                ]);
+                return back()->with('error', 'Enrichment failed');
             }
 
             /**
@@ -750,6 +744,19 @@ class CandidatController extends Controller
                 'email' => $enriched['emails'][0]['email'] ?? $candidat->email,
                 'phone' => $enriched['phones'][0]['number'] ?? $candidat->phone,
             ];
+
+            $emailFound = ! empty($enriched['emails'][0]['email']);
+            $phoneFound = ! empty($enriched['phones'][0]['number']);
+
+            if ($emailFound && $phoneFound) {
+                $message = 'Contact avec succès';
+            } elseif ($emailFound) {
+                $message = 'Email trouvé et enregistré avec succès.';
+            } elseif ($phoneFound) {
+                $message = 'Numéro de téléphone trouvé et enregistré avec succès.';
+            } else {
+                $message = 'Aucun email ni numéro de téléphone n’a été trouvé pour ce candidat.';
+            }
 
             $modifications = collect($after)
                 ->filter(fn ($value, $key) => $before[$key] != $value)
@@ -789,7 +796,7 @@ class CandidatController extends Controller
             );
 
             return back()->with([
-                'success' => 'Contact enrichi avec succès.',
+                'success' => $message,
             ]);
 
         } catch (\Throwable $e) {
