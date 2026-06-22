@@ -8,9 +8,11 @@ use App\Models\Brief;
 use App\Models\Candidat;
 use App\Models\Interview;
 use App\Services\ActivityLogger;
+use App\Services\LushaService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -666,6 +668,146 @@ class CandidatController extends Controller
             );
 
             return back()->with('error', "Impossible d'enregistrer la décision.");
+        }
+    }
+
+    /**
+     * Enrich a candidate's contact information using the Lusha service.
+     *
+     * @return RedirectResponse|Response Redirects back with success/error message, or renders Candidats/Fallback on unexpected failure
+     */
+    public function enrichContact(Request $request, Candidat $candidat, LushaService $lushaService): RedirectResponse|Response
+    {
+
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+
+            $logger->log(
+                'candidat.enrich.start',
+                "Début enrichissement Lusha pour « {$candidat->full_name} » (ID: {$candidat->id}).",
+                [
+                    'candidate_id' => $candidat->id,
+                    'linkedin_url' => $candidat->linkedin_url,
+                ],
+                [Candidat::class]
+            );
+
+            if (! $candidat->linkedin_url) {
+                return back()->withErrors([
+                    'message' => 'LinkedIn URL is missing',
+                ]);
+            }
+
+            /**
+             * STEP 1: SEARCH
+             */
+            $contact = $lushaService->searchContact($candidat->linkedin_url);
+
+            if (! $contact) {
+
+                $logger->log(
+                    'candidat.enrich.not_found',
+                    "Aucun contact trouvé sur Lusha pour « {$candidat->full_name} ».",
+                    ['candidate_id' => $candidat->id],
+                    [Candidat::class]
+                );
+
+                return back()->withErrors([
+                    'message' => 'No contact found',
+                ]);
+            }
+
+            /**
+             * STEP 2: ENRICH
+             */
+            $enriched = $lushaService->enrichContact($contact['id']);
+
+            if (! $enriched) {
+
+                $logger->log(
+                    'candidat.enrich.failed',
+                    "Échec enrichissement Lusha pour « {$candidat->full_name} ».",
+                    ['lusha_id' => $contact['id']],
+                    [Candidat::class]
+                );
+
+                return back()->withErrors([
+                    'message' => 'Enrichment failed',
+                ]);
+            }
+
+            /**
+             * STEP 3: COMPARE MODIFICATIONS (comme update())
+             */
+            $before = [
+                'email' => $candidat->email,
+                'phone' => $candidat->phone,
+            ];
+
+            $after = [
+                'email' => $enriched['emails'][0]['email'] ?? $candidat->email,
+                'phone' => $enriched['phones'][0]['number'] ?? $candidat->phone,
+            ];
+
+            $modifications = collect($after)
+                ->filter(fn ($value, $key) => $before[$key] != $value)
+                ->map(fn ($value, $key) => [
+                    'avant' => $before[$key],
+                    'après' => $value,
+                ])
+                ->toArray();
+
+            /**
+             * STEP 4: UPDATE
+             */
+            $candidat->update([
+                'email' => $after['email'],
+                'phone' => $after['phone'],
+                'raw_data' => array_merge(
+                    $candidat->raw_data ?? [],
+                    ['lusha' => $enriched]
+                ),
+            ]);
+
+            /**
+             * STEP 5: LOG FINAL
+             */
+            $champsModifiés = implode(', ', array_keys($modifications));
+
+            $logger->log(
+                'candidat.enrich.success',
+                "Enrichissement réussi pour « {$candidat->full_name} ».",
+                [
+                    'candidate_id' => $candidat->id,
+                    'lusha_id' => $contact['id'],
+                    'modifications' => $modifications,
+                    'fields_changed' => $champsModifiés ?: 'none',
+                ],
+                [Candidat::class]
+            );
+
+            return back()->with([
+                'success' => 'Contact enrichi avec succès.',
+            ]);
+
+        } catch (\Throwable $e) {
+
+            $logger->log(
+                'candidat.enrich.error',
+                "Erreur enrichissement Lusha pour « {$candidat->full_name} ».",
+                [
+                    'error' => $e->getMessage(),
+                    'line' => $e->getLine(),
+                ],
+                [Candidat::class]
+            );
+
+            return Inertia::render('Fallback', [
+                'error' => 'Impossible d’enrichir ce candidat.',
+                'candidat' => $candidat,
+            ]);
         }
     }
 }
