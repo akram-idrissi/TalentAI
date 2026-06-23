@@ -133,6 +133,14 @@ class InterviewController extends Controller
                         );
                     });
                 }
+                if ($filter['field'] === 'recruiter_notes') {
+                    $query->where(
+                        'recruiter_notes',
+                        'like',
+                        '%'.$filter['value'].'%'
+                    );
+
+                }
             }
 
             $interviews = $query
@@ -144,6 +152,7 @@ class InterviewController extends Controller
                     'brief_id' => $i->brief?->id,
                     'brief_title' => $i->brief?->title ?? '—',
                     'platform' => $i->platform,
+                    'recruiter_notes' => $i->recruiter_notes,
                     'scheduled_at' => $i->scheduled_at?->format('d M Y'),
                     'transcription_status' => $i->transcription?->status ?? 'none',
                     'transcription_id' => $i->transcription?->id,
@@ -208,6 +217,7 @@ class InterviewController extends Controller
                 'brief_id' => ['required', 'integer', 'exists:briefs,id'],
                 'platform' => ['required', 'string', 'in:zoom,meet,teams,presentiel'],
                 'expectations' => ['nullable', 'string', 'max:2000'],
+                'recruiter_notes' => ['nullable', 'string', 'max:2000'],
             ]);
 
             /** @var AwsS3V3Adapter $s3 */
@@ -221,6 +231,7 @@ class InterviewController extends Controller
                     'platform' => $request->platform,
                     'status' => 'recording_uploaded',
                     'expectations' => $request->expectations,
+                    'recruiter_notes' => $request->recruiter_notes,
                     'scheduled_at' => now(),
                 ]);
 

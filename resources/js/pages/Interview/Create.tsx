@@ -147,6 +147,7 @@ export default function CreateInterview({ candidates, briefs, interviews }: Crea
     const [selectedCandidate, setSelectedCandidate] = useState('');
     const [selectedBrief, setSelectedBrief] = useState('');
     const [platform, setPlatform] = useState<string>('zoom');
+    const [recruiterNotes, setRecruiterNotes] = useState('');
     const [expectations, setExpectations] = useState('');
     const [file, setFile] = useState<File | null>(null);
     const [status, setStatus] = useState<Status>('idle');
@@ -203,7 +204,7 @@ export default function CreateInterview({ candidates, briefs, interviews }: Crea
 
         router.post(
             '/dashboard/interviews/upload',
-            { audio: file, candidate_id: selectedCandidate, brief_id: selectedBrief, platform, expectations },
+            { audio: file, candidate_id: selectedCandidate, brief_id: selectedBrief, platform, expectations, recruiter_notes: recruiterNotes },
             {
                 forceFormData: true,
                 preserveScroll: true,
@@ -313,6 +314,18 @@ export default function CreateInterview({ candidates, briefs, interviews }: Crea
                                         options={briefs.map((b) => ({ value: b.id, label: b.title }))}
                                         isDisabled={isWorking}
                                         styles={selectStyles}
+                                    />
+                                </InterviewField>
+
+                                <InterviewField label={t('interviews.index.form.recruiter_notes_label')}>
+                                    <textarea
+                                        rows={6}
+                                        cols={50}
+                                        value={recruiterNotes}
+                                        onChange={(e) => setRecruiterNotes(e.target.value)}
+                                        placeholder={t('interviews.index.form.recruiter_notes_placeholder')}
+                                        className="bg-ds-bg placeholder:text-ds-text3 focus:ring-ds-accent w-full rounded-lg border p-4 px-3 py-2 text-[13px] focus:ring-2 focus:outline-none"
+                                        disabled={isWorking}
                                     />
                                 </InterviewField>
 

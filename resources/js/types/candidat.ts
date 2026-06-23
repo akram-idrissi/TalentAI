@@ -30,6 +30,7 @@ export interface Candidat {
     ai_score: number | null;
     score?: number | null;
     ai_analysis?: string | null;
+    recruiter_notes?: string | null;
 }
 
 export interface PaginatedCandidats {
