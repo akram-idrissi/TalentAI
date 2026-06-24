@@ -17,6 +17,8 @@ return new class extends Migration
 
             $table->unsignedBigInteger('interviewer_id');
 
+            $table->text('recruiter_notes')->nullable();
+
             $table->enum('platform', ['zoom', 'meet', 'teams', 'presentiel']);
 
             $table->text('expectations')->nullable();
