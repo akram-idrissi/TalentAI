@@ -82,6 +82,10 @@ class RolesAndPermissionsSeeder extends Seeder
             'parameters.edit',
             'parameters.delete',
 
+            'sourcing-campaigns.view',
+            'sourcing-campaigns.show',
+            'sourcing-campaigns.create',
+
         ];
 
         foreach ($permissions as $permission) {
@@ -169,6 +173,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'activity_logs.view',
             'settings.view',
             'settings.manage',
+            'sourcing-campaigns.view',
+            'sourcing-campaigns.show',
+            'sourcing-campaigns.create',
         ]);
 
         // Recruiter — full CRUD on core recruitment flow
@@ -209,6 +216,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'reports.view',
             'classement.view',
             'classement.manage',
+            'sourcing-campaigns.view',
+            'sourcing-campaigns.show',
+            'sourcing-campaigns.create',
         ]);
 
         // Hiring Manager — view & approve, limited edit
@@ -232,6 +242,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'reports.view',
             'reports.export',
             'classement.view',
+            'sourcing-campaigns.view',
+            'sourcing-campaigns.show',
+
         ]);
 
         // Viewer — read-only
@@ -246,6 +259,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'interviews.view',
             'reports.view',
             'classement.view',
+            'sourcing-campaigns.view',
+            'sourcing-campaigns.show',
         ]);
     }
 }
