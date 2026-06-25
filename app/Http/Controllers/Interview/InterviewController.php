@@ -651,7 +651,10 @@ class InterviewController extends Controller
             )->first();
 
             return response()->json([
-                'transcript' => $transcription?->transcript_text ?? '',
+                'transcript' => json_decode(
+                    $transcription?->diarized_transcript ?? '[]',
+                    true
+                ),
             ]);
         } catch (\Throwable $e) {
             $logger->log(
