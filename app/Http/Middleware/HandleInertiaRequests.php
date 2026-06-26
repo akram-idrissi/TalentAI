@@ -70,6 +70,7 @@ class HandleInertiaRequests extends Middleware
                 'interviews' => __('interviews'),
                 'parameters' => __('parameters'),
                 'historique' => __('historique'),
+                'sourcing_campaigns' => __('sourcing_campaigns'),
             ],
         ];
     }
