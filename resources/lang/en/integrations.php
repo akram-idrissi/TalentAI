@@ -38,6 +38,8 @@ return [
         'copy' => 'Copy',
     ],
 
+    'token_invalid' => 'Invalid token or connection failed. Please check and try again.',
+
     'expiry_warning' => 'This token expired on :date. Please renew it.',
 
     'test_result' => [
