@@ -177,23 +177,7 @@ class CandidatController extends Controller
 
                     'ai_analysis' => $candidat->briefs->first()?->pivot?->ai_analysis,
 
-                    'profile_photo' => (function () use ($candidat) {
-                        $pic = data_get($candidat->raw_data, 'profilePicture');
-                        if (! $pic) {
-                            return null;
-                        }
-                        if (is_string($pic)) {
-                            return $pic;
-                        }
-                        $sizes = data_get($pic, 'sizes', []);
-                        foreach ($sizes as $size) {
-                            if (($size['width'] ?? 0) === 200) {
-                                return $size['url'];
-                            }
-                        }
-
-                        return data_get($pic, 'url');
-                    })(),
+                    'profile_photo' => $this->resolveProfilePhoto($candidat->raw_data),
                 ]);
             $logger->log(
                 'candidat.index',
@@ -297,7 +281,8 @@ class CandidatController extends Controller
                     ['candidat_id' => $candidat->id, 'full_name' => $candidat->full_name],
                     [Candidat::class]
                 );
-            } catch (\Throwable) {
+            } catch (\Throwable $e) {
+                Log::warning('Activity log failed in candidat.store', ['error' => $e->getMessage()]);
             }
 
             return redirect()->route('dashboard.candidats.index')
@@ -456,7 +441,8 @@ class CandidatController extends Controller
                     ['candidat_id' => $candidat->id, 'modifications' => $modifications],
                     [Candidat::class]
                 );
-            } catch (\Throwable) {
+            } catch (\Throwable $e) {
+                Log::warning('Activity log failed in candidat.update', ['error' => $e->getMessage()]);
             }
 
             return redirect()->route('dashboard.candidats.index')
@@ -599,23 +585,7 @@ class CandidatController extends Controller
                     'linkedin_url' => $candidat->linkedin_url,
                     'status' => $candidat->status,
                     'open_to_work' => $candidat->open_to_work,
-                    'profile_photo' => (function () use ($candidat) {
-                        $pic = data_get($candidat->raw_data, 'profilePicture');
-                        if (! $pic) {
-                            return null;
-                        }
-                        if (is_string($pic)) {
-                            return $pic;
-                        }
-                        $sizes = data_get($pic, 'sizes', []);
-                        foreach ($sizes as $size) {
-                            if (($size['width'] ?? 0) === 200) {
-                                return $size['url'];
-                            }
-                        }
-
-                        return data_get($pic, 'url');
-                    })(),
+                    'profile_photo' => $this->resolveProfilePhoto($candidat->raw_data),
                 ],
                 'interviews' => $interviews,
             ]);
@@ -828,10 +798,29 @@ class CandidatController extends Controller
                 [Candidat::class]
             );
 
-            return Inertia::render('Fallback', [
-                'error' => 'Impossible d’enrichir ce candidat.',
-                'candidat' => $candidat,
+            return Inertia::render(‘Fallback’, [
+                ‘error’ => 'Impossible d’enrichir ce candidat.',
+                ‘candidat’ => $candidat,
             ]);
         }
+    }
+
+    private function resolveProfilePhoto(?array $rawData): ?string
+    {
+        $pic = data_get($rawData, ‘profilePicture’);
+        if (! $pic) {
+            return null;
+        }
+        if (is_string($pic)) {
+            return $pic;
+        }
+        $sizes = data_get($pic, ‘sizes’, []);
+        foreach ($sizes as $size) {
+            if (($size[‘width’] ?? 0) === 200) {
+                return $size[‘url’];
+            }
+        }
+
+        return data_get($pic, ‘url’);
     }
 }
