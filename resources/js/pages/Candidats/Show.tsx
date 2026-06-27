@@ -164,76 +164,86 @@ export default function ShowCandidat({ candidat }: Props) {
         <AppLayout>
             <Head title={candidat.full_name} />
 
-            <div className="bg-ds-bg min-h-full px-6 py-8">
+            <div className="bg-ds-bg min-h-full overflow-x-hidden px-4 py-4 sm:px-6 sm:py-8">
                 {/* Header */}
-                <div className="mb-6 flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                        <Link
-                            href={route('dashboard.candidats.index')}
-                            className="border-ds-border text-ds-text3 hover:border-ds-accent/40 hover:bg-ds-accent/[0.06] hover:text-ds-accent mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition"
-                        >
-                            <ChevronLeft size={16} />
-                        </Link>
-                        <div>
-                            <p className="text-ds-text3 mb-1 text-[12px]">
+                <div className="mb-5 sm:mb-6">
+                    {/* Top row: back + breadcrumb + actions */}
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                            <Link
+                                href={route('dashboard.candidats.index')}
+                                className="border-ds-border text-ds-text3 hover:border-ds-accent/40 hover:bg-ds-accent/[0.06] hover:text-ds-accent flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition"
+                            >
+                                <ChevronLeft size={16} />
+                            </Link>
+                            <p className="text-ds-text3 truncate text-[12px]">
                                 <Link href={route('dashboard.candidats.index')} className="hover:text-ds-text2 transition">
                                     Candidats
                                 </Link>{' '}
                                 <span className="text-ds-text2">› {candidat.full_name}</span>
                             </p>
-                            <div className="flex items-center gap-2">
-                                <h1 className="font-heading text-ds-text text-[26px] font-bold">{candidat.full_name}</h1>
-                                {candidat.open_to_work && (
-                                    <span className="border-ds-green/20 bg-ds-green/10 text-ds-green rounded-full border px-2.5 py-0.5 text-[11px] font-semibold">
-                                        Open to Work
-                                    </span>
-                                )}
-                            </div>
-                            {candidat.headline && <p className="text-ds-text2 mt-0.5 text-[14px]">{candidat.headline}</p>}
+                        </div>
+
+                        <div className="flex shrink-0 items-center gap-1.5">
+                            <button
+                                onClick={() => setShowNotes(true)}
+                                className="text-ds-text2 flex items-center gap-1.5 rounded-xl border border-[#818CF8]/30 px-2.5 py-1.5 text-[12px] transition hover:bg-[#818CF8]/5 sm:px-3 sm:py-2"
+                                title={t(`candidats.index.modal.recruiter_notes`)}
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    strokeWidth={1.5}
+                                    stroke="currentColor"
+                                    className="h-4 w-4 shrink-0"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                                    />
+                                </svg>
+                                <span className="hidden sm:inline">{t(`candidats.index.modal.recruiter_notes`)}</span>
+                            </button>
+                            <Link
+                                href={route('dashboard.candidats.edit', candidat.id)}
+                                className="border-ds-border text-ds-text2 hover:border-ds-border2 hover:text-ds-text flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[12px] transition sm:px-3 sm:py-2"
+                                title={t(`candidats.index.actions.edit`)}
+                            >
+                                <Pencil size={13} />
+                                <span className="hidden sm:inline">{t(`candidats.index.actions.edit`)}</span>
+                            </Link>
+                            <button
+                                onClick={() => setShowDelete(true)}
+                                className="border-ds-red/30 text-ds-red hover:bg-ds-red/5 flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[12px] transition sm:px-3 sm:py-2"
+                                title={t(`candidats.index.actions.delete`)}
+                            >
+                                <Trash2 size={13} />
+                                <span className="hidden sm:inline">{t(`candidats.index.actions.delete`)}</span>
+                            </button>
                         </div>
                     </div>
 
-                    <div className="flex shrink-0 items-center gap-2">
-                        <button
-                            onClick={() => setShowNotes(true)}
-                            className="text-ds-p flex items-center gap-1.5 rounded-xl border border-[#818CF8]/30 px-3 py-2 text-[12px] transition hover:bg-[#818CF8]/5"
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="size-4"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
-                                />
-                            </svg>
-                            {t(`candidats.index.modal.recruiter_notes`)}
-                        </button>
-                        <Link
-                            href={route('dashboard.candidats.edit', candidat.id)}
-                            className="border-ds-border text-ds-text2 hover:border-ds-border2 hover:text-ds-text flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[12px] transition"
-                        >
-                            <Pencil size={13} />
-                            {t(`candidats.index.actions.edit`)}
-                        </Link>
-                        <button
-                            onClick={() => setShowDelete(true)}
-                            className="border-ds-red/30 text-ds-red hover:bg-ds-red/5 flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[12px] transition"
-                        >
-                            <Trash2 size={13} />
-                            {t(`candidats.index.actions.delete`)}
-                        </button>
+                    {/* Name + headline */}
+                    <div className="pl-10 sm:pl-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h1 className="font-heading text-ds-text text-[20px] font-bold sm:text-[26px]">{candidat.full_name}</h1>
+                            {candidat.open_to_work && (
+                                <span className="border-ds-green/20 bg-ds-green/10 text-ds-green shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold">
+                                    Open to Work
+                                </span>
+                            )}
+                        </div>
+                        {candidat.headline && (
+                            <p className="text-ds-text2 mt-0.5 line-clamp-2 text-[13px] sm:line-clamp-none sm:text-[14px]">{candidat.headline}</p>
+                        )}
                     </div>
                 </div>
                 {showNotes && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
                         {/* Modal */}
-                        <div className="border-ds-border bg-ds-surface relative w-[520px] rounded-2xl border shadow-2xl">
+                        <div className="border-ds-border bg-ds-surface relative w-[calc(100vw-2rem)] rounded-2xl border shadow-2xl sm:w-[520px]">
                             {/* Header */}
                             <div className="border-ds-border flex items-center justify-between border-b px-5 py-4">
                                 <h2 className="text-ds-text text-[15px] font-semibold">{t(`candidats.index.modal.recruiter_notes`)}</h2>
@@ -476,12 +486,14 @@ export default function ShowCandidat({ candidat }: Props) {
                         {certifications.length > 0 && (
                             <div className={card}>
                                 <h2 className="text-ds-text mb-3 text-[13px] font-semibold">Certifications</h2>
-                                <div className="space-y-2">
+                                <div className="space-y-3">
                                     {certifications.map((cert, i) => (
-                                        <div key={i} className="flex items-start gap-2">
-                                            <span className="text-ds-text text-[13px] font-medium">{cert.title}</span>
-                                            {cert.issuedBy && <span className="text-ds-text3 text-[12px]">— {cert.issuedBy}</span>}
-                                            {cert.issuedAt && <span className="text-ds-text3 ml-auto shrink-0 text-[11px]">{cert.issuedAt}</span>}
+                                        <div key={i}>
+                                            <p className="text-ds-text text-[13px] font-medium">{cert.title}</p>
+                                            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                                {cert.issuedBy && <span className="text-ds-text3 text-[12px]">{cert.issuedBy}</span>}
+                                                {cert.issuedAt && <span className="text-ds-text3 text-[11px]">{cert.issuedAt}</span>}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
