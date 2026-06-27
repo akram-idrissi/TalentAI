@@ -9,9 +9,6 @@ export function SourcingCampaignStatusBadge({ status }: { status: string }) {
     const label = t(`sourcing_campaigns.index.status.${status}`) ?? status;
 
     return (
-        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide ${config.classes}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
-            {label}
-        </span>
+        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide ${config.classes}`}>{label}</span>
     );
 }
