@@ -17,8 +17,10 @@ class StoreSourcingCampaignRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'target_urls' => ['required', 'array', 'min:1'],
-            'target_urls.*' => ['required', 'url'],
+            'search_queries' => ['required', 'array', 'min:1'],
+            'search_queries.*' => ['required', 'string', 'max:300'],
+            'author_urls' => ['required', 'array', 'min:1'],
+            'author_urls.*' => ['required', 'url'],
             'max_posts' => ['nullable', 'integer', 'min:0'],
             'posted_limit_date' => ['nullable', 'date'],
             'brief_id' => ['required', 'integer', 'exists:briefs,id'],

@@ -10,19 +10,20 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 class SourcingCampaign extends Model
 {
     protected $fillable = [
-        'target_urls',
+        'search_queries',
+        'author_urls',
         'max_posts',
         'posted_limit_date',
         'brief_id',
         'status',
         'apify_run_id',
         'apify_dataset_id',
-        'poll_attempts',
         'error_message',
     ];
 
     protected $casts = [
-        'target_urls' => 'array',
+        'search_queries' => 'array',
+        'author_urls' => 'array',
         'posted_limit_date' => 'date',
     ];
 
@@ -40,20 +41,8 @@ class SourcingCampaign extends Model
         return $this->hasMany(SocialPost::class);
     }
 
-    /**
-     * All Candidat rows sourced from this run's commenters.
-     */
-    public function candidats(): HasManyThrough
+    public function comments(): HasManyThrough
     {
-
-        return $this->hasManyThrough(
-            Candidat::class,
-            SocialComment::class,
-            'social_post_id',
-            'linkedin_url',
-            'id',
-            'commenter_linkedin_url',
-        );
-
+        return $this->hasManyThrough(SocialComment::class, SocialPost::class);
     }
 }

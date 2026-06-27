@@ -15,17 +15,32 @@ class SourcingCampaignService
         $this->token = config('services.apify.token');
     }
 
-    // -------------------------------------------------------------------------
-    // Posts + comments scraper
-    // -------------------------------------------------------------------------
+    public function startRun(
+        array $searchQueries,
+        array $authorUrls,
+        int $maxPosts,
+        ?string $postedLimitDate,
+    ): array {
+        $input = [
+            'searchQueries' => $searchQueries,
+            'maxPosts' => $maxPosts,
+            'scrapeComments' => true,
+            'postNestedComments' => true,
+            'maxComments' => 50,
+            'commentsProfileScraperMode' => 'short',
+            'sortBy' => 'date',
+        ];
 
-    public function startRun(array $targetUrls, int $maxPosts): array
-    {
+        if (! empty($authorUrls)) {
+            $input['authorUrls'] = $authorUrls;
+        }
+
+        if ($postedLimitDate) {
+            $input['postedLimitDate'] = $postedLimitDate;
+        }
+
         $response = Http::withToken($this->token)
-            ->post("{$this->baseUrl}/acts/harvestapi~linkedin-company-posts/runs", [
-                'targetUrls' => $targetUrls,
-                'maxPosts' => $maxPosts,
-            ]);
+            ->post("{$this->baseUrl}/acts/harvestapi~linkedin-post-search/runs", $input);
 
         return $response->json();
     }

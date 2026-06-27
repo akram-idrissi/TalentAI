@@ -20,7 +20,7 @@ return [
             'brief' => 'BRIEF',
             'targets' => 'TARGETS',
             'posts' => 'POSTS',
-            'candidates' => 'CANDIDATES',
+            'candidates' => 'COMMENTERS',
             'status' => 'STATUS',
             'started' => 'STARTED',
             'campaigns' => 'CAMPAIGNS',
@@ -30,6 +30,8 @@ return [
             'no_brief' => '—',
             'url_single' => 'URL',
             'url_plural' => 'URLs',
+            'keyword_single' => 'keyword',
+            'keyword_plural' => 'keywords',
             'no_candidates' => '—',
             'view' => 'View details',
         ],
@@ -46,6 +48,7 @@ return [
             'running' => 'Running',
             'completed' => 'Completed',
             'failed' => 'Failed',
+            'stalled' => 'Stalled',
         ],
     ],
 
@@ -56,30 +59,36 @@ return [
             'back' => 'Back',
             'parent' => 'Sourcing Campaigns',
             'title' => 'Start a New Sourcing Campaign',
-            'subtitle' => 'Select the LinkedIn profiles or companies to scrape and configure the collection settings.',
+            'subtitle' => 'Enter your search keywords, optionally filter by author profiles, and configure the collection settings.',
         ],
 
         'sections' => [
-            'configuration' => 'Configuration',
-            'configuration_desc' => 'Choose which job brief and social platforms to target.',
+            'search' => 'Search',
+            'search_desc' => 'Enter the keywords you want to find in LinkedIn posts.',
             'parameters' => 'Collection Parameters',
             'parameters_desc' => 'Fine-tune limits and date filters for this scrape.',
+            'brief' => 'Associated Brief',
+            'brief_desc' => 'Optionally link this campaign to a job brief.',
         ],
 
         'fields' => [
             'brief' => [
                 'label' => 'Associated Brief',
-                'placeholder' => 'Select a brief…',
+                'placeholder' => 'Select a brief… (optional)',
             ],
-            'target_urls' => [
-                'label' => 'LinkedIn Profiles / Companies',
-                'placeholder' => 'Search for a profile or company…',
-                'no_options' => 'No results found',
-                'hint_single' => ':count URL selected',
-                'hint_plural' => ':count URLs selected',
+            'search_queries' => [
+                'label' => 'Search Keywords',
+                'placeholder' => 'Type a keyword and press Enter…',
+                'hint' => 'Press Enter or comma to add each keyword',
+            ],
+            'author_urls' => [
+                'label' => 'Author Profiles / Companies',
+                'placeholder' => 'Select profiles or companies… (optional)',
+                'hint' => 'Restrict results to posts by these authors',
+                'no_options' => 'No options found',
             ],
             'max_posts' => [
-                'label' => 'Maximum Posts per Profile',
+                'label' => 'Maximum Posts',
                 'hint' => '0 = all available posts',
             ],
             'posted_limit_date' => [
@@ -119,8 +128,11 @@ return [
         ],
 
         'cards' => [
-            'target_urls' => [
-                'title' => 'Target URLs',
+            'search_queries' => [
+                'title' => 'Search Keywords',
+            ],
+            'author_urls' => [
+                'title' => 'Author Filters',
             ],
             'status' => [
                 'title' => 'Status',

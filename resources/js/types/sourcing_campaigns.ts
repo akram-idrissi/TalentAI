@@ -3,16 +3,18 @@ export interface Brief {
     title: string;
 }
 
-export type SelectOption = {
-    value: string;
-    label: string;
-};
-
 export interface FormData {
-    target_urls: SelectOption[];
+    search_queries: string[];
+    author_urls: string[];
     max_posts: string;
     posted_limit_date: string;
     brief_id: string;
+    [key: string]: string | string[];
+}
+
+export interface SelectOption {
+    value: string;
+    label: string;
 }
 
 export interface Props {
@@ -25,9 +27,9 @@ export interface Props {
 interface SourcingCampaign {
     id: number;
     created_at: string;
-    target_urls: string[];
+    search_queries: string[];
     posts_count: number;
-    candidats_count: number;
+    comments_count: number;
     status: string;
     brief?: { title: string } | null;
 }
@@ -50,12 +52,19 @@ export interface Candidat {
     status: string;
 }
 
+export interface Mention {
+    name: string;
+    linkedinUrl: string | null;
+}
+
 export interface Comment {
     id: number;
     commenter_name: string | null;
     commenter_linkedin_url: string | null;
     commenter_position: string | null;
     commentary: string;
+    commented_at: string | null;
+    mentions: Mention[] | null;
     candidat: Candidat | null;
 }
 
@@ -69,12 +78,16 @@ export interface Post {
     comments: Comment[];
 }
 
-interface SourcingCampaign {
+export interface ShowSourcingCampaign {
     id: number;
     status: string;
-    target_urls: string[];
+    search_queries: string[];
+    author_urls: string[];
+    max_posts: number;
+    posted_limit_date: string | null;
     posts: Post[];
     error_message: string | null;
+    brief?: { title: string } | null;
 }
 
 export interface EnrichmentStats {
@@ -84,6 +97,6 @@ export interface EnrichmentStats {
 }
 
 export interface ShowProps {
-    sourcingCampaign: SourcingCampaign;
+    sourcingCampaign: ShowSourcingCampaign;
     enrichment: EnrichmentStats;
 }
