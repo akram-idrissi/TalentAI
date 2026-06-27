@@ -165,6 +165,8 @@ class SourcingCampaignController extends Controller
 
     public function stream(Request $request, SourcingCampaignService $service): StreamedResponse
     {
+        $this->authorize('sourcing-campaigns.show');
+
         $campaignId = (int) $request->query('campaign_id');
 
         $request->session()->save();
@@ -288,7 +290,7 @@ class SourcingCampaignController extends Controller
         $postId = $request->input('post_id');
 
         if (! $name && ! $linkedinUrl) {
-            return response()->json(['error' => 'Not enough data to create a candidate.'], 422);
+            return back()->withErrors(['mention' => 'Not enough data to create a candidate.']);
         }
 
         $campaign = $campaignId ? SourcingCampaign::with('brief')->find($campaignId) : null;
@@ -327,7 +329,7 @@ class SourcingCampaignController extends Controller
         $this->authorize('sourcing-campaigns.show');
 
         if (! $comment->commenter_linkedin_url && ! $comment->commenter_name) {
-            return response()->json(['error' => 'Not enough data to create a candidate.'], 422);
+            return back()->withErrors(['comment' => 'Not enough data to create a candidate.']);
         }
 
         $comment->load('post.sourcingCampaign.brief');

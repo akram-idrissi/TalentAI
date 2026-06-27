@@ -126,6 +126,8 @@ class CandidatController extends Controller
      */
     public function index(Request $request): Response
     {
+        $this->authorize('candidates.view');
+
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
@@ -235,6 +237,8 @@ class CandidatController extends Controller
      */
     public function create(): Response
     {
+        $this->authorize('candidates.create');
+
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
@@ -276,6 +280,8 @@ class CandidatController extends Controller
      */
     public function store(Request $request): RedirectResponse|Response
     {
+        $this->authorize('candidates.create');
+
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
@@ -320,6 +326,8 @@ class CandidatController extends Controller
      */
     public function show(Candidat $candidat): Response
     {
+        $this->authorize('candidates.view');
+
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
@@ -368,6 +376,8 @@ class CandidatController extends Controller
      */
     public function edit(Candidat $candidat): Response
     {
+        $this->authorize('candidates.edit');
+
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
@@ -411,6 +421,8 @@ class CandidatController extends Controller
      */
     public function update(Request $request, Candidat $candidat): RedirectResponse|Response
     {
+        $this->authorize('candidates.edit');
+
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
@@ -467,6 +479,8 @@ class CandidatController extends Controller
      */
     public function destroy(Candidat $candidat): RedirectResponse|Response
     {
+        $this->authorize('candidates.delete');
+
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
@@ -507,6 +521,8 @@ class CandidatController extends Controller
      */
     public function historique(Candidat $candidat): Response
     {
+        $this->authorize('historique.view');
+
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
@@ -678,6 +694,7 @@ class CandidatController extends Controller
      */
     public function enrichContact(Request $request, Candidat $candidat, LushaService $lushaService): RedirectResponse|Response
     {
+        $this->authorize('candidates.edit');
 
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
