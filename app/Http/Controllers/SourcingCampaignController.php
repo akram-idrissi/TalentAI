@@ -374,7 +374,7 @@ class SourcingCampaignController extends Controller
         return SocialPost::updateOrCreate(
             [
                 'sourcing_campaign_id' => $campaign->id,
-                'linkedin_post_id' => $item['id'] ?? $item['linkedinUrl'] ?? uniqid('post_'),
+                'linkedin_post_id' => $item['id'] ?? $item['linkedinUrl'] ?? md5(($item['content'] ?? '').($item['postedAt']['date'] ?? '')),
             ],
             [
                 'linkedin_url' => $item['linkedinUrl'] ?? null,
