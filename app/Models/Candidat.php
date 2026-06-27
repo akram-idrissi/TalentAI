@@ -23,6 +23,7 @@ class Candidat extends Model
         'education_level',
         'source',
         'source_url',
+        'source_context',
         'status',
         'linkedin_url', 'headline', 'summary', 'skills', 'open_to_work', 'raw_data',
 
@@ -50,6 +51,7 @@ class Candidat extends Model
         return [
             'skills' => 'array',
             'raw_data' => 'array',
+            'source_context' => 'array',
             'open_to_work' => 'boolean',
             'experience_years' => 'float',
         ];
