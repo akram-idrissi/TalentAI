@@ -14,7 +14,13 @@ class SocialComment extends Model
         'commenter_linkedin_url',
         'commenter_position',
         'commentary',
+        'mentions',
         'commented_at',
+    ];
+
+    protected $casts = [
+        'mentions' => 'array',
+        'commented_at' => 'datetime',
     ];
 
     // -------------------------------------------------------------------------
