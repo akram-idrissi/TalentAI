@@ -275,7 +275,7 @@ class CVAnalysisController extends Controller
                     $s3 = Storage::disk('s3');
                     $url = $s3->url($path);
 
-                    AnalyseCVJob::dispatch(
+                    AnalyseCVJob::dispatchSync(
                         $path,
                         $url,
                         $request->brief_id
