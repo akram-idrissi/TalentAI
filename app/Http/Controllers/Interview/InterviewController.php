@@ -145,7 +145,7 @@ class InterviewController extends Controller
 
             $interviews = $query
                 ->latest('scheduled_at')
-                ->paginate(10)
+                ->paginate(100)
                 ->through(fn ($i) => [
                     'id' => $i->id,
                     'candidate_name' => $i->candidate?->full_name ?? '—',

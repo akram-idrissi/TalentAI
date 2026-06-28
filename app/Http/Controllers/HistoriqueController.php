@@ -62,7 +62,7 @@ class HistoriqueController extends Controller
                 $query->whereDate('scheduled_at', '<=', $request->input('date_to'));
             }
 
-            $interviews = $query->paginate(15)->through(fn ($interview) => [
+            $interviews = $query->paginate(100)->through(fn ($interview) => [
                 'id' => $interview->id,
                 'platform' => $interview->platform,
                 'status' => $interview->status,

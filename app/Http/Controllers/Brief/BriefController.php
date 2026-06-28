@@ -117,7 +117,7 @@ class BriefController extends Controller
             $this->applyFilters($query, $filters);
             $briefs = $query
                 ->latest()
-                ->paginate(10)
+                ->paginate(100)
                 ->through(fn ($brief) => [
                     'id' => $brief->id,
                     'title' => $brief->title,
