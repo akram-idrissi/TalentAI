@@ -9,6 +9,8 @@ enum BriefStatus: string
     case Sourcing = 'sourcing';
     case Interviews = 'interviews';
     case Closed = 'closed';
+    case Cloture = 'cloture';
+    case Lancement = 'lancement';
 
     public function label(): string
     {
@@ -18,6 +20,8 @@ enum BriefStatus: string
             self::Sourcing => 'Sourcing',
             self::Interviews => 'Interviews',
             self::Closed => 'Closed',
+            self::Cloture => 'Clôturé',
+            self::Lancement => 'Lancé',
 
         };
     }

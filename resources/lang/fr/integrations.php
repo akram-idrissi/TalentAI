@@ -38,6 +38,8 @@ return [
         'copy' => 'Copier',
     ],
 
+    'token_invalid' => 'Token invalide ou connexion échouée. Veuillez vérifier et réessayer.',
+
     'expiry_warning' => 'Ce token a expiré le :date. Veuillez le renouveler.',
 
     'test_result' => [

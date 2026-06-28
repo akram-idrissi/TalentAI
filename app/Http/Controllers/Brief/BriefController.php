@@ -10,6 +10,7 @@ use App\Services\ParameterService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -27,6 +28,8 @@ class BriefController extends Controller
     private function applyFilters(Builder $query, array $filters): void
     {
         $allowedFields = [
+            'product_reference',
+            'mission_code',
             'title',
             'sector',
             'contract_type',
@@ -66,6 +69,8 @@ class BriefController extends Controller
     {
         return [
             'title' => 'required|string|max:255',
+            'product_reference' => 'nullable|string|max:255',
+            'mission_code' => 'nullable|string|max:255',
             'sector' => ['required', Rule::in($this->params->getGroup('sectors')->pluck('value'))],
             'contract_type' => ['required', Rule::in($this->params->getGroup('contract_types')->pluck('value'))],
             'location' => 'required|string|max:255',
@@ -112,7 +117,7 @@ class BriefController extends Controller
             $this->applyFilters($query, $filters);
             $briefs = $query
                 ->latest()
-                ->paginate(10)
+                ->paginate(100)
                 ->through(fn ($brief) => [
                     'id' => $brief->id,
                     'title' => $brief->title,
@@ -123,6 +128,8 @@ class BriefController extends Controller
                     'education_level' => $brief->education_level,
                     'gender_pref' => $brief->gender_pref,
                     'status' => $brief->status,
+                    'product_reference' => $brief->product_reference,
+                    'mission_code' => $brief->mission_code,
                     'created_by' => $brief->creator?->name,
                     'created_at' => $brief->created_at->toDateTimeString(),
                 ]);
@@ -241,10 +248,11 @@ class BriefController extends Controller
                 $logger->log(
                     'brief.store',
                     "Création du brief « {$brief->title} » (ID : {$brief->id}).",
-                    [$request->all()],
+                    ['brief_id' => $brief->id, 'title' => $brief->title],
                     [Brief::class]
                 );
-            } catch (\Throwable) {
+            } catch (\Throwable $e) {
+                Log::warning('Activity log failed in brief.store', ['error' => $e->getMessage()]);
             }
 
             return redirect()->route('dashboard.briefs.index')
@@ -406,7 +414,8 @@ class BriefController extends Controller
                     ['brief_id' => $brief->id, 'modifications' => $modifications],
                     [Brief::class]
                 );
-            } catch (\Throwable) {
+            } catch (\Throwable $e) {
+                Log::warning('Activity log failed in brief.update', ['error' => $e->getMessage()]);
             }
 
             return redirect()->route('dashboard.briefs.index')
@@ -466,6 +475,8 @@ class BriefController extends Controller
      */
     public function activate(Brief $brief): RedirectResponse|Response
     {
+        $this->authorize('briefs.approve');
+
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
@@ -491,6 +502,84 @@ class BriefController extends Controller
 
             return Inertia::render('Fallback', [
                 'error' => "Impossible d'activer ce brief.",
+            ]);
+        }
+    }
+
+    /**
+     * Update the status of the specified brief and track lifecycle dates.
+     *
+     * @param  Request  $request  Must contain a valid status (lancement | cloture)
+     * @param  Brief  $brief  Route-model-bound Brief instance to update
+     * @return RedirectResponse|Response Redirects back on success or renders fallback on failure
+     *
+     * @throws ValidationException If validation fails (handled by Laravel)
+     */
+    public function updateStatus(Request $request, Brief $brief): RedirectResponse|Response
+    {
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $validated = $request->validate([
+                'status' => 'required|in:lancement,cloture',
+            ]);
+
+            $statutAvant = $brief->status;
+
+            $modifications = [];
+
+            // 🔁 status change
+            if ($statutAvant !== $validated['status']) {
+                $modifications['status'] = [
+                    'avant' => $statutAvant,
+                    'après' => $validated['status'],
+                ];
+            }
+
+            // 📌 apply status
+            $brief->status = $validated['status'];
+
+            // 📅 lifecycle dates
+            if ($validated['status'] === 'lancement' && ! $brief->date_lancement) {
+                $brief->date_lancement = now();
+            }
+
+            if ($validated['status'] === 'cloture') {
+                $brief->date_cloture = now();
+            }
+
+            $brief->save();
+
+            // 🧾 logging (safe)
+            try {
+                $transitionStatut = $statutAvant !== $brief->status
+                    ? " Changement de statut : « {$statutAvant} » → « {$brief->status} »."
+                    : '';
+
+                $descriptionBase = "Mise à jour du statut du brief « {$brief->title} » (ID : {$brief->id}).";
+
+                $logger->log(
+                    'brief.status.update',
+                    $descriptionBase.$transitionStatut,
+                    [
+                        'brief_id' => $brief->id,
+                        'modifications' => $modifications,
+                    ],
+                    [Brief::class]
+                );
+            } catch (\Throwable $e) {
+                Log::warning('Activity log failed in brief.updateStatus', ['error' => $e->getMessage()]);
+            }
+
+            return back()->with('success', 'Statut du brief mis à jour.');
+
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return Inertia::render('Fallback', [
+                'error' => 'Impossible de mettre à jour le statut du brief.',
+                'brief' => $brief,
             ]);
         }
     }

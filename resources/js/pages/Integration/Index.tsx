@@ -1,5 +1,6 @@
 import { useI18n } from '@/hooks/useI18n';
 import AppLayout from '@/layouts/app-layout';
+import { safeUrl } from '@/lib/utils';
 import type { Integration, IntegrationsProps } from '@/types/integration';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { CheckCircle2, ChevronDown, ChevronUp, Copy, ExternalLink, Eye, EyeOff, Loader2, Trash2, Wifi, WifiOff } from 'lucide-react';
@@ -208,7 +209,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
 
                             {integration.docs_url && (
                                 <a
-                                    href={integration.docs_url}
+                                    href={safeUrl(integration.docs_url)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="border-ds-border text-ds-text3 hover:text-ds-text2 flex items-center gap-1 rounded-lg border px-3 py-2 text-[12px] transition"

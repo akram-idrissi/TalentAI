@@ -166,6 +166,7 @@ return [
             'experience' => 'Expérience',
             'location' => 'Localisation',
             'source' => 'Source',
+            'source_social_media' => 'Réseaux sociaux',
             'status' => 'Statut',
             'created_at' => 'Ajouté',
             'actions' => 'Actions',
@@ -181,12 +182,15 @@ return [
             'description' => 'Êtes-vous sûr de vouloir supprimer définitivement ce candidat ?',
             'cancel' => 'Annuler',
             'confirm' => 'Oui, supprimer',
+            'recruiter_notes' => 'Notes du recruteur',
+            'close' => 'Fermer',
         ],
 
         'filters' => [
             'full_name' => 'Nom complet',
             'headline' => 'Titre professionnel',
             'location' => 'Localisation',
+            'recruiter_notes' => 'Notes du recruteur',
             'current_company' => 'Entreprise',
             'current_title' => 'Poste actuel',
             'experience_years' => 'Expérience',
@@ -205,6 +209,12 @@ return [
                 'offer' => 'Offre',
                 'rejected' => 'Rejeté',
             ],
+        ],
+
+        'flash' => [
+            'index_error' => 'Impossible de charger les candidats.',
+            'enrich_success' => 'Informations de contact enrichies.',
+            'enrich_error' => 'Impossible d\'enrichir ce contact.',
         ],
     ],
 

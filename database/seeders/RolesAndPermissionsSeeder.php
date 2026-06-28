@@ -15,6 +15,9 @@ class RolesAndPermissionsSeeder extends Seeder
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         $permissions = [
+            // Dashboard
+            'dashboard.view',
+
             // Briefs
             'briefs.view',
             'briefs.create',
@@ -34,9 +37,11 @@ class RolesAndPermissionsSeeder extends Seeder
             'candidates.edit',
             'candidates.delete',
             'candidates.export',
+            'historique.view',
 
             // Interviews
             'interviews.view',
+            'interviews.decide',
             'interviews.edit',
             'interviews.create',
             'interviews.upload',
@@ -80,6 +85,10 @@ class RolesAndPermissionsSeeder extends Seeder
             'parameters.edit',
             'parameters.delete',
 
+            'sourcing-campaigns.view',
+            'sourcing-campaigns.show',
+            'sourcing-campaigns.create',
+
         ];
 
         foreach ($permissions as $permission) {
@@ -102,6 +111,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'guard_name' => 'web',
         ]);
         $admin->syncPermissions([
+            'dashboard.view',
             'briefs.view',
             'briefs.create',
             'briefs.edit',
@@ -116,7 +126,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'candidates.edit',
             'candidates.delete',
             'candidates.export',
+            'historique.view',
             'interviews.view',
+            'interviews.decide',
             'interviews.create',
             'interviews.upload',
             'reports.view',
@@ -165,6 +177,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'activity_logs.view',
             'settings.view',
             'settings.manage',
+            'sourcing-campaigns.view',
+            'sourcing-campaigns.show',
+            'sourcing-campaigns.create',
         ]);
 
         // Recruiter — full CRUD on core recruitment flow
@@ -173,6 +188,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'guard_name' => 'web',
         ]);
         $recruiter->syncPermissions([
+            'dashboard.view',
             'briefs.view',
             'briefs.create',
             'briefs.edit',
@@ -186,6 +202,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'candidates.delete',
             'candidates.export',
             'interviews.view',
+            'historique.view',
+            'interviews.decide',
             'interviews.create',
             'interviews.upload',
             'briefs.view',
@@ -203,6 +221,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'reports.view',
             'classement.view',
             'classement.manage',
+            'sourcing-campaigns.view',
+            'sourcing-campaigns.show',
+            'sourcing-campaigns.create',
         ]);
 
         // Hiring Manager — view & approve, limited edit
@@ -211,6 +232,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'guard_name' => 'web',
         ]);
         $hiringManager->syncPermissions([
+            'dashboard.view',
             'briefs.view',
             'briefs.approve',
             'sourcing.view',
@@ -226,6 +248,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'reports.view',
             'reports.export',
             'classement.view',
+            'sourcing-campaigns.view',
+            'sourcing-campaigns.show',
+
         ]);
 
         // Viewer — read-only
@@ -234,12 +259,15 @@ class RolesAndPermissionsSeeder extends Seeder
             'guard_name' => 'web',
         ]);
         $viewer->syncPermissions([
+            'dashboard.view',
             'briefs.view',
             'sourcing.view',
             'candidates.view',
             'interviews.view',
             'reports.view',
             'classement.view',
+            'sourcing-campaigns.view',
+            'sourcing-campaigns.show',
         ]);
     }
 }

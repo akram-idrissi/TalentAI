@@ -11,6 +11,8 @@ return new class extends Migration
         Schema::create('briefs', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('created_by');
+            $table->string('mission_code')->nullable();
+            $table->string('product_reference')->nullable();
             $table->string('title');
             $table->string('sector');
             $table->enum('contract_type', ['CDI', 'CDD', 'Freelance', 'Stage']);
@@ -33,7 +35,9 @@ return new class extends Migration
             $table->text('current_query')->nullable();
             $table->unsignedSmallInteger('next_start_page')->default(1);
             $table->json('scoring_weights');
-            $table->enum('status', ['draft', 'active', 'sourcing', 'interviews', 'closed']);
+            $table->timestamp('date_lancement')->nullable();
+            $table->timestamp('date_cloture')->nullable();
+            $table->enum('status', ['draft', 'active', 'sourcing', 'interviews', 'closed', 'cloture', 'lancement']);
             $table->softDeletes();
             $table->foreign('created_by')
                 ->references('id')

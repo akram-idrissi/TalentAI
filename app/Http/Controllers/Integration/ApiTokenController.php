@@ -50,7 +50,7 @@ class ApiTokenController extends Controller
                     'oauth' => $config['oauth'],
                     'has_token' => (bool) $record,
                     'masked_token' => $record ? $this->mask($record->token) : null,
-                    'has_env_fallback' => ! empty($config['env_key']) && env($config['env_key']),
+                    'has_env_fallback' => $config['env_configured'] ?? false,
                 ];
             });
 
@@ -127,7 +127,7 @@ class ApiTokenController extends Controller
                 [UserApiToken::class]
             );
 
-            return back()->withErrors(['token' => $e->getMessage()]);
+            return back()->withErrors(['token' => __('integrations.token_invalid')]);
         }
     }
 

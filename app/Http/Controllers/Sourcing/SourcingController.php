@@ -37,6 +37,8 @@ class SourcingController extends Controller
      */
     public function index(Request $request): Response
     {
+        $this->authorize('sourcing.view');
+
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
@@ -88,14 +90,16 @@ class SourcingController extends Controller
      */
     public function launch(Request $request): JsonResponse
     {
+        $this->authorize('sourcing.create');
+
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
         try {
             $validated = $request->validate([
                 'brief_id' => 'required|integer|exists:briefs,id',
-                'open_to_work' => 'nullable|boolean',
                 'job_title_query' => 'nullable|string|max:300',
+                'mode' => 'nullable|string|in:broad,targeted',
                 'force' => 'nullable|boolean',
                 'start_page' => 'nullable|integer|min:1|max:100',
                 'take_pages' => 'nullable|integer|min:1|max:100',
@@ -125,8 +129,8 @@ class SourcingController extends Controller
             }
 
             $options = [
-                'open_to_work' => (bool) ($validated['open_to_work'] ?? false),
                 'job_title_query' => $validated['job_title_query'] ?? null,
+                'mode' => $validated['mode'] ?? 'targeted',
                 'start_page' => (int) ($validated['start_page'] ?? $brief->next_start_page ?? 1),
                 'take_pages' => (int) ($validated['take_pages'] ?? 4),
             ];
@@ -174,6 +178,8 @@ class SourcingController extends Controller
      */
     public function generateQuery(Request $request): JsonResponse
     {
+        $this->authorize('sourcing.create');
+
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
@@ -181,6 +187,7 @@ class SourcingController extends Controller
             $validated = $request->validate([
                 'brief_id' => 'required|integer|exists:briefs,id',
                 'search_prompt' => 'nullable|string|max:1000',
+                'mode' => 'nullable|string|in:broad,targeted',
             ]);
 
             $brief = Brief::findOrFail($validated['brief_id']);
@@ -190,7 +197,8 @@ class SourcingController extends Controller
                 return response()->json(['query' => '']);
             }
 
-            $query = $this->queryGenerator->generate($brief->title ?? '', $prompt);
+            $mode = $validated['mode'] ?? 'targeted';
+            $query = $this->queryGenerator->generate($brief->title ?? '', $prompt, $mode);
 
             // Persist to history and update the cached current_query on the brief
             BriefQueryHistory::create(['brief_id' => $brief->id, 'query' => $query]);
@@ -219,6 +227,8 @@ class SourcingController extends Controller
      */
     public function rescore(Request $request, CandidateScoringService $scorer): JsonResponse
     {
+        $this->authorize('sourcing.edit');
+
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
@@ -261,6 +271,8 @@ class SourcingController extends Controller
      */
     public function generateAnalysis(Request $request, CandidateScoringService $scorer): JsonResponse
     {
+        $this->authorize('sourcing.edit');
+
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
@@ -302,6 +314,8 @@ class SourcingController extends Controller
      */
     public function queryHistory(Request $request): JsonResponse
     {
+        $this->authorize('sourcing.view');
+
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
@@ -332,6 +346,8 @@ class SourcingController extends Controller
      */
     public function runStatus(Request $request): JsonResponse
     {
+        $this->authorize('sourcing.view');
+
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
@@ -382,6 +398,8 @@ class SourcingController extends Controller
      */
     public function stream(Request $request): StreamedResponse
     {
+        $this->authorize('sourcing.view');
+
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
@@ -530,9 +548,9 @@ class SourcingController extends Controller
         } catch (\Throwable $e) {
             $logger->log('sourcing.stream.error', 'Erreur lors de l\'ouverture du flux SSE : '.$e->getMessage(), ['exception' => $e->getMessage()], [ApifyRun::class]);
 
-            return response()->stream(function () use ($e) {
+            return response()->stream(function () {
                 echo "event: error\n";
-                echo 'data: '.json_encode(['message' => $e->getMessage()])."\n\n";
+                echo 'data: '.json_encode(['message' => 'Une erreur est survenue lors de l\'ouverture du flux.'])."\n\n";
                 ob_flush();
                 flush();
             }, 500, ['Content-Type' => 'text/event-stream', 'Cache-Control' => 'no-cache']);

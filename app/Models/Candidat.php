@@ -23,10 +23,13 @@ class Candidat extends Model
         'education_level',
         'source',
         'source_url',
+        'source_context',
         'status',
         'linkedin_url', 'headline', 'summary', 'skills', 'open_to_work', 'raw_data',
 
     ];
+
+    protected $hidden = ['raw_data'];
 
     /**
      * Get the attributes that should be cast.
@@ -40,11 +43,17 @@ class Candidat extends Model
             ->withTimestamps();
     }
 
+    public function interviews()
+    {
+        return $this->hasMany(Interview::class, 'candidate_id');
+    }
+
     protected function casts(): array
     {
         return [
             'skills' => 'array',
             'raw_data' => 'array',
+            'source_context' => 'array',
             'open_to_work' => 'boolean',
             'experience_years' => 'float',
         ];

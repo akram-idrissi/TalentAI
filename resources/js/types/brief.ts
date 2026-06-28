@@ -5,6 +5,8 @@ export type ScoringWeights = {
 };
 
 export type BriefFormData = {
+    product_reference: string;
+    mission_code: string;
     title: string;
     sector: string;
     contract_type: string;
@@ -58,6 +60,8 @@ export type EditBriefProps = {
 
 export type Brief = {
     id: number;
+    product_reference: string;
+    mission_code: string;
     title: string;
     sector: string;
     contract_type: string;

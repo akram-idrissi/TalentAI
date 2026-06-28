@@ -18,6 +18,10 @@ return [
         ],
 
         'fields' => [
+            'mission_code' => 'Mission Code',
+            'mission_code_placeholder' => 'e.g. DEV-001',
+            'product_reference' => 'Product Reference',
+            'product_reference_placeholder' => 'e.g. PROD-001',
             'title' => 'Job title',
             'title_placeholder' => 'e.g. Senior Full-Stack Developer',
             'sector' => 'Sector',
@@ -87,6 +91,8 @@ return [
         ],
 
         'fields' => [
+            'mission_code' => 'Mission Code',
+            'product_reference' => 'Product Reference',
             'title' => 'Job title',
             'sector' => 'Sector',
             'contract_type' => 'Contract type',
@@ -270,6 +276,63 @@ return [
             'cancel' => 'Cancel',
             'confirm' => 'Yes, delete',
         ],
+        'modale' => [
+            'status' => [
+                'title' => 'Update brief status',
+                'description' => 'Select the new status for this brief.',
+                'updating' => 'Updating…',
+                'confirm' => 'Update status',
+                'cancel' => 'Cancel',
+                'label' => 'New status',
+            ],
+        ],
+    ],
+    'import_modal' => [
+        'title' => 'New mission brief',
+        'subtitle' => 'Import a job description to pre-fill the form automatically, or fill it in manually.',
+        'import_file' => 'Import a file',
+        'import_file_sub' => 'PDF, Word',
+        'manual' => 'Manual entry',
+        'manual_sub' => 'Empty form',
+        'drop_active' => 'Drop the file here…',
+        'drop_idle' => 'Drag your file here or browse',
+        'drop_formats' => 'PDF, DOC, DOCX — max 5 MB',
+        'file_hint' => 'Click Analyse or drop another file',
+        'extracting' => 'Extracting…',
+        'extracting_sub' => 'Mistral AI is analysing your document',
+        'extracting_slow' => 'Taking longer than expected, a few more seconds…',
+        'error_retry' => 'Retry with another file',
+        'back' => '← Back',
+        'skip_manual' => 'Skip, fill in manually',
+        'analyse' => 'Analyse →',
+    ],
+
+    'extraction_preview' => [
+        'title' => 'Extraction result',
+        'detected' => '{count} field detected — review before applying.',
+        'detected_plural' => '{count} fields detected — review before applying.',
+        'to_verify' => 'to verify',
+        'not_detected' => 'Not detected — fill in manually',
+        'discard' => 'Ignore, fill in manually',
+        'confirm' => 'Apply to form →',
+        'fields' => [
+            'title' => 'Job Title',
+            'sector' => 'Sector',
+            'contract_type' => 'Contract Type',
+            'location' => 'Location',
+            'salary_range' => 'Salary',
+            'min_experience_years' => 'Experience',
+            'education_level' => 'Education Level',
+            'seniority_level' => 'Seniority',
+            'languages' => 'Languages',
+            'gender_pref' => 'Gender',
+            'age_range' => 'Age Range',
+            'target_companies' => 'Target Companies',
+            'mission_description' => 'Job Description',
+            'required_skills' => 'Required Skills',
+            'soft_skills' => 'Soft Skills',
+        ],
+
     ],
 
 ];

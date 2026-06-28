@@ -10,6 +10,7 @@ return [
         'title' => 'Sourcing',
         'brief' => 'Liste des briefs',
         'auto' => 'Sourcing auto',
+        'sourcing-campaigns' => 'Sourcing campaigns',
     ],
 
     'candidats' => [
@@ -23,6 +24,7 @@ return [
         'list' => 'Entretiens',
         'reports' => 'Rapports IA',
         'cv-analysis' => 'Analyse CV',
+        'historique' => 'Historique',
     ],
 
     'settings' => [

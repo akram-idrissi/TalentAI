@@ -166,6 +166,7 @@ return [
             'experience' => 'Experience',
             'location' => 'Location',
             'source' => 'Source',
+            'source_social_media' => 'Social Media',
             'status' => 'Status',
             'created_at' => 'Added',
             'actions' => 'Actions',
@@ -181,12 +182,15 @@ return [
             'description' => 'Are you sure you want to permanently delete this candidat?',
             'cancel' => 'Cancel',
             'confirm' => 'Yes, delete',
+            'recruiter_notes' => 'Recruiter Notes',
+            'close' => 'Close',
         ],
 
         'filters' => [
             'full_name' => 'Full name',
             'headline' => 'Headline',
             'location' => 'Location',
+            'recruiter_notes' => 'Recruiter notes',
             'current_company' => 'Company',
             'current_title' => 'Current position',
             'experience_years' => 'Experience',
@@ -205,6 +209,12 @@ return [
                 'offer' => 'Offer',
                 'rejected' => 'Rejected',
             ],
+        ],
+
+        'flash' => [
+            'index_error' => 'Unable to load candidates.',
+            'enrich_success' => 'Contact information enriched.',
+            'enrich_error' => 'Unable to enrich this contact.',
         ],
     ],
 
