@@ -60,7 +60,7 @@ class SocialPostScrapePollerJob implements ShouldQueue
             return;
         }
 
-        self::dispatch($this->$sourcingCampaignId)->delay(now()->addSeconds(self::POLL_DELAY_SECONDS));
+        self::dispatch($this->sourcingCampaignId)->delay(now()->addSeconds(self::POLL_DELAY_SECONDS));
     }
 
     protected function handleFailure(SourcingCampaign $sourcingCampaign, string $status): void

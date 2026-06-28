@@ -56,7 +56,6 @@ class SocialPostFilterService
 
             return $items;
         }
-        Log:info('Decisions', ['decisions' => $decisions]);
 
         // Keep only items the model marked as aligned.
         return array_values(

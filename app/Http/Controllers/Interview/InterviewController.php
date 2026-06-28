@@ -512,7 +512,7 @@ class InterviewController extends Controller
             return response()->json([
                 'status' => 'failed',
                 'analysis_status' => 'failed',
-                'error' => $e->getMessage(),
+                'error' => 'Une erreur est survenue.',
             ], 500);
         }
     }
