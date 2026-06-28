@@ -115,6 +115,14 @@ export default function Index({ sourcingCampaigns }: IndexProps) {
                                                 )}
                                             </div>
 
+                                            {/* Brief */}
+                                            {run.brief && (
+                                                <div className="mb-2 flex items-center gap-1.5 text-[12px]">
+                                                    <FileText size={11} className="text-ds-text3 shrink-0" />
+                                                    <span className="text-ds-text2 truncate font-medium">{run.brief.title}</span>
+                                                </div>
+                                            )}
+
                                             {/* Stats row */}
                                             <div className="mb-3 flex items-center gap-4 text-[12px]">
                                                 <span className="text-ds-text2 inline-flex items-center gap-1">
@@ -165,6 +173,9 @@ export default function Index({ sourcingCampaigns }: IndexProps) {
                                         <thead>
                                             <tr className="border-ds-border bg-ds-bg3/30 border-b">
                                                 <th className="text-ds-text3 px-4 py-3 text-left text-[10px] font-semibold tracking-[0.8px] uppercase">
+                                                    Brief
+                                                </th>
+                                                <th className="text-ds-text3 px-4 py-3 text-left text-[10px] font-semibold tracking-[0.8px] uppercase">
                                                     Keywords
                                                 </th>
                                                 <th className="text-ds-text3 px-4 py-3 text-left text-[10px] font-semibold tracking-[0.8px] uppercase">
@@ -201,6 +212,16 @@ export default function Index({ sourcingCampaigns }: IndexProps) {
                                                                 : 'hover:bg-ds-bg3/30'
                                                         }`}
                                                     >
+                                                        <td className="px-4 py-3.5">
+                                                            {run.brief ? (
+                                                                <span className="text-ds-text2 inline-flex max-w-[180px] items-center gap-1.5 truncate text-[12px] font-medium">
+                                                                    <FileText size={11} className="text-ds-text3 shrink-0" />
+                                                                    <span className="truncate">{run.brief.title}</span>
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-ds-text3">—</span>
+                                                            )}
+                                                        </td>
                                                         <td className="px-4 py-3.5">
                                                             <div className="flex flex-wrap items-center gap-1.5">
                                                                 {isLive && (

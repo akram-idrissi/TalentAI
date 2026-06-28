@@ -17,7 +17,7 @@ class StoreSourcingCampaignRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'search_queries' => ['required', 'array', 'min:1'],
+            'search_queries' => ['nullable', 'array'],
             'search_queries.*' => ['required', 'string', 'max:300'],
             'author_urls' => ['required', 'array', 'min:1'],
             'author_urls.*' => ['required', 'url'],

@@ -59,7 +59,7 @@ function CandidatBadge({ candidat, viewLabel }: { candidat: Candidat | null; vie
     const label = candidat.current_title ?? candidat.full_name ?? viewLabel;
     return (
         <Link
-            href={`/candidats/${candidat.id}`}
+            href={route('dashboard.candidats.show', candidat.id)}
             className="inline-flex max-w-[200px] items-center gap-1 truncate rounded-full bg-[#6C63FF]/10 px-2.5 py-0.5 text-xs font-medium text-[#6C63FF] transition hover:bg-[#6C63FF]/20 dark:bg-[#6C63FF]/15 dark:text-[#a78bfa]"
             title={label}
             onClick={(e) => e.stopPropagation()}
@@ -402,7 +402,7 @@ type StreamLog = { id: number; text: string; kind: 'info' | 'progress' | 'done' 
 export default function Show({ sourcingCampaign, enrichment }: ShowProps) {
     const { t } = useI18n();
     const [activeTab, setActiveTab] = useState<'posts' | 'comments'>('posts');
-    const [commentsView, setCommentsView] = useState<'card' | 'table'>('card');
+    const [commentsView, setCommentsView] = useState<'card' | 'table'>('table');
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
     const [pending, setPending] = useState<PendingAdd | null>(null);
     const [addingIds, setAddingIds] = useState<Set<number>>(new Set());
@@ -576,6 +576,18 @@ export default function Show({ sourcingCampaign, enrichment }: ShowProps) {
                     {/* ── Meta bar ── */}
                     {/* Mobile: 2×2 grid; sm+: horizontal flex */}
                     <div className="border-ds-border bg-ds-border sm:divide-ds-border mb-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border sm:flex sm:gap-0 sm:divide-x sm:bg-transparent">
+                        {sourcingCampaign.brief && (
+                            <div className="bg-ds-surface col-span-2 flex min-w-0 items-center gap-2 px-3 py-3 sm:gap-3 sm:px-5 sm:py-3.5">
+                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-50 sm:h-8 sm:w-8 dark:bg-blue-500/10">
+                                    <FileText size={13} className="text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-ds-text3 mb-0.5 text-[10px] font-medium tracking-wide uppercase">Brief</p>
+                                    <p className="text-ds-text truncate text-[13px] font-semibold">{sourcingCampaign.brief.title}</p>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="bg-ds-surface col-span-2 flex min-w-0 items-center gap-2 px-3 py-3 sm:flex-[1.4] sm:gap-3 sm:px-5 sm:py-3.5">
                             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#6C63FF]/10 sm:h-8 sm:w-8">
                                 <Search size={13} className="text-[#6C63FF]" />

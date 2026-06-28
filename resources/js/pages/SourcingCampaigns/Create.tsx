@@ -100,7 +100,7 @@ export default function Create({ briefs, params }: Props) {
         }));
     }
 
-    const canSubmit = !processing && data.search_queries.length > 0 && data.author_urls.length > 0 && !!data.brief_id;
+    const canSubmit = !processing && data.author_urls.length > 0 && !!data.brief_id;
 
     return (
         <AppLayout>
@@ -155,7 +155,6 @@ export default function Create({ briefs, params }: Props) {
                         {/* Search queries — auto-filled from brief, editable */}
                         <FormField
                             label={t('sourcing_campaigns.create.fields.search_queries.label')}
-                            required
                             error={e.search_queries}
                             hint={t('sourcing_campaigns.create.fields.search_queries.hint')}
                         >
