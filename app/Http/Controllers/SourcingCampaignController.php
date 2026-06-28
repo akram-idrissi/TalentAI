@@ -22,6 +22,9 @@ class SourcingCampaignController extends Controller
 {
     public function __construct(private readonly ParameterService $params) {}
 
+    /**
+     * Display a paginated list of sourcing campaigns.
+     */
     public function index(): Response
     {
         /** @var ActivityLogger $logger */
@@ -48,6 +51,9 @@ class SourcingCampaignController extends Controller
         }
     }
 
+    /**
+     * Show the form for creating a new sourcing campaign.
+     */
     public function create(): Response
     {
         /** @var ActivityLogger $logger */
@@ -72,6 +78,9 @@ class SourcingCampaignController extends Controller
         }
     }
 
+    /**
+     * Store a newly created sourcing campaign and start the Apify run.
+     */
     public function store(StoreSourcingCampaignRequest $request, SourcingCampaignService $service): RedirectResponse|Response
     {
         /** @var ActivityLogger $logger */
@@ -120,6 +129,11 @@ class SourcingCampaignController extends Controller
         }
     }
 
+    /**
+     * Display the specified sourcing campaign with its posts and enrichment stats.
+     *
+     * @param  SourcingCampaign  $sourcingCampaign  Route-model-bound SourcingCampaign instance
+     */
     public function show(SourcingCampaign $sourcingCampaign): Response
     {
         /** @var ActivityLogger $logger */
@@ -163,11 +177,28 @@ class SourcingCampaignController extends Controller
         }
     }
 
+    /**
+     * Stream SSE events for the Apify run status and dataset ingestion of a campaign.
+     */
     public function stream(Request $request, SourcingCampaignService $service): StreamedResponse
     {
         $this->authorize('sourcing-campaigns.show');
 
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
         $campaignId = (int) $request->query('campaign_id');
+
+        try {
+            $logger->log(
+                'sourcing_campaign.stream',
+                "Démarrage du streaming SSE pour la campaign (ID : {$campaignId}).",
+                ['campaign_id' => $campaignId],
+                [SourcingCampaign::class]
+            );
+        } catch (\Throwable $e) {
+            // logger failure must not block the stream
+        }
 
         $request->session()->save();
 
@@ -280,129 +311,165 @@ class SourcingCampaignController extends Controller
         ]);
     }
 
+    /**
+     * Create or locate a candidat from a post mention and attach them to the campaign brief.
+     */
     public function addMentionedCandidat(Request $request): RedirectResponse
     {
         $this->authorize('sourcing-campaigns.show');
 
-        $name = $request->input('name');
-        $linkedinUrl = $request->input('linkedin_url');
-        $campaignId = $request->input('sourcing_campaign_id');
-        $postId = $request->input('post_id');
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
 
-        if (! $name && ! $linkedinUrl) {
-            return back()->withErrors(['mention' => 'Not enough data to create a candidate.']);
+        try {
+            $name = $request->input('name');
+            $linkedinUrl = $request->input('linkedin_url');
+            $campaignId = $request->input('sourcing_campaign_id');
+            $postId = $request->input('post_id');
+
+            if (! $name && ! $linkedinUrl) {
+                return back()->withErrors(['mention' => 'Not enough data to create a candidate.']);
+            }
+
+            $campaign = $campaignId ? SourcingCampaign::with('brief')->find($campaignId) : null;
+            $post = $postId ? SocialPost::find($postId) : null;
+            $brief = $campaign?->brief;
+
+            $attributes = [
+                'full_name' => $name,
+                'source' => 'sourcing_campaign_mention',
+                'source_url' => $linkedinUrl,
+                'status' => 'sourced',
+                'source_context' => [
+                    'type' => 'mention',
+                    'sourcing_campaign_id' => $campaign?->id,
+                    'brief_id' => $brief?->id,
+                    'brief_title' => $brief?->title,
+                    'post_id' => $post?->id,
+                    'post_url' => $post?->linkedin_url,
+                    'post_author' => $post?->author_name,
+                ],
+            ];
+
+            $candidat = $linkedinUrl
+                ? Candidat::firstOrCreate(['linkedin_url' => $linkedinUrl], $attributes)
+                : Candidat::create($attributes);
+
+            if (! $candidat->wasRecentlyCreated) {
+                $updates = [];
+                if (empty($candidat->source_context)) {
+                    $updates['source_context'] = $attributes['source_context'];
+                }
+                if (empty($candidat->source)) {
+                    $updates['source'] = 'sourcing_campaign_mention';
+                    $updates['source_url'] = $linkedinUrl;
+                }
+                if (! empty($updates)) {
+                    $candidat->update($updates);
+                }
+            }
+
+            if ($brief) {
+                $candidat->briefs()->syncWithoutDetaching([$brief->id => ['sourced_at' => now()]]);
+            }
+
+            $name = $candidat->full_name ?? $name;
+            $message = $candidat->wasRecentlyCreated
+                ? "{$name} ajouté à la base candidats."
+                : "{$name} existe déjà dans la base candidats.";
+
+            $logger->log(
+                'sourcing_campaign.add_mentioned_candidat',
+                "Candidat mentionné traité : {$name}.",
+                ['candidat_id' => $candidat->id, 'campaign_id' => $campaignId],
+                [SourcingCampaign::class]
+            );
+
+            return back()->with('success', $message);
+        } catch (\Throwable $e) {
+            return back()->withErrors(['mention' => 'Impossible d\'ajouter le candidat mentionné.']);
         }
+    }
 
-        $campaign = $campaignId ? SourcingCampaign::with('brief')->find($campaignId) : null;
-        $post = $postId ? SocialPost::find($postId) : null;
-        $brief = $campaign?->brief;
+    /**
+     * Create or locate a candidat from a LinkedIn comment and attach them to the campaign brief.
+     *
+     * @param  SocialComment  $comment  Route-model-bound SocialComment instance
+     */
+    public function addCandidat(SocialComment $comment): RedirectResponse
+    {
+        $this->authorize('sourcing-campaigns.show');
 
-        $attributes = [
-            'full_name' => $name,
-            'source' => 'sourcing_campaign_mention',
-            'source_url' => $linkedinUrl,
-            'status' => 'sourced',
-            'source_context' => [
-                'type' => 'mention',
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            if (! $comment->commenter_linkedin_url && ! $comment->commenter_name) {
+                return back()->withErrors(['comment' => 'Not enough data to create a candidate.']);
+            }
+
+            $post = $comment->social_post_id ? SocialPost::find($comment->social_post_id) : null;
+            $campaign = $post?->sourcing_campaign_id ? SourcingCampaign::with('brief')->find($post->sourcing_campaign_id) : null;
+            $brief = $campaign?->brief;
+
+            $sourceContext = [
+                'type' => 'comment',
                 'sourcing_campaign_id' => $campaign?->id,
                 'brief_id' => $brief?->id,
                 'brief_title' => $brief?->title,
                 'post_id' => $post?->id,
                 'post_url' => $post?->linkedin_url,
                 'post_author' => $post?->author_name,
-            ],
-        ];
+                'comment_id' => $comment->id,
+                'comment_text' => $comment->commentary,
+            ];
 
-        $candidat = $linkedinUrl
-            ? Candidat::firstOrCreate(['linkedin_url' => $linkedinUrl], $attributes)
-            : Candidat::create($attributes);
+            $candidat = Candidat::firstOrCreate(
+                ['linkedin_url' => $comment->commenter_linkedin_url],
+                [
+                    'full_name' => $comment->commenter_name,
+                    'current_title' => $comment->commenter_position,
+                    'source' => 'sourcing_campaign',
+                    'source_url' => $comment->commenter_linkedin_url,
+                    'status' => 'sourced',
+                    'source_context' => $sourceContext,
+                ]
+            );
 
-        if (! $candidat->wasRecentlyCreated) {
-            $updates = [];
-            if (empty($candidat->source_context)) {
-                $updates['source_context'] = $attributes['source_context'];
+            if (! $candidat->wasRecentlyCreated) {
+                $updates = [];
+                if (empty($candidat->source_context)) {
+                    $updates['source_context'] = $sourceContext;
+                }
+                if (empty($candidat->source)) {
+                    $updates['source'] = 'sourcing_campaign';
+                    $updates['source_url'] = $comment->commenter_linkedin_url;
+                }
+                if (! empty($updates)) {
+                    $candidat->update($updates);
+                }
             }
-            if (empty($candidat->source)) {
-                $updates['source'] = 'sourcing_campaign_mention';
-                $updates['source_url'] = $linkedinUrl;
+
+            if ($brief) {
+                $candidat->briefs()->syncWithoutDetaching([$brief->id => ['sourced_at' => now()]]);
             }
-            if (! empty($updates)) {
-                $candidat->update($updates);
-            }
+
+            $name = $candidat->full_name ?? 'Candidat';
+            $message = $candidat->wasRecentlyCreated
+                ? "{$name} ajouté à la base candidats."
+                : "{$name} existe déjà dans la base candidats.";
+
+            $logger->log(
+                'sourcing_campaign.add_candidat',
+                "Candidat depuis commentaire traité : {$name}.",
+                ['candidat_id' => $candidat->id, 'comment_id' => $comment->id],
+                [SourcingCampaign::class]
+            );
+
+            return back()->with('success', $message);
+        } catch (\Throwable $e) {
+            return back()->withErrors(['comment' => 'Impossible d\'ajouter le candidat.']);
         }
-
-        if ($brief) {
-            $candidat->briefs()->syncWithoutDetaching([$brief->id => ['sourced_at' => now()]]);
-        }
-
-        $name = $candidat->full_name ?? $name;
-        $message = $candidat->wasRecentlyCreated
-            ? "{$name} ajouté à la base candidats."
-            : "{$name} existe déjà dans la base candidats.";
-
-        return back()->with('success', $message);
-    }
-
-    public function addCandidat(SocialComment $comment): RedirectResponse
-    {
-        $this->authorize('sourcing-campaigns.show');
-
-        if (! $comment->commenter_linkedin_url && ! $comment->commenter_name) {
-            return back()->withErrors(['comment' => 'Not enough data to create a candidate.']);
-        }
-
-        $post = $comment->social_post_id ? SocialPost::find($comment->social_post_id) : null;
-        $campaign = $post?->sourcing_campaign_id ? SourcingCampaign::with('brief')->find($post->sourcing_campaign_id) : null;
-        $brief = $campaign?->brief;
-
-        $sourceContext = [
-            'type' => 'comment',
-            'sourcing_campaign_id' => $campaign?->id,
-            'brief_id' => $brief?->id,
-            'brief_title' => $brief?->title,
-            'post_id' => $post?->id,
-            'post_url' => $post?->linkedin_url,
-            'post_author' => $post?->author_name,
-            'comment_id' => $comment->id,
-            'comment_text' => $comment->commentary,
-        ];
-
-        $candidat = Candidat::firstOrCreate(
-            ['linkedin_url' => $comment->commenter_linkedin_url],
-            [
-                'full_name' => $comment->commenter_name,
-                'current_title' => $comment->commenter_position,
-                'source' => 'sourcing_campaign',
-                'source_url' => $comment->commenter_linkedin_url,
-                'status' => 'sourced',
-                'source_context' => $sourceContext,
-            ]
-        );
-
-        if (! $candidat->wasRecentlyCreated) {
-            $updates = [];
-            if (empty($candidat->source_context)) {
-                $updates['source_context'] = $sourceContext;
-            }
-            if (empty($candidat->source)) {
-                $updates['source'] = 'sourcing_campaign';
-                $updates['source_url'] = $comment->commenter_linkedin_url;
-            }
-            if (! empty($updates)) {
-                $candidat->update($updates);
-            }
-        }
-
-        if ($brief) {
-            $candidat->briefs()->syncWithoutDetaching([$brief->id => ['sourced_at' => now()]]);
-        }
-
-        $name = $candidat->full_name ?? 'Candidat';
-        $message = $candidat->wasRecentlyCreated
-            ? "{$name} ajouté à la base candidats."
-            : "{$name} existe déjà dans la base candidats.";
-
-        return back()->with('success', $message);
     }
 
     private function storeSocialPost(SourcingCampaign $campaign, array $item): SocialPost

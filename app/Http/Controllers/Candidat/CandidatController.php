@@ -455,31 +455,69 @@ class CandidatController extends Controller
         }
     }
 
+    /**
+     * Update only the status of the given candidat.
+     *
+     * @param  Candidat  $candidat  Route-model-bound Candidat instance
+     */
     public function updateStatus(Request $request, Candidat $candidat): RedirectResponse
     {
         $this->authorize('candidates.edit');
 
-        $validated = $request->validate([
-            'status' => ['required', 'string', 'max:100'],
-        ]);
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
 
-        $candidat->update(['status' => $validated['status']]);
+        try {
+            $validated = $request->validate([
+                'status' => ['required', 'string', 'max:100'],
+            ]);
 
-        return back();
+            $candidat->update(['status' => $validated['status']]);
+
+            $logger->log(
+                'candidat.update_status',
+                "Mise à jour du statut du candidat (ID : {$candidat->id}) → {$validated['status']}.",
+                ['candidat_id' => $candidat->id, 'status' => $validated['status']],
+                [Candidat::class]
+            );
+
+            return back();
+        } catch (\Throwable $e) {
+            return back()->withErrors(['status' => 'Impossible de mettre à jour le statut.']);
+        }
     }
 
+    /**
+     * Quickly update status and recruiter notes for the given candidat.
+     *
+     * @param  Candidat  $candidat  Route-model-bound Candidat instance
+     */
     public function quickUpdate(Request $request, Candidat $candidat): RedirectResponse
     {
         $this->authorize('candidates.edit');
 
-        $validated = $request->validate([
-            'status' => ['required', 'string', 'max:100'],
-            'recruiter_notes' => ['nullable', 'string', 'max:2000'],
-        ]);
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
 
-        $candidat->update($validated);
+        try {
+            $validated = $request->validate([
+                'status' => ['required', 'string', 'max:100'],
+                'recruiter_notes' => ['nullable', 'string', 'max:2000'],
+            ]);
 
-        return back();
+            $candidat->update($validated);
+
+            $logger->log(
+                'candidat.quick_update',
+                "Mise à jour rapide du candidat (ID : {$candidat->id}).",
+                ['candidat_id' => $candidat->id, 'status' => $validated['status']],
+                [Candidat::class]
+            );
+
+            return back();
+        } catch (\Throwable $e) {
+            return back()->withErrors(['status' => 'Impossible de mettre à jour le candidat.']);
+        }
     }
 
     /**
