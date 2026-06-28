@@ -429,41 +429,52 @@ class InterviewController extends Controller
         try {
             $interview->load('brief');
 
-            $transcription = DB::transaction(function () use ($interview, $assemblyAI) {
-                $transcription = Transcription::where('interview_id', $interview->id)
-                    ->lockForUpdate()
-                    ->first();
+            // Read the transcription outside any lock first.
+            $transcription = Transcription::where('interview_id', $interview->id)->first();
 
-                if (! $transcription) {
-                    return null;
+            if ($transcription && $transcription->status === 'pending' && $transcription->assemblyai_transcript_id) {
+                // Do the slow HTTP call before acquiring the DB lock.
+                $assemblyStatus = $assemblyAI->checkStatus($transcription->assemblyai_transcript_id);
+
+                $utterances = null;
+                $turns = null;
+                if ($assemblyStatus === 'completed') {
+                    Log::info('Interview status check: AssemblyAI completed, processing utterances', [
+                        'transcription_id' => $transcription->id,
+                        'interview_id' => $interview->id,
+                        'assemblyai_transcript_id' => $transcription->assemblyai_transcript_id,
+                        'pending_since' => $transcription->created_at?->diffForHumans(),
+                    ]);
+                    $utterances = $assemblyAI->fetchUtterances($transcription->assemblyai_transcript_id);
+
+                    $firstSpeaker = $utterances[0]['speaker'] ?? 'A';
+                    $speakerMap = [$firstSpeaker => 'Interviewer'];
+                    foreach ($utterances as $u) {
+                        if (! isset($speakerMap[$u['speaker']])) {
+                            $speakerMap[$u['speaker']] = 'Candidate';
+                        }
+                    }
+
+                    $turns = array_values(array_filter(
+                        array_map(fn ($u) => trim($u['text']) === '' ? null : [
+                            'speaker' => $speakerMap[$u['speaker']] ?? $u['speaker'],
+                            'text' => $u['text'],
+                        ], $utterances)
+                    ));
                 }
 
-                if ($transcription->status === 'pending' && $transcription->assemblyai_transcript_id) {
-                    $assemblyStatus = $assemblyAI->checkStatus($transcription->assemblyai_transcript_id);
+                // Now lock the row only for the DB write.
+                $transcription = DB::transaction(function () use ($interview, $assemblyStatus, $turns) {
+                    $transcription = Transcription::where('interview_id', $interview->id)
+                        ->lockForUpdate()
+                        ->first();
 
-                    if ($assemblyStatus === 'completed') {
-                        Log::info('Interview status check: AssemblyAI completed, processing utterances', [
-                            'transcription_id' => $transcription->id,
-                            'interview_id' => $interview->id,
-                            'assemblyai_transcript_id' => $transcription->assemblyai_transcript_id,
-                            'pending_since' => $transcription->created_at?->diffForHumans(),
-                        ]);
-                        $utterances = $assemblyAI->fetchUtterances($transcription->assemblyai_transcript_id);
+                    if (! $transcription || $transcription->status !== 'pending') {
+                        return $transcription;
+                    }
 
-                        $firstSpeaker = $utterances[0]['speaker'] ?? 'A';
-                        $speakerMap = [$firstSpeaker => 'Interviewer'];
-                        foreach ($utterances as $u) {
-                            if (! isset($speakerMap[$u['speaker']])) {
-                                $speakerMap[$u['speaker']] = 'Candidate';
-                            }
-                        }
-
-                        $turns = array_values(array_filter(
-                            array_map(fn ($u) => trim($u['text']) === '' ? null : [
-                                'speaker' => $speakerMap[$u['speaker']] ?? $u['speaker'],
-                                'text' => $u['text'],
-                            ], $utterances)
-                        ));
+                    if ($assemblyStatus === 'completed' && $turns !== null) {
+                        $brief = $this->formatBrief($interview->brief, $interview->expectations ?? '');
 
                         $transcription->update([
                             'status' => 'done',
@@ -471,8 +482,6 @@ class InterviewController extends Controller
                             'diarized_transcript' => json_encode($turns),
                             'analysis_status' => 'processing',
                         ]);
-
-                        $brief = $this->formatBrief($interview->brief, $interview->expectations ?? '');
 
                         AnalyseTranscriptionJob::dispatch($transcription, $brief, []);
                         Log::info('Interview status check: analysis job dispatched', [
@@ -490,10 +499,10 @@ class InterviewController extends Controller
                         ]);
                         $transcription->update(['status' => 'failed']);
                     }
-                }
 
-                return $transcription;
-            });
+                    return $transcription;
+                });
+            }
 
             if (! $transcription) {
                 return response()->json(['status' => 'pending', 'analysis_status' => 'pending']);
@@ -639,6 +648,7 @@ class InterviewController extends Controller
     public function search(Interview $interview): JsonResponse
     {
         $this->authorize('interviews.view');
+        abort_if($interview->interviewer_id !== auth()->id(), 403);
 
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);

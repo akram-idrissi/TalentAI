@@ -58,6 +58,9 @@ export default function TranscriptSearchModal({ interviewId, open, onClose }: Pr
         }, 0);
     }, [search, transcript]);
 
+    // Reset on every render so refs align with the current match indices.
+    // Truncate stale entries so old refs don't linger after match count drops.
+    matchRefs.current.length = 0;
     let globalMatchIndex = 0;
     const highlightText = (text: string, keyword: string) => {
         if (!keyword.trim()) {
