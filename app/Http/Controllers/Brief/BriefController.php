@@ -475,7 +475,7 @@ class BriefController extends Controller
      */
     public function activate(Brief $brief): RedirectResponse|Response
     {
-        $this->authorize('briefs.edit');
+        $this->authorize('briefs.approve');
 
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
