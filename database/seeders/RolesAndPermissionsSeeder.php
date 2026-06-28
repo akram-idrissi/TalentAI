@@ -15,6 +15,9 @@ class RolesAndPermissionsSeeder extends Seeder
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         $permissions = [
+            // Dashboard
+            'dashboard.view',
+
             // Briefs
             'briefs.view',
             'briefs.create',
@@ -108,6 +111,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'guard_name' => 'web',
         ]);
         $admin->syncPermissions([
+            'dashboard.view',
             'briefs.view',
             'briefs.create',
             'briefs.edit',
@@ -184,6 +188,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'guard_name' => 'web',
         ]);
         $recruiter->syncPermissions([
+            'dashboard.view',
             'briefs.view',
             'briefs.create',
             'briefs.edit',
@@ -227,6 +232,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'guard_name' => 'web',
         ]);
         $hiringManager->syncPermissions([
+            'dashboard.view',
             'briefs.view',
             'briefs.approve',
             'sourcing.view',
@@ -253,6 +259,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'guard_name' => 'web',
         ]);
         $viewer->syncPermissions([
+            'dashboard.view',
             'briefs.view',
             'sourcing.view',
             'candidates.view',
