@@ -742,7 +742,7 @@ class CandidatController extends Controller
             } elseif ($phoneFound) {
                 $message = 'Numéro de téléphone trouvé et enregistré avec succès.';
             } else {
-                $message = 'Aucun email ni numéro de téléphone n’a été trouvé pour ce candidat.';
+                $message = 'Aucun email ni numero de telephone trouve pour ce candidat.';
             }
 
             $modifications = collect($after)
@@ -798,29 +798,29 @@ class CandidatController extends Controller
                 [Candidat::class]
             );
 
-            return Inertia::render(‘Fallback’, [
-                ‘error’ => 'Impossible d’enrichir ce candidat.',
-                ‘candidat’ => $candidat,
+            return Inertia::render('Fallback', [
+                'error' => 'Enrichissement impossible.',
+                'candidat' => $candidat,
             ]);
         }
     }
 
     private function resolveProfilePhoto(?array $rawData): ?string
     {
-        $pic = data_get($rawData, ‘profilePicture’);
+        $pic = data_get($rawData, 'profilePicture');
         if (! $pic) {
             return null;
         }
         if (is_string($pic)) {
             return $pic;
         }
-        $sizes = data_get($pic, ‘sizes’, []);
+        $sizes = data_get($pic, 'sizes', []);
         foreach ($sizes as $size) {
-            if (($size[‘width’] ?? 0) === 200) {
-                return $size[‘url’];
+            if (($size['width'] ?? 0) === 200) {
+                return $size['url'];
             }
         }
 
-        return data_get($pic, ‘url’);
+        return data_get($pic, 'url');
     }
 }
