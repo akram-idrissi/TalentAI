@@ -25,6 +25,8 @@ class HistoriqueController extends Controller
         $logger = app(ActivityLogger::class);
 
         try {
+            $this->authorize('historique.view');
+
             $query = Interview::query()
                 ->with([
                     'candidate:id,full_name,headline,current_title,current_company,linkedin_url,raw_data',
