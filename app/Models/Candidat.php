@@ -29,6 +29,8 @@ class Candidat extends Model
 
     ];
 
+    protected $hidden = ['raw_data'];
+
     /**
      * Get the attributes that should be cast.
      *
