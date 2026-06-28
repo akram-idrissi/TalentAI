@@ -14,6 +14,14 @@ import { EditRolesModal } from './components/EditRolesModal';
 import { UserAvatar } from './components/UserAvatar';
 import { ROLE_COLORS } from './constants';
 
+function decodePaginationLabel(html: string): string {
+    return html
+        .replace(/&laquo;/g, '«')
+        .replace(/&raquo;/g, '»')
+        .replace(/&amp;/g, '&')
+        .replace(/<[^>]*>/g, '');
+}
+
 function formatDate(iso: string | null) {
     if (!iso) return '—';
     return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
@@ -264,13 +272,14 @@ export default function UsersIndex() {
                                                     key={i}
                                                     disabled={!link.url}
                                                     onClick={() => link.url && router.get(link.url, {}, { preserveScroll: true })}
-                                                    dangerouslySetInnerHTML={{ __html: link.label }}
                                                     className={`flex h-7 min-w-[28px] items-center justify-center rounded-lg border px-2 text-[12px] transition ${
                                                         link.active
                                                             ? 'border-ds-accent bg-ds-accent text-white'
                                                             : 'border-ds-border text-ds-text2 disabled:cursor-not-allowed disabled:opacity-40'
                                                     }`}
-                                                />
+                                                >
+                                                    {decodePaginationLabel(link.label)}
+                                                </button>
                                             ))}
                                         </div>
                                     </div>
@@ -407,13 +416,14 @@ export default function UsersIndex() {
                                                     key={i}
                                                     disabled={!link.url}
                                                     onClick={() => link.url && router.get(link.url, {}, { preserveScroll: true })}
-                                                    dangerouslySetInnerHTML={{ __html: link.label }}
                                                     className={`flex h-7 min-w-[28px] items-center justify-center rounded-lg border px-2 text-[12px] transition ${
                                                         link.active
                                                             ? 'border-ds-accent bg-ds-accent text-white'
                                                             : 'border-ds-border text-ds-text2 hover:border-ds-border2 hover:text-ds-text disabled:cursor-not-allowed disabled:opacity-40'
                                                     }`}
-                                                />
+                                                >
+                                                    {decodePaginationLabel(link.label)}
+                                                </button>
                                             ))}
                                         </div>
                                     </div>

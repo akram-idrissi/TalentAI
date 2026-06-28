@@ -66,7 +66,10 @@ function CandidatAvatar({ name, index, photoUrl }: { name: string; index: number
                         const parent = e.currentTarget.parentElement;
                         if (parent) {
                             e.currentTarget.remove();
-                            parent.innerHTML = `<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${AVATAR_COLORS[index % AVATAR_COLORS.length]} text-[12px] font-bold text-white">${initials}</div>`;
+                            const div = document.createElement('div');
+                            div.className = `flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${AVATAR_COLORS[index % AVATAR_COLORS.length]} text-[12px] font-bold text-white`;
+                            div.textContent = initials;
+                            parent.appendChild(div);
                         }
                     }}
                 />
