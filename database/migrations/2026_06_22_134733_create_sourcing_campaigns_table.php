@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('sourcing_campaigns', function (Blueprint $table) {
             $table->id();
-            $table->json('target_urls');
+            $table->json('search_queries');
+            $table->json('author_urls')->nullable();
             $table->unsignedInteger('max_posts')->default(0);
             $table->string('apify_run_id')->nullable()->index();
             $table->string('apify_dataset_id')->nullable();
@@ -21,7 +22,6 @@ return new class extends Migration
             $table->foreignId('brief_id')->nullable()->constrained('briefs')->nullOnDelete();
             $table->date('posted_limit_date')->nullable();
             $table->text('error_message')->nullable();
-            $table->unsignedInteger('poll_attempts')->default(0);
             $table->timestamps();
         });
     }

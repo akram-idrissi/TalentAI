@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('commenter_linkedin_url')->nullable()->index();
             $table->text('commenter_position')->nullable();
             $table->longText('commentary')->nullable();
+            $table->json('mentions')->nullable();
             $table->timestamp('commented_at')->nullable();
             $table->timestamps();
         });

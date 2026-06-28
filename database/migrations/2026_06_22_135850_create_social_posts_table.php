@@ -15,11 +15,11 @@ return new class extends Migration
             $table->id();
             $table->foreignId('sourcing_campaign_id')->constrained()->cascadeOnDelete();
             $table->string('linkedin_post_id')->index();
-            $table->string('linkedin_url')->nullable();
+            $table->text('linkedin_url')->nullable();
             $table->longText('content')->nullable();
             $table->string('author_name')->nullable();
             $table->string('author_public_identifier')->nullable();
-            $table->string('author_linkedin_url')->nullable();
+            $table->text('author_linkedin_url')->nullable();
             $table->text('author_info')->nullable();
             $table->timestamp('posted_at')->nullable();
             $table->timestamps();
