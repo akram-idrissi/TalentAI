@@ -8,7 +8,7 @@ import { safeUrl } from '@/lib/utils';
 import type { Candidat, IndexCandidatProps } from '@/types/candidat';
 import { Head, Link, router } from '@inertiajs/react';
 import axios from 'axios';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, ExternalLink, Plus, RefreshCw, Sparkles, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, ExternalLink, Pencil, Plus, RefreshCw, Sparkles, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 
@@ -142,17 +142,31 @@ function Pagination({ meta, search }: { meta: PaginationMeta; search: string }) 
     );
 }
 
-export default function Index({ candidats, filters, briefs }: IndexCandidatProps) {
+const DEFAULT_STATUSES = [
+    { value: 'sourced', label: 'Sourcé' },
+    { value: 'contacted', label: 'Contacté' },
+    { value: 'interview', label: 'Entretien' },
+    { value: 'recommended', label: 'Recommandé' },
+    { value: 'offer', label: 'Offre' },
+    { value: 'rejected', label: 'Rejeté' },
+];
+
+export default function Index({ candidats, filters, briefs, params }: IndexCandidatProps) {
     const { t } = useI18n();
+    const statusOptions = params.status_candidat && params.status_candidat.length > 0 ? params.status_candidat : DEFAULT_STATUSES;
+    const statusLabel = (value: string) => statusOptions.find((o) => o.value === value)?.label ?? STATUS_CONFIG[value]?.label ?? value;
+
     const [search] = useState(filters.search ?? '');
     const [deletingCandidat, setDeletingCandidat] = useState<Candidat | null>(null);
+    const [editingStatusId, setEditingStatusId] = useState<number | null>(null);
+    const [pendingStatuses, setPendingStatuses] = useState<Record<number, string>>({});
     const [analysisCandidat, setAnalysisCandidat] = useState<Candidat | null>(null);
     const [analysisMap, setAnalysisMap] = useState<Record<number, string>>({});
     const [generatingId, setGeneratingId] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [activeFilters, setActiveFilters] = useState<FilterEntry[]>(Array.isArray(filters) ? filters : []);
     type SortKey = 'sourcing_score' | 'score_cv' | 'score_interview';
-    const [sortKey, setSortKey] = useState<SortKey | null>(null);
+    const [sortKey, setSortKey] = useState<SortKey | null>('sourcing_score');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
     const [rescoringId, setRescoringId] = useState<number | null>(null);
 
@@ -325,6 +339,12 @@ export default function Index({ candidats, filters, briefs }: IndexCandidatProps
         );
     }
 
+    function confirmStatusChange(candidat: Candidat) {
+        const newStatus = pendingStatuses[candidat.id] ?? candidat.status;
+        setEditingStatusId(null);
+        router.patch(route('dashboard.candidats.update-status', candidat.id), { status: newStatus }, { preserveScroll: true, preserveState: true });
+    }
+
     const totalLabel = `${candidats.total} profil${candidats.total !== 1 ? 's' : ''} actif${candidats.total !== 1 ? 's' : ''} · Toutes sources confondues`;
 
     function SortIcon({ col }: { col: SortKey }) {
@@ -391,7 +411,7 @@ export default function Index({ candidats, filters, briefs }: IndexCandidatProps
                     {!loading && candidats.data.length > 0 && (
                         <div className="border-ds-border bg-ds-surface overflow-hidden rounded-2xl border">
                             <div className="overflow-x-auto">
-                                <table className="w-full border-collapse text-[13px]">
+                                <table className="w-full min-w-[1100px] border-collapse text-[13px]">
                                     <thead>
                                         <tr className="border-ds-border border-b">
                                             {['CANDIDAT', 'POSTE ACTUEL', 'POSTE VISÉ', 'SOURCE'].map((col, i) => (
@@ -485,7 +505,44 @@ export default function Index({ candidats, filters, briefs }: IndexCandidatProps
 
                                                 {/* SOURCE */}
                                                 <td className="px-5 py-4">
-                                                    {candidat.source ? (
+                                                    {candidat.source?.startsWith('sourcing_campaign') ? (
+                                                        <div className="flex flex-col gap-1">
+                                                            {candidat.source_context?.post_author ? (
+                                                                <span className="inline-flex max-w-[160px] items-center truncate rounded-full border border-[#6C63FF]/25 bg-[#6C63FF]/10 px-2.5 py-1 text-[11px] font-semibold text-[#6C63FF]">
+                                                                    <span className="truncate">{candidat.source_context.post_author}</span>
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center rounded-full border border-[#6C63FF]/25 bg-[#6C63FF]/10 px-2.5 py-1 text-[11px] font-semibold text-[#6C63FF]">
+                                                                    {t('candidats.index.columns.source_social_media')}
+                                                                </span>
+                                                            )}
+                                                            {candidat.source_context?.post_url && (
+                                                                <a
+                                                                    href={safeUrl(candidat.source_context.post_url)}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    className="text-ds-text3 inline-flex items-center gap-1 text-[11px] transition hover:text-[#6C63FF]"
+                                                                >
+                                                                    <svg
+                                                                        xmlns="http://www.w3.org/2000/svg"
+                                                                        width="9"
+                                                                        height="9"
+                                                                        viewBox="0 0 24 24"
+                                                                        fill="none"
+                                                                        stroke="currentColor"
+                                                                        strokeWidth="2"
+                                                                        strokeLinecap="round"
+                                                                        strokeLinejoin="round"
+                                                                        className="shrink-0"
+                                                                    >
+                                                                        <path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                                                    </svg>
+                                                                    Voir le post
+                                                                </a>
+                                                            )}
+                                                        </div>
+                                                    ) : candidat.source ? (
                                                         <span
                                                             className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize ${sourceStyle(candidat.source)}`}
                                                         >
@@ -530,21 +587,68 @@ export default function Index({ candidats, filters, briefs }: IndexCandidatProps
                                                 </td>
 
                                                 {/* STATUT */}
-                                                <td className="px-5 py-4">
-                                                    {(() => {
-                                                        const cfg = STATUS_CONFIG[candidat.status] ?? STATUS_CONFIG.sourced;
-                                                        return (
-                                                            <span
-                                                                className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${cfg.className}`}
+                                                <td className="min-w-[160px] px-5 py-4">
+                                                    {editingStatusId === candidat.id ? (
+                                                        <div className="flex items-center gap-1">
+                                                            <select
+                                                                autoFocus
+                                                                value={pendingStatuses[candidat.id] ?? candidat.status}
+                                                                onChange={(e) =>
+                                                                    setPendingStatuses((prev) => ({ ...prev, [candidat.id]: e.target.value }))
+                                                                }
+                                                                className="border-ds-border bg-ds-bg text-ds-text focus:border-ds-accent rounded-lg border px-2 py-1 text-[11px] outline-none"
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') confirmStatusChange(candidat);
+                                                                    if (e.key === 'Escape') setEditingStatusId(null);
+                                                                }}
                                                             >
-                                                                {cfg.label}
-                                                            </span>
-                                                        );
-                                                    })()}
+                                                                {statusOptions.map((opt) => (
+                                                                    <option key={opt.value} value={opt.value}>
+                                                                        {opt.label}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                            <button
+                                                                onClick={() => confirmStatusChange(candidat)}
+                                                                className="text-[#34D399] transition hover:opacity-80"
+                                                            >
+                                                                <Check size={13} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setEditingStatusId(null)}
+                                                                className="text-ds-text3 transition hover:opacity-80"
+                                                            >
+                                                                <X size={13} />
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center gap-1.5">
+                                                            {(() => {
+                                                                const cfg = STATUS_CONFIG[candidat.status];
+                                                                return (
+                                                                    <span
+                                                                        className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${cfg?.className ?? 'bg-ds-bg3 text-ds-text2 border-ds-border'}`}
+                                                                    >
+                                                                        {statusLabel(candidat.status)}
+                                                                    </span>
+                                                                );
+                                                            })()}
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setPendingStatuses((prev) => ({ ...prev, [candidat.id]: candidat.status }));
+                                                                    setEditingStatusId(candidat.id);
+                                                                }}
+                                                                className="text-ds-text3 hover:text-ds-text2 transition"
+                                                            >
+                                                                <Pencil size={11} />
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </td>
 
                                                 {/* ACTIONS */}
-                                                <td className="px-5 py-4">
+                                                <td className="px-5 py-4 whitespace-nowrap">
                                                     <div className="flex items-center gap-2">
                                                         <Link
                                                             href={route('dashboard.candidats.show', candidat.id)}

@@ -33,7 +33,7 @@ class SourcingCampaignController extends Controller
             $sourcingCampaigns = SourcingCampaign::with('brief')
                 ->withCount(['posts', 'comments'])
                 ->latest()
-                ->paginate(15);
+                ->paginate(100);
 
             $logger->log('sourcing_campaign.index', 'Consultation de la liste des sourcing campaigns.', [], [SourcingCampaign::class]);
 
@@ -297,24 +297,43 @@ class SourcingCampaignController extends Controller
         $post = $postId ? SocialPost::find($postId) : null;
         $brief = $campaign?->brief;
 
-        $candidat = Candidat::firstOrCreate(
-            ['linkedin_url' => $linkedinUrl ?: null],
-            [
-                'full_name' => $name,
-                'source' => 'sourcing_campaign_mention',
-                'source_url' => $linkedinUrl,
-                'status' => 'sourced',
-                'source_context' => [
-                    'type' => 'mention',
-                    'sourcing_campaign_id' => $campaign?->id,
-                    'brief_id' => $brief?->id,
-                    'brief_title' => $brief?->title,
-                    'post_id' => $post?->id,
-                    'post_url' => $post?->linkedin_url,
-                    'post_author' => $post?->author_name,
-                ],
-            ]
-        );
+        $attributes = [
+            'full_name' => $name,
+            'source' => 'sourcing_campaign_mention',
+            'source_url' => $linkedinUrl,
+            'status' => 'sourced',
+            'source_context' => [
+                'type' => 'mention',
+                'sourcing_campaign_id' => $campaign?->id,
+                'brief_id' => $brief?->id,
+                'brief_title' => $brief?->title,
+                'post_id' => $post?->id,
+                'post_url' => $post?->linkedin_url,
+                'post_author' => $post?->author_name,
+            ],
+        ];
+
+        $candidat = $linkedinUrl
+            ? Candidat::firstOrCreate(['linkedin_url' => $linkedinUrl], $attributes)
+            : Candidat::create($attributes);
+
+        if (! $candidat->wasRecentlyCreated) {
+            $updates = [];
+            if (empty($candidat->source_context)) {
+                $updates['source_context'] = $attributes['source_context'];
+            }
+            if (empty($candidat->source)) {
+                $updates['source'] = 'sourcing_campaign_mention';
+                $updates['source_url'] = $linkedinUrl;
+            }
+            if (! empty($updates)) {
+                $candidat->update($updates);
+            }
+        }
+
+        if ($brief) {
+            $candidat->briefs()->syncWithoutDetaching([$brief->id => ['sourced_at' => now()]]);
+        }
 
         $name = $candidat->full_name ?? $name;
         $message = $candidat->wasRecentlyCreated
@@ -332,10 +351,21 @@ class SourcingCampaignController extends Controller
             return back()->withErrors(['comment' => 'Not enough data to create a candidate.']);
         }
 
-        $comment->load('post.sourcingCampaign.brief');
-        $post = $comment->post;
-        $campaign = $post?->sourcingCampaign;
+        $post = $comment->social_post_id ? SocialPost::find($comment->social_post_id) : null;
+        $campaign = $post?->sourcing_campaign_id ? SourcingCampaign::with('brief')->find($post->sourcing_campaign_id) : null;
         $brief = $campaign?->brief;
+
+        $sourceContext = [
+            'type' => 'comment',
+            'sourcing_campaign_id' => $campaign?->id,
+            'brief_id' => $brief?->id,
+            'brief_title' => $brief?->title,
+            'post_id' => $post?->id,
+            'post_url' => $post?->linkedin_url,
+            'post_author' => $post?->author_name,
+            'comment_id' => $comment->id,
+            'comment_text' => $comment->commentary,
+        ];
 
         $candidat = Candidat::firstOrCreate(
             ['linkedin_url' => $comment->commenter_linkedin_url],
@@ -345,19 +375,27 @@ class SourcingCampaignController extends Controller
                 'source' => 'sourcing_campaign',
                 'source_url' => $comment->commenter_linkedin_url,
                 'status' => 'sourced',
-                'source_context' => [
-                    'type' => 'comment',
-                    'sourcing_campaign_id' => $campaign?->id,
-                    'brief_id' => $brief?->id,
-                    'brief_title' => $brief?->title,
-                    'post_id' => $post?->id,
-                    'post_url' => $post?->linkedin_url,
-                    'post_author' => $post?->author_name,
-                    'comment_id' => $comment->id,
-                    'comment_text' => $comment->commentary,
-                ],
+                'source_context' => $sourceContext,
             ]
         );
+
+        if (! $candidat->wasRecentlyCreated) {
+            $updates = [];
+            if (empty($candidat->source_context)) {
+                $updates['source_context'] = $sourceContext;
+            }
+            if (empty($candidat->source)) {
+                $updates['source'] = 'sourcing_campaign';
+                $updates['source_url'] = $comment->commenter_linkedin_url;
+            }
+            if (! empty($updates)) {
+                $candidat->update($updates);
+            }
+        }
+
+        if ($brief) {
+            $candidat->briefs()->syncWithoutDetaching([$brief->id => ['sourced_at' => now()]]);
+        }
 
         $name = $candidat->full_name ?? 'Candidat';
         $message = $candidat->wasRecentlyCreated

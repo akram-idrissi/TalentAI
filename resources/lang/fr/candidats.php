@@ -166,6 +166,7 @@ return [
             'experience' => 'Expérience',
             'location' => 'Localisation',
             'source' => 'Source',
+            'source_social_media' => 'Réseaux sociaux',
             'status' => 'Statut',
             'created_at' => 'Ajouté',
             'actions' => 'Actions',
