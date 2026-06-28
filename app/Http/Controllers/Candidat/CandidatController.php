@@ -2,24 +2,25 @@
 
 namespace App\Http\Controllers\Candidat;
 
-use App\Enums\CandidatStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Brief;
 use App\Models\Candidat;
 use App\Models\Interview;
 use App\Services\ActivityLogger;
 use App\Services\LushaService;
+use App\Services\ParameterService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CandidatController extends Controller
 {
+    public function __construct(private readonly ParameterService $params) {}
+
     /**
      * Return the validation rules shared by store() and update().
      *
@@ -107,7 +108,7 @@ class CandidatController extends Controller
             'education_level' => 'nullable|string|max:255',
             'source' => 'nullable|string|max:255',
             'source_url' => 'nullable|url|max:500',
-            'status' => ['required', Rule::enum(CandidatStatus::class)],
+            'status' => ['required', 'string', 'max:100'],
             'linkedin_url' => 'nullable|url|max:500',
             'headline' => 'nullable|string|max:255',
             'summary' => 'nullable|string',
@@ -147,7 +148,7 @@ class CandidatController extends Controller
             $this->applyFilters($query, $filters);
             $candidats = $query
                 ->latest()
-                ->paginate(10)
+                ->paginate(100)
                 ->through(fn ($candidat) => [
 
                     'id' => $candidat->id,
@@ -162,6 +163,7 @@ class CandidatController extends Controller
                     'education_level' => $candidat->education_level,
                     'sector' => $candidat->sector,
                     'source' => $candidat->source,
+                    'source_context' => $candidat->source_context,
                     'linkedin_url' => $candidat->linkedin_url,
                     'status' => $candidat->status,
                     'open_to_work' => $candidat->open_to_work,
@@ -194,6 +196,7 @@ class CandidatController extends Controller
                 'candidats' => $candidats,
                 'filters' => $filters,
                 'briefs' => $briefs,
+                'params' => $this->params->getAll(['status_candidat']),
             ]);
 
         } catch (\Throwable $e) {
@@ -235,10 +238,7 @@ class CandidatController extends Controller
             );
 
             return Inertia::render('Candidats/Create', [
-                'statuses' => array_map(
-                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
-                    CandidatStatus::cases()
-                ),
+                'params' => $this->params->getAll(['status_candidat']),
             ]);
         } catch (\Throwable $e) {
             $logger->log(
@@ -338,6 +338,7 @@ class CandidatController extends Controller
                     'ai_analysis' => $firstBrief?->pivot?->ai_analysis,
                     'recruiter_notes' => $interview?->recruiter_notes,
                 ]),
+                'params' => $this->params->getAll(['status_candidat']),
             ]);
         } catch (\Throwable $e) {
             $logger->log(
@@ -376,10 +377,7 @@ class CandidatController extends Controller
 
             return Inertia::render('Candidats/Edit', [
                 'candidat' => $candidat,
-                'statuses' => array_map(
-                    fn ($case) => ['value' => $case->value, 'label' => $case->label()],
-                    CandidatStatus::cases()
-                ),
+                'params' => $this->params->getAll(['status_candidat']),
             ]);
         } catch (\Throwable $e) {
             $logger->log(
@@ -455,6 +453,33 @@ class CandidatController extends Controller
                 'candidat' => $candidat,
             ]);
         }
+    }
+
+    public function updateStatus(Request $request, Candidat $candidat): RedirectResponse
+    {
+        $this->authorize('candidates.edit');
+
+        $validated = $request->validate([
+            'status' => ['required', 'string', 'max:100'],
+        ]);
+
+        $candidat->update(['status' => $validated['status']]);
+
+        return back();
+    }
+
+    public function quickUpdate(Request $request, Candidat $candidat): RedirectResponse
+    {
+        $this->authorize('candidates.edit');
+
+        $validated = $request->validate([
+            'status' => ['required', 'string', 'max:100'],
+            'recruiter_notes' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $candidat->update($validated);
+
+        return back();
     }
 
     /**

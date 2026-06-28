@@ -6,8 +6,9 @@ import { safeUrl } from '@/lib/utils';
 import type { Candidat } from '@/types/candidat';
 import { Head, Link, router } from '@inertiajs/react';
 import axios from 'axios';
-import { Briefcase, ChevronLeft, ExternalLink, GraduationCap, Pencil, Trash2 } from 'lucide-react';
+import { Briefcase, Check, ChevronLeft, ExternalLink, GraduationCap, Pencil, PhoneCall, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
     sourced: { label: 'Sourcé', className: 'bg-ds-bg3 text-ds-text2 border border-ds-border' },
@@ -34,31 +35,6 @@ function scoreColor(score: number) {
     if (score >= 70) return 'text-[#818CF8]';
     if (score >= 55) return 'text-[#22D3EE]';
     return 'text-ds-text3';
-}
-
-function BadgeList({ value }: { value?: string }) {
-    const items =
-        value
-            ?.split(',')
-            .map((s) => s.trim())
-            .filter(Boolean) ?? [];
-
-    if (items.length === 0) {
-        return <span className="text-ds-text3 text-sm">No recruiter notes</span>;
-    }
-
-    return (
-        <div className="flex flex-wrap gap-2">
-            {items.map((item, index) => (
-                <span
-                    key={`${item}-${index}`}
-                    className="inline-flex items-center rounded-full border border-[#818CF8]/20 bg-[#818CF8]/10 px-3 py-1 text-[11px] font-medium text-[#818CF8]"
-                >
-                    {item}
-                </span>
-            ))}
-        </div>
-    );
 }
 
 const card = 'bg-ds-surface border border-ds-border rounded-2xl p-5';
@@ -113,16 +89,84 @@ interface RawData {
     profilePicture?: { url?: string; sizes?: { url: string; width: number; height: number }[] } | string | null;
 }
 
-interface Props {
-    candidat: Candidat & { raw_data?: RawData | null; brief_title?: string | null; brief_id?: number | null };
+interface SelectOption {
+    value: string;
+    label: string;
 }
 
-export default function ShowCandidat({ candidat }: Props) {
+interface Props {
+    candidat: Candidat & { raw_data?: RawData | null; brief_title?: string | null; brief_id?: number | null };
+    params: { status_candidat?: SelectOption[] };
+}
+
+export default function ShowCandidat({ candidat, params }: Props) {
     const [showDelete, setShowDelete] = useState(false);
     const [aiAnalysis, setAiAnalysis] = useState<string | null>(candidat.ai_analysis ?? null);
     const [generating, setGenerating] = useState(false);
-    const [showNotes, setShowNotes] = useState(false);
+    const [showQuickEdit, setShowQuickEdit] = useState(false);
+    const [enriching, setEnriching] = useState(false);
+    const [status, setStatus] = useState(candidat.status);
+    const [editingStatus, setEditingStatus] = useState(false);
+    const [pendingStatus, setPendingStatus] = useState(candidat.status);
+    const [quickStatus, setQuickStatus] = useState(candidat.status);
+    const [quickNotes, setQuickNotes] = useState(candidat.recruiter_notes ?? '');
+    const [saving, setSaving] = useState(false);
+
+    const statusOptions: SelectOption[] =
+        params.status_candidat && params.status_candidat.length > 0
+            ? params.status_candidat
+            : Object.entries(STATUS_CONFIG).map(([value, cfg]) => ({ value, label: cfg.label }));
     const { t } = useI18n();
+
+    function handleEnrich() {
+        if (enriching) return;
+        setEnriching(true);
+        router.post(
+            route('dashboard.candidats.enrich-contact', candidat.id),
+            {},
+            {
+                onSuccess: () => toast.success(t('candidats.index.flash.enrich_success')),
+                onError: () => toast.error(t('candidats.index.flash.enrich_error')),
+                onFinish: () => setEnriching(false),
+            },
+        );
+    }
+
+    function confirmStatusChange() {
+        setStatus(pendingStatus);
+        setEditingStatus(false);
+        router.patch(route('dashboard.candidats.update-status', candidat.id), { status: pendingStatus }, { preserveScroll: true });
+    }
+
+    function cancelStatusEdit() {
+        setPendingStatus(status);
+        setEditingStatus(false);
+    }
+
+    function openQuickEdit() {
+        setQuickStatus(status);
+        setQuickNotes(candidat.recruiter_notes ?? '');
+        setShowQuickEdit(true);
+    }
+
+    function saveQuickEdit() {
+        if (saving) return;
+        setSaving(true);
+        router.patch(
+            route('dashboard.candidats.quick-update', candidat.id),
+            { status: quickStatus, recruiter_notes: quickNotes },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setStatus(quickStatus);
+                    setShowQuickEdit(false);
+                    toast.success('Modifications enregistrées');
+                },
+                onError: () => toast.error('Erreur lors de la sauvegarde'),
+                onFinish: () => setSaving(false),
+            },
+        );
+    }
 
     async function handleGenerate() {
         if (!candidat.brief_id) return;
@@ -140,7 +184,6 @@ export default function ShowCandidat({ candidat }: Props) {
         }
     }
 
-    const statusCfg = STATUS_CONFIG[candidat.status] ?? STATUS_CONFIG.sourced;
     const initials = avatar(candidat.full_name);
     const gradientIdx = candidat.id % AVATAR_COLORS.length;
 
@@ -187,34 +230,22 @@ export default function ShowCandidat({ candidat }: Props) {
 
                         <div className="flex shrink-0 items-center gap-1.5">
                             <button
-                                onClick={() => setShowNotes(true)}
-                                className="text-ds-text2 flex items-center gap-1.5 rounded-xl border border-[#818CF8]/30 px-2.5 py-1.5 text-[12px] transition hover:bg-[#818CF8]/5 sm:px-3 sm:py-2"
-                                title={t(`candidats.index.modal.recruiter_notes`)}
+                                onClick={handleEnrich}
+                                disabled={enriching}
+                                className="text-ds-text2 flex items-center gap-1.5 rounded-xl border border-[#34D399]/30 px-2.5 py-1.5 text-[12px] transition hover:bg-[#34D399]/5 disabled:cursor-not-allowed disabled:opacity-60 sm:px-3 sm:py-2"
+                                title="Enrichir le contact"
                             >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    strokeWidth={1.5}
-                                    stroke="currentColor"
-                                    className="h-4 w-4 shrink-0"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
-                                    />
-                                </svg>
-                                <span className="hidden sm:inline">{t(`candidats.index.modal.recruiter_notes`)}</span>
+                                <PhoneCall size={13} className={enriching ? 'animate-pulse' : ''} />
+                                <span className="hidden sm:inline">{enriching ? 'Enrichissement…' : 'Enrichir'}</span>
                             </button>
-                            <Link
-                                href={route('dashboard.candidats.edit', candidat.id)}
-                                className="border-ds-border text-ds-text2 hover:border-ds-border2 hover:text-ds-text flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[12px] transition sm:px-3 sm:py-2"
-                                title={t(`candidats.index.actions.edit`)}
+                            <button
+                                onClick={openQuickEdit}
+                                className="text-ds-text2 flex items-center gap-1.5 rounded-xl border border-[#818CF8]/30 px-2.5 py-1.5 text-[12px] transition hover:bg-[#818CF8]/5 sm:px-3 sm:py-2"
+                                title="Modifier statut & notes"
                             >
                                 <Pencil size={13} />
-                                <span className="hidden sm:inline">{t(`candidats.index.actions.edit`)}</span>
-                            </Link>
+                                <span className="hidden sm:inline">Modifier</span>
+                            </button>
                             <button
                                 onClick={() => setShowDelete(true)}
                                 className="border-ds-red/30 text-ds-red hover:bg-ds-red/5 flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[12px] transition sm:px-3 sm:py-2"
@@ -241,37 +272,60 @@ export default function ShowCandidat({ candidat }: Props) {
                         )}
                     </div>
                 </div>
-                {showNotes && (
+                {showQuickEdit && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                        {/* Modal */}
-                        <div className="border-ds-border bg-ds-surface relative w-[calc(100vw-2rem)] rounded-2xl border shadow-2xl sm:w-[520px]">
-                            {/* Header */}
+                        <div className="border-ds-border bg-ds-surface relative w-[calc(100vw-2rem)] rounded-2xl border shadow-2xl sm:w-[480px]">
                             <div className="border-ds-border flex items-center justify-between border-b px-5 py-4">
-                                <h2 className="text-ds-text text-[15px] font-semibold">{t(`candidats.index.modal.recruiter_notes`)}</h2>
-
-                                {/* Close button (X) */}
+                                <h2 className="text-ds-text text-[15px] font-semibold">Modifier le candidat</h2>
                                 <button
-                                    onClick={() => setShowNotes(false)}
+                                    onClick={() => setShowQuickEdit(false)}
                                     className="text-ds-text3 hover:text-ds-text hover:bg-ds-bg3 flex h-8 w-8 items-center justify-center rounded-lg transition"
                                 >
-                                    ✕
+                                    <X size={15} />
                                 </button>
                             </div>
 
-                            {/* Content */}
-                            <div className="px-5 py-4">
-                                <div className="flex flex-wrap gap-2">
-                                    <BadgeList value={candidat.recruiter_notes} />
+                            <div className="space-y-4 px-5 py-5">
+                                <div>
+                                    <label className="text-ds-text2 mb-1.5 block text-[12px] font-medium">Statut</label>
+                                    <select
+                                        value={quickStatus}
+                                        onChange={(e) => setQuickStatus(e.target.value)}
+                                        className="border-ds-border bg-ds-bg text-ds-text focus:border-ds-accent w-full rounded-lg border px-3 py-2 text-[13px] transition outline-none"
+                                    >
+                                        {statusOptions.map((opt) => (
+                                            <option key={opt.value} value={opt.value}>
+                                                {opt.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="text-ds-text2 mb-1.5 block text-[12px] font-medium">Notes du recruteur</label>
+                                    <textarea
+                                        value={quickNotes}
+                                        onChange={(e) => setQuickNotes(e.target.value)}
+                                        rows={4}
+                                        placeholder="Ajouter des notes…"
+                                        className="border-ds-border bg-ds-bg text-ds-text placeholder-ds-text3 focus:border-ds-accent w-full resize-none rounded-lg border px-3 py-2 text-[13px] transition outline-none"
+                                    />
                                 </div>
                             </div>
 
-                            {/* Footer */}
-                            <div className="border-ds-border flex justify-end border-t px-5 py-3">
+                            <div className="border-ds-border flex justify-end gap-2 border-t px-5 py-3">
                                 <button
-                                    onClick={() => setShowNotes(false)}
-                                    className="bg-ds-bg3 text-ds-text2 hover:bg-ds-border rounded-lg px-4 py-1.5 text-sm transition"
+                                    onClick={() => setShowQuickEdit(false)}
+                                    className="bg-ds-bg3 text-ds-text2 hover:bg-ds-border rounded-lg px-4 py-1.5 text-[13px] transition"
                                 >
-                                    {t(`candidats.index.modal.close`)}
+                                    Annuler
+                                </button>
+                                <button
+                                    onClick={saveQuickEdit}
+                                    disabled={saving}
+                                    className="bg-ds-accent rounded-lg px-4 py-1.5 text-[13px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+                                >
+                                    {saving ? 'Enregistrement…' : 'Enregistrer'}
                                 </button>
                             </div>
                         </div>
@@ -305,11 +359,46 @@ export default function ShowCandidat({ candidat }: Props) {
                                 </div>
                                 <div className="min-w-0">
                                     <p className="text-ds-text truncate font-semibold">{candidat.full_name}</p>
-                                    <span
-                                        className={`mt-1 inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${statusCfg.className}`}
-                                    >
-                                        {statusCfg.label}
-                                    </span>
+                                    {editingStatus ? (
+                                        <div className="mt-1 flex items-center gap-1.5">
+                                            <select
+                                                autoFocus
+                                                value={pendingStatus}
+                                                onChange={(e) => setPendingStatus(e.target.value)}
+                                                className={`cursor-pointer rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${STATUS_CONFIG[pendingStatus]?.className ?? ''} bg-transparent`}
+                                            >
+                                                {statusOptions.map((opt) => (
+                                                    <option key={opt.value} value={opt.value} className="bg-ds-surface text-ds-text">
+                                                        {opt.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <button onClick={confirmStatusChange} className="text-[#34D399] transition hover:opacity-80">
+                                                <Check size={13} />
+                                            </button>
+                                            <button onClick={cancelStatusEdit} className="text-ds-text3 transition hover:opacity-80">
+                                                <X size={13} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="mt-1 flex items-center gap-1.5">
+                                            <span
+                                                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${STATUS_CONFIG[status]?.className ?? 'bg-ds-bg3 text-ds-text2 border-ds-border'}`}
+                                            >
+                                                {STATUS_CONFIG[status]?.label ?? statusOptions.find((o) => o.value === status)?.label ?? status}
+                                            </span>
+                                            <button
+                                                onClick={() => {
+                                                    setPendingStatus(status);
+                                                    setEditingStatus(true);
+                                                }}
+                                                className="text-ds-text3 hover:text-ds-text2 transition"
+                                                title="Modifier le statut"
+                                            >
+                                                <Pencil size={11} />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -471,7 +560,9 @@ export default function ShowCandidat({ candidat }: Props) {
                                 <div className="flex flex-wrap gap-2">
                                     {(rawSkills.length > 0 ? rawSkills : (candidat.skills ?? []).map((s) => ({ name: s }))).map((skill, i) => (
                                         <div key={i} className="flex items-center gap-1.5 rounded-full bg-[#6C63FF]/10 px-2.5 py-1">
-                                            <span className="text-[11px] font-medium text-[#818CF8]">{'name' in skill ? skill.name : skill}</span>
+                                            <span className="text-[11px] font-medium text-[#818CF8]">
+                                                {'name' in skill ? skill.name : String(skill)}
+                                            </span>
                                             {'endorsements' in skill && skill.endorsements && (
                                                 <span className="text-[10px] text-[#818CF8]/60">
                                                     {skill.endorsements.replace(' endorsements', '').replace(' endorsement', '')}
