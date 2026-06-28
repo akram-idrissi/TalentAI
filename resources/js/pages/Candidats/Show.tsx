@@ -2,6 +2,7 @@ import AiAnalysisPanel from '@/components/Candidats/AiAnalysisPanel';
 import DeleteModal from '@/components/ui/DeleteModal';
 import { useI18n } from '@/hooks/useI18n';
 import AppLayout from '@/layouts/app-layout';
+import { safeUrl } from '@/lib/utils';
 import type { Candidat } from '@/types/candidat';
 import { Head, Link, router } from '@inertiajs/react';
 import axios from 'axios';
@@ -320,9 +321,9 @@ export default function ShowCandidat({ candidat }: Props) {
                                     <div>
                                         <p className={labelCls}>LinkedIn</p>
                                         <a
-                                            href={candidat.linkedin_url}
+                                            href={safeUrl(candidat.linkedin_url)}
                                             target="_blank"
-                                            rel="noreferrer"
+                                            rel="noopener noreferrer"
                                             className="inline-flex items-center gap-1 text-[13px] text-[#818CF8] transition hover:underline"
                                         >
                                             Voir le profil <ExternalLink size={11} />
@@ -510,9 +511,9 @@ export default function ShowCandidat({ candidat }: Props) {
                                     <div>
                                         <p className={labelCls}>URL Source</p>
                                         <a
-                                            href={candidat.source_url}
+                                            href={safeUrl(candidat.source_url)}
                                             target="_blank"
-                                            rel="noreferrer"
+                                            rel="noopener noreferrer"
                                             className="inline-flex items-center gap-1 text-[13px] text-[#818CF8] transition hover:underline"
                                         >
                                             Voir la source <ExternalLink size={11} />

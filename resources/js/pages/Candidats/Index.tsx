@@ -4,6 +4,7 @@ import FilterPanel, { FilterEntry } from '@/components/ui/FilterPanel';
 import SkeletonTable from '@/components/ui/SkeletonTable';
 import { useI18n } from '@/hooks/useI18n';
 import AppLayout from '@/layouts/app-layout';
+import { safeUrl } from '@/lib/utils';
 import type { Candidat, IndexCandidatProps } from '@/types/candidat';
 import { Head, Link, router } from '@inertiajs/react';
 import axios from 'axios';
@@ -444,9 +445,9 @@ export default function Index({ candidats, filters, briefs }: IndexCandidatProps
                                                                 </p>
                                                                 {candidat.linkedin_url && (
                                                                     <a
-                                                                        href={candidat.linkedin_url}
+                                                                        href={safeUrl(candidat.linkedin_url)}
                                                                         target="_blank"
-                                                                        rel="noreferrer"
+                                                                        rel="noopener noreferrer"
                                                                         onClick={(e) => e.stopPropagation()}
                                                                         className="text-ds-text3 shrink-0 transition hover:text-[#818CF8]"
                                                                         title="Voir profil LinkedIn"

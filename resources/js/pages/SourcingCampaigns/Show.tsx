@@ -2,6 +2,7 @@ import { ShowSourcingCampaignStatusBadge } from '@/components/SourcingCampaigns/
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useI18n } from '@/hooks/useI18n';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
+import { safeUrl } from '@/lib/utils';
 import { Candidat, Comment, Mention, Post, ShowProps } from '@/types/sourcing_campaigns';
 import { Head, Link, router } from '@inertiajs/react';
 import dayjs from 'dayjs';
@@ -117,9 +118,9 @@ function CommentsModal({ post, open, onClose, t }: { post: Post | null; open: bo
                                                 </div>
                                                 <div>
                                                     <a
-                                                        href={comment.commenter_linkedin_url ?? '#'}
+                                                        href={safeUrl(comment.commenter_linkedin_url)}
                                                         target="_blank"
-                                                        rel="noreferrer"
+                                                        rel="noopener noreferrer"
                                                         className="text-ds-text font-semibold hover:underline"
                                                     >
                                                         {comment.commenter_name ?? '—'}
@@ -223,9 +224,9 @@ function MentionPill({ mention, onAdd }: { mention: Mention; onAdd: () => void }
     return (
         <span className="inline-flex items-center gap-1.5 rounded-full border border-[#6C63FF]/25 bg-[#6C63FF]/10 px-2.5 py-0.5 text-[12px] font-medium text-[#6C63FF] dark:bg-[#6C63FF]/15 dark:text-[#a78bfa]">
             <a
-                href={profileUrl}
+                href={safeUrl(profileUrl)}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 hover:underline"
                 title={mention.linkedinUrl ? 'Voir le profil LinkedIn' : 'Rechercher sur LinkedIn'}
             >
@@ -314,9 +315,9 @@ function CommentCard({
                     <div className="min-w-0">
                         {comment.commenter_linkedin_url ? (
                             <a
-                                href={comment.commenter_linkedin_url}
+                                href={safeUrl(comment.commenter_linkedin_url)}
                                 target="_blank"
-                                rel="noreferrer"
+                                rel="noopener noreferrer"
                                 className="text-ds-text inline-flex items-center gap-1 text-[14px] font-semibold hover:underline"
                             >
                                 {comment.commenter_name ?? '—'}
@@ -366,9 +367,9 @@ function CommentCard({
                 <span className="text-ds-text3 text-[11px] font-medium tracking-wide uppercase">Source</span>
                 {comment.post.author_name && (
                     <a
-                        href={comment.post.author_linkedin_url ?? '#'}
+                        href={safeUrl(comment.post.author_linkedin_url)}
                         target="_blank"
-                        rel="noreferrer"
+                        rel="noopener noreferrer"
                         className="border-ds-border bg-ds-bg text-ds-text2 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition hover:border-[#6C63FF]/30 hover:text-[#6C63FF]"
                     >
                         <Building2 size={10} className="shrink-0" />
@@ -377,9 +378,9 @@ function CommentCard({
                 )}
                 {comment.post.linkedin_url && (
                     <a
-                        href={comment.post.linkedin_url}
+                        href={safeUrl(comment.post.linkedin_url)}
                         target="_blank"
-                        rel="noreferrer"
+                        rel="noopener noreferrer"
                         className="border-ds-border bg-ds-bg text-ds-text2 inline-flex max-w-[340px] items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition hover:border-[#6C63FF]/30 hover:text-[#6C63FF]"
                         title={comment.post.content}
                     >
@@ -797,9 +798,9 @@ export default function Show({ sourcingCampaign, enrichment }: ShowProps) {
                                                             </div>
                                                             <div className="min-w-0">
                                                                 <a
-                                                                    href={post.author_linkedin_url ?? '#'}
+                                                                    href={safeUrl(post.author_linkedin_url)}
                                                                     target="_blank"
-                                                                    rel="noreferrer"
+                                                                    rel="noopener noreferrer"
                                                                     className="text-ds-text block max-w-[160px] truncate font-semibold hover:underline"
                                                                 >
                                                                     {post.author_name ?? t('sourcing_campaigns.show.post_card.unknown_author')}
@@ -833,9 +834,9 @@ export default function Show({ sourcingCampaign, enrichment }: ShowProps) {
                                                     <td className="px-5 py-3.5 align-middle">
                                                         {post.linkedin_url && (
                                                             <a
-                                                                href={post.linkedin_url}
+                                                                href={safeUrl(post.linkedin_url)}
                                                                 target="_blank"
-                                                                rel="noreferrer"
+                                                                rel="noopener noreferrer"
                                                                 className="text-ds-text3 transition hover:text-[#6C63FF]"
                                                                 title={t('sourcing_campaigns.show.posts_section.view_post')}
                                                             >
@@ -941,9 +942,9 @@ export default function Show({ sourcingCampaign, enrichment }: ShowProps) {
                                                                         </div>
                                                                         <div className="min-w-0">
                                                                             <a
-                                                                                href={comment.commenter_linkedin_url ?? '#'}
+                                                                                href={safeUrl(comment.commenter_linkedin_url)}
                                                                                 target="_blank"
-                                                                                rel="noreferrer"
+                                                                                rel="noopener noreferrer"
                                                                                 className="text-ds-text block max-w-[140px] truncate font-semibold hover:underline"
                                                                             >
                                                                                 {comment.commenter_name ?? '—'}
@@ -969,9 +970,9 @@ export default function Show({ sourcingCampaign, enrichment }: ShowProps) {
                                                                     <div className="flex flex-col gap-1">
                                                                         {comment.post.author_name && (
                                                                             <a
-                                                                                href={comment.post.author_linkedin_url ?? '#'}
+                                                                                href={safeUrl(comment.post.author_linkedin_url)}
                                                                                 target="_blank"
-                                                                                rel="noreferrer"
+                                                                                rel="noopener noreferrer"
                                                                                 className="text-ds-text2 inline-flex max-w-[110px] items-center gap-1 truncate text-[11px] transition hover:text-[#6C63FF]"
                                                                             >
                                                                                 <Building2 size={10} className="shrink-0" />
@@ -980,9 +981,9 @@ export default function Show({ sourcingCampaign, enrichment }: ShowProps) {
                                                                         )}
                                                                         {comment.post.linkedin_url && (
                                                                             <a
-                                                                                href={comment.post.linkedin_url}
+                                                                                href={safeUrl(comment.post.linkedin_url)}
                                                                                 target="_blank"
-                                                                                rel="noreferrer"
+                                                                                rel="noopener noreferrer"
                                                                                 className="text-ds-text3 inline-flex max-w-[110px] items-center gap-1 truncate text-[11px] transition hover:text-[#6C63FF]"
                                                                                 title={comment.post.content}
                                                                             >
