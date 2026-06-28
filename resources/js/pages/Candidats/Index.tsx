@@ -9,7 +9,7 @@ import type { Candidat, IndexCandidatProps } from '@/types/candidat';
 import { Head, Link, router } from '@inertiajs/react';
 import axios from 'axios';
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, ExternalLink, Plus, RefreshCw, Sparkles, X } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
@@ -204,15 +204,17 @@ export default function Index({ candidats, filters, briefs }: IndexCandidatProps
         }
     }
 
-    const sortedData = [...candidats.data].sort((a, b) => {
-        if (!sortKey) return 0;
-        const valA = sortKey === 'score_interview' ? (a.ai_score ?? null) : (a[sortKey] ?? null);
-        const valB = sortKey === 'score_interview' ? (b.ai_score ?? null) : (b[sortKey] ?? null);
-        if (valA === null && valB === null) return 0;
-        if (valA === null) return 1;
-        if (valB === null) return -1;
-        return sortDir === 'desc' ? valB - valA : valA - valB;
-    });
+    const sortedData = useMemo(() => {
+        if (!sortKey) return candidats.data;
+        return [...candidats.data].sort((a, b) => {
+            const valA = sortKey === 'score_interview' ? (a.ai_score ?? null) : (a[sortKey] ?? null);
+            const valB = sortKey === 'score_interview' ? (b.ai_score ?? null) : (b[sortKey] ?? null);
+            if (valA === null && valB === null) return 0;
+            if (valA === null) return 1;
+            if (valB === null) return -1;
+            return sortDir === 'desc' ? valB - valA : valA - valB;
+        });
+    }, [candidats.data, sortKey, sortDir]);
 
     const FILTER_FIELDS = [
         {
@@ -254,7 +256,7 @@ export default function Index({ candidats, filters, briefs }: IndexCandidatProps
             options: [
                 { value: 'linkedin', label: 'LinkedIn' },
                 { value: 'indeed', label: 'Indeed' },
-                { value: 'apify', label: 'Apify' },
+                { value: 'apify', label: 'Web' },
                 { value: 'cv', label: 'CV' },
             ],
         },
@@ -291,18 +293,12 @@ export default function Index({ candidats, filters, briefs }: IndexCandidatProps
     }
 
     const enrichCandidate = (id: number) => {
-        console.log('Button clicked', id);
-
         router.post(
             route('dashboard.candidats.enrich-contact', id),
             {},
             {
-                onSuccess: () => {
-                    console.log('Success');
-                },
-                onError: (errors) => {
-                    console.error('Error', errors);
-                },
+                onSuccess: () => toast.success(t('candidats.index.flash.enrich_success')),
+                onError: () => toast.error(t('candidats.index.flash.enrich_error')),
             },
         );
     };

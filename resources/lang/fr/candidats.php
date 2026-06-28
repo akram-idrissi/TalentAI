@@ -209,6 +209,12 @@ return [
                 'rejected' => 'Rejeté',
             ],
         ],
+
+        'flash' => [
+            'index_error' => 'Impossible de charger les candidats.',
+            'enrich_success' => 'Informations de contact enrichies.',
+            'enrich_error' => 'Impossible d\'enrichir ce contact.',
+        ],
     ],
 
 ];

@@ -209,6 +209,12 @@ return [
                 'rejected' => 'Rejected',
             ],
         ],
+
+        'flash' => [
+            'index_error' => 'Unable to load candidates.',
+            'enrich_success' => 'Contact information enriched.',
+            'enrich_error' => 'Unable to enrich this contact.',
+        ],
     ],
 
 ];
