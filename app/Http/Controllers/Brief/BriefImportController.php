@@ -88,9 +88,7 @@ class BriefImportController extends Controller
 
     private function extractText($file): string
     {
-        $ext = strtolower($file->getClientOriginalExtension());
-
-        if ($ext === 'pdf') {
+        if ($file->getMimeType() === 'application/pdf') {
             $parser = new PdfParser;
 
             return $parser->parseFile($file->getRealPath())->getText();

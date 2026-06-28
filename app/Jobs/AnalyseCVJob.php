@@ -40,14 +40,10 @@ class AnalyseCVJob implements ShouldQueue
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
-        Log::info('JOB RECEIVED', [
-            'path' => $this->path,
-            'briefId' => $this->briefId,
-        ]);
         $logger->log(
             'cv_job.start',
             'Début analyse CV.',
-            ['path' => $this->path],
+            ['brief_id' => $this->briefId],
             []
         );
 

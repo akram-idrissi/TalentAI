@@ -609,8 +609,6 @@ class InterviewController extends Controller
         $experience = $brief->min_experience_years ?? 'Non précisé';
         $education = $brief->education_level ?? 'Non précisé';
         $seniority = $brief->seniority_level ?? 'Non précisé';
-        $gender = $brief->gender_pref;
-        $age = $brief->age_range;
         $mission = $brief->mission_description;
         $title = $brief->title;
 
@@ -624,8 +622,6 @@ class InterviewController extends Controller
             Niveau d'études : {$education}
             Langues : {$langs}
             Séniorité : {$seniority}
-            Préférence genre : {$gender}
-            Tranche d'âge : {$age}
 
             Mission :
             {$mission}

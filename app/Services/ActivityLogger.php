@@ -77,6 +77,8 @@ class ActivityLogger
                 $data[$key] = '***';
             } elseif (is_array($value)) {
                 $data[$key] = $this->sanitizeRequestData($value);
+            } elseif (is_string($value) && strlen($value) > 1000) {
+                $data[$key] = substr($value, 0, 1000).'…[truncated]';
             }
         }
 

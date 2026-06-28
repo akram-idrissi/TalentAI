@@ -44,7 +44,6 @@ class AssemblyAIService
         if ($response->failed()) {
             Log::error('AssemblyAIService: submit failed', [
                 'status' => $response->status(),
-                'body' => $response->body(),
                 'duration_ms' => $durationMs,
             ]);
             throw new RuntimeException('AssemblyAI submit failed: '.$response->body());
@@ -54,7 +53,6 @@ class AssemblyAIService
 
         if (! $id) {
             Log::error('AssemblyAIService: submit succeeded but no transcript ID returned', [
-                'body' => $response->body(),
                 'duration_ms' => $durationMs,
             ]);
             throw new RuntimeException('AssemblyAI did not return a transcript ID.');
@@ -86,7 +84,6 @@ class AssemblyAIService
             Log::error('AssemblyAIService: status check failed', [
                 'assemblyai_transcript_id' => $transcriptId,
                 'status' => $response->status(),
-                'body' => $response->body(),
                 'duration_ms' => $durationMs,
             ]);
             throw new RuntimeException('AssemblyAI status check failed: '.$response->body());
