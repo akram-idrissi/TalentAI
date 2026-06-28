@@ -632,4 +632,43 @@ class InterviewController extends Controller
             Pondération des critères d'évaluation : {$weights}{$expectationsSection}
             BRIEF;
     }
+
+    /**
+     * Retrieve the transcript associated with an interview.
+     */
+    public function search(Interview $interview): JsonResponse
+    {
+        $this->authorize('interviews.view');
+
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $transcription = Transcription::where(
+                'interview_id',
+                $interview->id
+            )->first();
+
+            return response()->json([
+                'transcript' => json_decode(
+                    $transcription?->diarized_transcript ?? '[]',
+                    true
+                ),
+            ]);
+        } catch (\Throwable $e) {
+            $logger->log(
+                'interview.transcript.search.error',
+                "Erreur lors du chargement de la transcription (ID : {$interview->id}) : ".$e->getMessage(),
+                [
+                    'interview_id' => $interview->id,
+                    'exception' => $e->getMessage(),
+                ],
+                [Interview::class]
+            );
+
+            return response()->json([
+                'message' => 'Impossible de charger la transcription.',
+            ], 500);
+        }
+    }
 }
