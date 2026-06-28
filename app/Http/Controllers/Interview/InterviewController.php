@@ -306,6 +306,7 @@ class InterviewController extends Controller
     public function show(Interview $interview): Response
     {
         $this->authorize('interviews.view');
+        abort_if($interview->interviewer_id !== auth()->id(), 403);
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
 
@@ -420,6 +421,7 @@ class InterviewController extends Controller
     public function status(Interview $interview, AssemblyAIService $assemblyAI): JsonResponse
     {
         $this->authorize('interviews.view');
+        abort_if($interview->interviewer_id !== auth()->id(), 403);
 
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);
@@ -522,6 +524,7 @@ class InterviewController extends Controller
     public function audio(Interview $interview): StreamedResponse|\Illuminate\Http\Response
     {
         $this->authorize('interviews.view');
+        abort_if($interview->interviewer_id !== auth()->id(), 403);
 
         /** @var ActivityLogger $logger */
         $logger = app(ActivityLogger::class);

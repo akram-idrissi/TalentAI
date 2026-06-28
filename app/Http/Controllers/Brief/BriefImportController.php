@@ -27,6 +27,8 @@ class BriefImportController extends Controller
         $logger = app(ActivityLogger::class);
 
         try {
+            $this->authorize('briefs.create');
+
             $request->validate([
                 'file' => 'required|file|mimes:pdf,doc,docx|max:5120',
             ]);

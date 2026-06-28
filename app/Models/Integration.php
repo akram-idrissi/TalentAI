@@ -30,6 +30,7 @@ class Integration extends Model
     protected function casts(): array
     {
         return [
+            'api_token' => 'encrypted',
             'active' => 'boolean',
             'credits_used' => 'integer',
             'credits_limit' => 'integer',

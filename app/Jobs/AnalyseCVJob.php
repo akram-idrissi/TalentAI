@@ -100,7 +100,6 @@ class AnalyseCVJob implements ShouldQueue
 
         Log::info('CV TEXT EXTRACTED', [
             'length' => strlen($cvText),
-            'preview' => substr($cvText, 0, 300),
         ]);
 
         if (! $cvText) {
