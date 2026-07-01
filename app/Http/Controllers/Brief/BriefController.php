@@ -61,7 +61,13 @@ class BriefController extends Controller
                 continue;
             }
 
-            $query->where($field, 'like', '%'.$filter['value'].'%');
+            $values = array_filter(array_map('trim', explode(',', (string) $filter['value'])));
+
+            if (count($values) > 1) {
+                $query->whereIn($field, $values);
+            } else {
+                $query->where($field, 'like', '%'.$values[0].'%');
+            }
         }
     }
 
@@ -454,8 +460,7 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
-            return redirect()->route('dashboard.briefs.index')
-                ->with('success', 'Brief supprimé avec succès.');
+            return back()->with('success', 'Brief supprimé avec succès.');
         } catch (\Throwable $e) {
             $logger->log(
                 'brief.destroy.error',
@@ -464,9 +469,7 @@ class BriefController extends Controller
                 [Brief::class]
             );
 
-            return Inertia::render('Fallback', [
-                'error' => 'Impossible de supprimer ce brief.',
-            ]);
+            return back()->withErrors(['delete' => 'Impossible de supprimer ce brief.']);
         }
     }
 
@@ -522,7 +525,7 @@ class BriefController extends Controller
 
         try {
             $validated = $request->validate([
-                'status' => 'required|in:lancement,cloture',
+                'status' => ['required', Rule::enum(BriefStatus::class)],
             ]);
 
             $statutAvant = $brief->status;
@@ -569,7 +572,9 @@ class BriefController extends Controller
                     [Brief::class]
                 );
             } catch (\Throwable $e) {
-                Log::warning('Activity log failed in brief.updateStatus', ['error' => $e->getMessage()]);
+                Log::error('Erreur lors de la mise à jour du statut', ['brief_id' => $brief->id, 'exception' => $e->getMessage()]);
+
+                return back()->withErrors(['status' => 'Impossible de mettre à jour le statut du brief.']);
             }
 
             return back()->with('success', 'Statut du brief mis à jour.');
@@ -581,6 +586,127 @@ class BriefController extends Controller
                 'error' => 'Impossible de mettre à jour le statut du brief.',
                 'brief' => $brief,
             ]);
+        }
+    }
+
+    /**
+     * Restore a previously soft-deleted brief.
+     *
+     * @param  Brief  $brief  Route-model-bound Brief instance to restore
+     * @return RedirectResponse Redirects back on success or with an error on failure
+     */
+    public function restore(Brief $brief): RedirectResponse
+    {
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $brief->restore();
+
+            $logger->log(
+                'brief.restore',
+                "Restauration du brief « {$brief->title} » (ID : {$brief->id}).",
+                ['brief_id' => $brief->id],
+                [Brief::class]
+            );
+
+            return back()->with('success', 'Brief restauré.');
+        } catch (\Throwable $e) {
+            $logger->log(
+                'brief.restore.error',
+                "Erreur lors de la restauration du brief (ID : {$brief->id}) : ".$e->getMessage(),
+                ['brief_id' => $brief->id, 'exception' => $e->getMessage()],
+                [Brief::class]
+            );
+
+            return back()->withErrors(['restore' => 'Impossible de restaurer ce brief.']);
+        }
+    }
+
+    /**
+     * Validate and permanently delete multiple briefs in a single request.
+     *
+     * @param  Request  $request  Must contain `ids` (array of existing brief IDs)
+     * @return RedirectResponse Redirects back on success or with an error on failure
+     *
+     * @throws ValidationException If validation fails (auto-handled by Laravel)
+     */
+    public function bulkDestroy(Request $request): RedirectResponse
+    {
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $validated = $request->validate([
+                'ids' => 'required|array|min:1',
+                'ids.*' => 'integer|exists:briefs,id',
+            ]);
+
+            Brief::whereIn('id', $validated['ids'])->delete();
+
+            $logger->log(
+                'brief.bulk_destroy',
+                'Suppression groupée de '.count($validated['ids']).' brief(s).',
+                ['brief_ids' => $validated['ids']],
+                [Brief::class]
+            );
+
+            return back()->with('success', count($validated['ids']).' brief(s) supprimé(s).');
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            $logger->log(
+                'brief.bulk_destroy.error',
+                'Erreur lors de la suppression groupée des briefs : '.$e->getMessage(),
+                ['exception' => $e->getMessage()],
+                [Brief::class]
+            );
+
+            return back()->withErrors(['delete' => 'Impossible de supprimer les briefs sélectionnés.']);
+        }
+    }
+
+    /**
+     * Validate and apply a status update to multiple briefs in a single request.
+     *
+     * @param  Request  $request  Must contain `ids` (array of existing brief IDs) and a valid `status`
+     * @return RedirectResponse Redirects back on success or with an error on failure
+     *
+     * @throws ValidationException If validation fails (auto-handled by Laravel)
+     */
+    public function bulkUpdateStatus(Request $request): RedirectResponse
+    {
+        /** @var ActivityLogger $logger */
+        $logger = app(ActivityLogger::class);
+
+        try {
+            $validated = $request->validate([
+                'ids' => 'required|array|min:1',
+                'ids.*' => 'integer|exists:briefs,id',
+                'status' => ['required', Rule::enum(BriefStatus::class)],
+            ]);
+
+            Brief::whereIn('id', $validated['ids'])->update(['status' => $validated['status']]);
+
+            $logger->log(
+                'brief.bulk_status_update',
+                'Mise à jour groupée du statut pour '.count($validated['ids']).' brief(s).',
+                ['brief_ids' => $validated['ids'], 'status' => $validated['status']],
+                [Brief::class]
+            );
+
+            return back()->with('success', 'Statut mis à jour pour '.count($validated['ids']).' brief(s).');
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            $logger->log(
+                'brief.bulk_status_update.error',
+                'Erreur lors de la mise à jour groupée du statut : '.$e->getMessage(),
+                ['exception' => $e->getMessage()],
+                [Brief::class]
+            );
+
+            return back()->withErrors(['status' => 'Impossible de mettre à jour le statut des briefs sélectionnés.']);
         }
     }
 }
